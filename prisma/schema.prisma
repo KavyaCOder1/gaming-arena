@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  username     String         @unique
+  password     String
+  createdAt    DateTime       @default(now())
+  lastLoginAt  DateTime?
+  gameHistory  GameHistory[]
+  leaderboard  Leaderboard[]
+}
+
+model GameHistory {
+  id        String      @id @default(cuid())
+  userId    String
+  gameType  GameType
+  level     Difficulty
+  score     Int
+  duration  Int         // in seconds
+  createdAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Leaderboard {
+  id        String      @id @default(cuid())
+  userId    String
+  gameType  GameType
+  highScore Int
+  updatedAt DateTime    @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameType])
+}
+
+enum GameType {
+  WORD_SEARCH
+  TIC_TAC_TOE
+  MEMORY
+  PACMAN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
