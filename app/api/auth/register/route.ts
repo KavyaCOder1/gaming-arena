@@ -49,6 +49,7 @@ export async function POST(request: Request) {
             { status: 201 }
         );
 
+        response.headers.set("Cache-Control", "private, no-cache");
         response.cookies.set("session", session, {
             expires,
             httpOnly: true,

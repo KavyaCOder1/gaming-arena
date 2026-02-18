@@ -57,7 +57,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
             {/* ══════════════════════════════════════════
                 DESKTOP BAR
             ══════════════════════════════════════════ */}
-            <div className="hidden md:flex" style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px", height: 72, alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+            <div className="hidden md:flex" style={{ width: "100%", padding: "0 32px", height: 72, alignItems: "center", justifyContent: "space-between", gap: 24 }}>
 
                 {/* Logo */}
                 <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", flexShrink: 0 }}>

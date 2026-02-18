@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Inter, Orbitron, Rajdhani } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import dynamic from "next/dynamic";
 import "./globals.css";
+
+const BottomNav = dynamic(() => import("@/components/layout/BottomNav").then(mod => ({ default: mod.BottomNav })));
+const AuthModal = dynamic(() => import("@/components/auth/AuthModal").then(mod => ({ default: mod.AuthModal })));
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,10 +30,10 @@ const rajdhani = Rajdhani({
 export const metadata: Metadata = {
   title: "Gaming Arena | Competitive Web Gaming",
   description: "Play, Compete, Win. The ultimate competitive gaming platform.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
-
-import { BottomNav } from "@/components/layout/BottomNav";
-import { AuthModal } from "@/components/auth/AuthModal";
 
 export default function RootLayout({
   children,

@@ -8,14 +8,22 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-/* ─── tiny responsive hook ─────────────────────────────────────────── */
+/* ─── tiny responsive hook with debouncing ─────────────────────────────────────────── */
 function useIsMobile() {
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 768);
         check();
-        window.addEventListener("resize", check);
-        return () => window.removeEventListener("resize", check);
+        let timeoutId: NodeJS.Timeout;
+        const debouncedCheck = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(check, 100);
+        };
+        window.addEventListener("resize", debouncedCheck, { passive: true });
+        return () => {
+            window.removeEventListener("resize", debouncedCheck);
+            clearTimeout(timeoutId);
+        };
     }, []);
     return isMobile;
 }
