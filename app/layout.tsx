@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   description: "Play, Compete, Win. The ultimate competitive gaming platform.",
 };
 
+import { BottomNav } from "@/components/layout/BottomNav";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +41,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             {children}
+            <BottomNav />
           </AuthProvider>
         </ThemeProvider>
       </body>

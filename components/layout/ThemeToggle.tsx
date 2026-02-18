@@ -2,7 +2,8 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function ThemeToggle() {
     const { theme, setTheme } = useTheme();
@@ -17,14 +18,37 @@ export function ThemeToggle() {
     return (
         <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="rounded-full p-2 hover:bg-muted transition-colors"
+            className="relative p-2.5 rounded-xl glass border-white/10 hover:bg-white/10 transition-all group overflow-hidden"
             aria-label="Toggle Theme"
         >
-            {theme === "dark" ? (
-                <Sun className="h-5 w-5 text-yellow-400 animate-in fade-in zoom-in duration-300" />
-            ) : (
-                <Moon className="h-5 w-5 text-indigo-600 animate-in fade-in zoom-in duration-300" />
-            )}
+            <AnimatePresence mode="wait">
+                {theme === "dark" ? (
+                    <motion.div
+                        key="sun"
+                        initial={{ y: 20, opacity: 0, rotate: 45 }}
+                        animate={{ y: 0, opacity: 1, rotate: 0 }}
+                        exit={{ y: -20, opacity: 0, rotate: -45 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <Sun className="h-5 w-5 text-yellow-500 neon-glow" />
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="moon"
+                        initial={{ y: 20, opacity: 0, rotate: 45 }}
+                        animate={{ y: 0, opacity: 1, rotate: 0 }}
+                        exit={{ y: -20, opacity: 0, rotate: -45 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <Moon className="h-5 w-5 text-primary neon-glow" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Subtle hover sparkle */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <Sparkles className="absolute top-1 right-1 w-2 h-2 text-primary/50 animate-pulse" />
+            </div>
         </button>
     );
 }
