@@ -21,7 +21,7 @@ export function GameCard({ title, description, href, icon: Icon, image, delay = 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay }}
-                className="glass-card relative h-[450px] overflow-hidden flex flex-col border-white/10 hover:border-secondary/50 transition-all duration-500"
+                className="glass-card relative h-[450px] overflow-hidden flex flex-col border-black/5 dark:border-white/10 hover:border-secondary/50 transition-all duration-500"
             >
                 {/* Image Background with Overlay */}
                 <div className="absolute inset-0 z-0">
@@ -30,13 +30,13 @@ export function GameCard({ title, description, href, icon: Icon, image, delay = 
                         alt={title}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-40 grayscale-[0.8] group-hover:grayscale-0"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-[#0F172A]/80 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent dark:from-[#0F172A] dark:via-[#0F172A]/80" />
                 </div>
 
                 {/* Content */}
                 <div className="relative z-10 p-8 mt-auto flex flex-col">
                     <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-secondary transition-colors">
+                        <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 group-hover:border-secondary transition-colors">
                             <Icon className="w-8 h-8 text-secondary neon-glow" />
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-black text-primary tracking-widest uppercase">
@@ -53,8 +53,8 @@ export function GameCard({ title, description, href, icon: Icon, image, delay = 
                         {description}
                     </p>
 
-                    <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 flex items-center justify-center group-hover:bg-secondary transition-all group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-                        <span className="relative z-10 text-[10px] font-black tracking-[0.3em] uppercase group-hover:text-background transition-colors">ENGAGE MISSION</span>
+                    <div className="relative h-14 overflow-hidden rounded-xl border border-black/10 dark:border-white/10 flex items-center justify-center group-hover:bg-secondary transition-all group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                        <span className="relative z-10 text-[10px] font-black tracking-[0.3em] uppercase group-hover:text-white dark:group-hover:text-background transition-colors">ENGAGE MISSION</span>
                         <div className="absolute inset-0 bg-gradient-to-r from-secondary/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                 </div>

@@ -3,120 +3,128 @@
 import { motion } from "framer-motion";
 import { GameCard } from "@/components/game/GameCard";
 import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
+
+const games = [
+    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.", image: "https://images.unsplash.com/photo-1632516643720-e7f5d7d6ecc9?q=80&w=1000&auto=format&fit=crop", icon: Search, href: "/games/word-search", color: "blue" },
+    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?", image: "https://images.unsplash.com/photo-1668901382969-8c73e450a1f5?q=80&w=1000&auto=format&fit=crop", icon: Grid, href: "/games/tic-tac-toe", color: "green" },
+    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.", image: "https://images.unsplash.com/photo-1611996575749-79a3a250f968?q=80&w=1000&auto=format&fit=crop", icon: LayoutGrid, href: "/games/memory", color: "purple" },
+    { title: "Pacman", description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.", image: "https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=1000&auto=format&fit=crop", icon: Ghost, href: "/games/pacman", color: "yellow" },
+];
+
+const filterBtns = ["All Zones", "Strategic", "Arcade", "Puzzle"];
 
 export default function GamesPage() {
-    const games = [
-        {
-            title: "Word Search",
-            description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",
-            image: "https://images.unsplash.com/photo-1632516643720-e7f5d7d6ecc9?q=80&w=1000&auto=format&fit=crop",
-            icon: Search,
-            href: "/games/word-search",
-            color: "blue"
-        },
-        {
-            title: "Tic Tac Toe",
-            description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",
-            image: "https://images.unsplash.com/photo-1668901382969-8c73e450a1f5?q=80&w=1000&auto=format&fit=crop",
-            icon: Grid,
-            href: "/games/tic-tac-toe",
-            color: "green"
-        },
-        {
-            title: "Memory Game",
-            description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",
-            image: "https://images.unsplash.com/photo-1611996575749-79a3a250f968?q=80&w=1000&auto=format&fit=crop",
-            icon: LayoutGrid,
-            href: "/games/memory",
-            color: "purple"
-        },
-        {
-            title: "Pacman",
-            description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",
-            image: "https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=1000&auto=format&fit=crop",
-            icon: Ghost,
-            href: "/games/pacman",
-            color: "yellow"
-        }
-    ];
-
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-12"
-        >
-            {/* Cinematic Header */}
-            <div className="relative rounded-[2.5rem] overflow-hidden bg-black/20 border border-white/10 p-12 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/20 opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-                <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-secondary/10 rounded-full blur-[80px] animate-pulse delay-1000" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: "32px 24px 100px" }}>
 
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                    <div className="flex-1 space-y-6 text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-xs font-black uppercase tracking-widest text-primary">
-                            <Flame className="w-4 h-4" /> Season 1 Live
+            {/* ── CINEMATIC HEADER ── */}
+            <div style={{ position: "relative", borderRadius: 28, overflow: "hidden", background: "rgba(10,15,35,0.8)", border: "1px solid rgba(34,211,238,0.15)", padding: "48px 40px", marginBottom: 36, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                {/* top accent */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(34,211,238,0.6), rgba(99,102,241,0.4), transparent)" }} />
+                {/* bg glows */}
+                <div style={{ position: "absolute", top: -80, right: -80, width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: -60, left: -60, width: 260, height: 260, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,211,238,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+                <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 32 }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                        {/* live badge */}
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)", marginBottom: 18 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.cyan, boxShadow: `0 0 8px ${C.cyan}`, animation: "pulse 2s infinite", display: "inline-block" }} />
+                            <Flame style={{ width: 13, height: 13, color: C.indigo }} />
+                            <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: C.indigo, letterSpacing: "0.2em", textTransform: "uppercase" }}>Season 1 Live</span>
                         </div>
-                        <h1 className="text-6xl font-black tracking-tighter uppercase italic leading-[0.9]">
-                            Combat <span className="text-primary italic">Sector</span>
+
+                        <h1 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(32px, 6vw, 60px)", fontWeight: 900, color: C.text, textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.03em", lineHeight: 0.9, marginBottom: 18 }}>
+                            COMBAT<br /><span style={{ color: C.cyan, textShadow: "0 0 30px rgba(34,211,238,0.4)" }}>SECTOR</span>
                         </h1>
-                        <p className="text-muted-foreground font-bold uppercase tracking-widest text-sm max-w-lg">
+                        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, color: C.muted, fontWeight: 500, letterSpacing: "0.05em", maxWidth: 480, marginBottom: 24 }}>
                             Select your operational zone. Complete missions to climb the global leaderboard and secure territory.
                         </p>
 
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 pt-4">
-                            <div className="flex items-center gap-2">
-                                <Trophy className="w-5 h-5 text-amber-500" />
-                                <span className="text-xs font-black uppercase tracking-widest">Global Rewards</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <Trophy style={{ width: 18, height: 18, color: "#f59e0b" }} />
+                                <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: "0.15em", textTransform: "uppercase" }}>Global Rewards</span>
                             </div>
-                            <div className="flex items-center gap-2 border-l border-white/10 pl-6">
-                                <Zap className="w-5 h-5 text-secondary" />
-                                <span className="text-xs font-black uppercase tracking-widest">Instant Deploy</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 20, borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+                                <Zap style={{ width: 18, height: 18, color: C.cyan }} />
+                                <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: "0.15em", textTransform: "uppercase" }}>Instant Deploy</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="relative w-full md:w-auto h-48 md:h-64 aspect-square hidden md:block">
-                        <div className="absolute inset-0 border-[20px] border-white/5 rounded-[4rem] animate-spin-slow" />
-                        <div className="absolute inset-4 border-[1px] border-primary/40 rounded-[3rem] p-8 flex items-center justify-center bg-background/50 backdrop-blur-xl">
-                            <Gamepad2 className="w-24 h-24 text-primary neon-glow" />
+                    {/* Rotating icon */}
+                    <div style={{ position: "relative", width: 160, height: 160, flexShrink: 0 }} className="hidden md:block">
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            style={{ position: "absolute", inset: 0, border: "16px solid rgba(255,255,255,0.04)", borderRadius: "50%" }}
+                        />
+                        <div style={{ position: "absolute", inset: 12, border: "1px solid rgba(34,211,238,0.3)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,15,35,0.7)", backdropFilter: "blur(8px)" }}>
+                            <Gamepad2 style={{ width: 64, height: 64, color: C.indigo, filter: "drop-shadow(0 0 20px rgba(99,102,241,0.6))" }} />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Filters / Search Bar (Visual) */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-                <div className="flex items-center gap-4">
-                    <button className="px-6 py-2 rounded-xl bg-primary text-white font-black uppercase tracking-widest text-[10px]">All Zones</button>
-                    <button className="px-6 py-2 rounded-xl glass border-white/10 hover:bg-white/5 transition-all font-black uppercase tracking-widest text-[10px]">Strategic</button>
-                    <button className="px-6 py-2 rounded-xl glass border-white/10 hover:bg-white/5 transition-all font-black uppercase tracking-widest text-[10px]">Arcade</button>
+            {/* ── FILTERS ── */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 28, padding: "0 4px" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {filterBtns.map((label, i) => (
+                        <button
+                            key={label}
+                            style={{
+                                padding: "8px 18px", borderRadius: 40,
+                                background: i === 0 ? "linear-gradient(135deg, rgba(99,102,241,0.3), rgba(34,211,238,0.2))" : "rgba(15,23,42,0.6)",
+                                border: i === 0 ? "1px solid rgba(34,211,238,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                                color: i === 0 ? C.cyan : C.muted,
+                                fontFamily: "'Orbitron', sans-serif",
+                                fontSize: 9, fontWeight: 700,
+                                letterSpacing: "0.12em", textTransform: "uppercase",
+                                cursor: "pointer", transition: "all 0.2s",
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="relative w-full md:w-64">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div style={{ position: "relative" }}>
+                    <Search style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: C.muted, pointerEvents: "none" }} />
                     <input
                         type="text"
                         placeholder="SEARCH SECTOR..."
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        style={{ background: "rgba(15,23,42,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 40, padding: "9px 16px 9px 40px", color: C.text, fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", outline: "none", width: 220, backdropFilter: "blur(8px)", transition: "all 0.2s" }}
+                        onFocus={(e) => { e.target.style.borderColor = "rgba(34,211,238,0.4)"; e.target.style.boxShadow = "0 0 12px rgba(34,211,238,0.12)"; }}
+                        onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "none"; }}
                     />
                 </div>
             </div>
 
-            {/* Games Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {/* ── GAMES GRID ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
                 {games.map((game, i) => (
-                    <div key={i} className="group relative">
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.07, type: "spring", damping: 22, stiffness: 180 }}
+                        style={{ position: "relative" }}
+                        className="group"
+                    >
                         <GameCard {...game} delay={i * 0.05} />
-                        <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            <div className="bg-primary p-2 rounded-lg shadow-xl">
-                                <Play className="w-4 h-4 text-white fill-current" />
+                        <div style={{ position: "absolute", top: 14, right: 14, zIndex: 20, opacity: 0, transition: "opacity 0.2s" }} className="group-hover:opacity-100">
+                            <div style={{ background: C.indigo, padding: 8, borderRadius: 10, boxShadow: "0 0 16px rgba(99,102,241,0.5)" }}>
+                                <Play style={{ width: 14, height: 14, color: "#fff", fill: "#fff" }} />
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
+
+            <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
         </motion.div>
     );
 }

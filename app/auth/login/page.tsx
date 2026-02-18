@@ -51,10 +51,10 @@ export default function LoginPage() {
                     <Gamepad2 className="w-10 h-10 text-primary neon-glow" />
                 </div>
                 <h1 className="text-4xl font-black tracking-tighter uppercase italic mb-2">
-                    System <span className="text-primary">Access</span>
+                    USER <span className="text-primary">LOGIN</span>
                 </h1>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                    Initialize Arena Session
+                    Login to your account
                 </p>
             </div>
 
@@ -73,7 +73,7 @@ export default function LoginPage() {
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">
-                            Identification
+                            Username
                         </label>
                         <div className="relative group">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -92,7 +92,7 @@ export default function LoginPage() {
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">
-                            Security Key
+                            Password
                         </label>
                         <div className="relative group">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
@@ -126,10 +126,10 @@ export default function LoginPage() {
                         {loading ? (
                             <>
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                CONNECTING...
+                                LOGGING IN...
                             </>
                         ) : (
-                            "AUTHENTICATE"
+                            "LOGIN"
                         )}
                     </button>
                 </div>
@@ -137,7 +137,7 @@ export default function LoginPage() {
 
             <div className="mt-10 pt-10 border-t border-white/5 text-center">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    New Operative? <Link href="/auth/register" className="text-primary hover:underline underline-offset-4 ml-1">Begin Enlistment</Link>
+                    New user? <Link href="/auth/register" className="text-primary hover:underline underline-offset-4 ml-1">Sign up here</Link>
                 </p>
             </div>
 

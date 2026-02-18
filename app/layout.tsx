@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 };
 
 import { BottomNav } from "@/components/layout/BottomNav";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export default function RootLayout({
   children,
@@ -47,6 +48,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <AuthModal />
             {children}
             <BottomNav />
           </AuthProvider>

@@ -63,10 +63,10 @@ export default function RegisterPage() {
                     <UserPlus className="w-10 h-10 text-secondary neon-glow" />
                 </div>
                 <h1 className="text-4xl font-black tracking-tighter uppercase italic mb-2">
-                    ENLISTING <span className="text-secondary">NOW</span>
+                    SIGN <span className="text-secondary">UP</span>
                 </h1>
                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                    Create Arena Profile
+                    Create your account
                 </p>
             </div>
 
@@ -85,7 +85,7 @@ export default function RegisterPage() {
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">
-                            Codename
+                            Username
                         </label>
                         <div className="relative group">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-secondary transition-colors">
@@ -95,7 +95,7 @@ export default function RegisterPage() {
                                 type="text"
                                 required
                                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary/50 transition-all font-mono"
-                                placeholder="Choose Codename"
+                                placeholder="Choose username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                             />
@@ -104,7 +104,7 @@ export default function RegisterPage() {
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">
-                            Security Key
+                            Password
                         </label>
                         <div className="relative group">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-secondary transition-colors">
@@ -130,7 +130,7 @@ export default function RegisterPage() {
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-2">
-                            Verification
+                            Confirm Password
                         </label>
                         <div className="relative group">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-secondary transition-colors">
@@ -140,7 +140,7 @@ export default function RegisterPage() {
                                 type="password"
                                 required
                                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary/50 transition-all font-mono"
-                                placeholder="Repeat Security Key"
+                                placeholder="Repeat Password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                             />
@@ -157,10 +157,10 @@ export default function RegisterPage() {
                         {loading ? (
                             <>
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                INITIALIZING...
+                                SIGNING UP...
                             </>
                         ) : (
-                            "ENLIST"
+                            "SIGN UP"
                         )}
                     </button>
                 </div>
@@ -168,7 +168,7 @@ export default function RegisterPage() {
 
             <div className="mt-10 pt-10 border-t border-white/5 text-center">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    Already Active? <Link href="/auth/login" className="text-secondary hover:underline underline-offset-4 ml-1">Access Terminal</Link>
+                    Already have an account? <Link href="/auth/login" className="text-secondary hover:underline underline-offset-4 ml-1">Login here</Link>
                 </p>
             </div>
 

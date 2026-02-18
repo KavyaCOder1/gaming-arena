@@ -1,93 +1,160 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import {
-    LayoutDashboard,
-    Gamepad2,
-    Trophy,
-    User,
-    Settings,
-    LogOut,
-    ChevronRight,
-    Sparkles
-} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Gamepad2, Trophy, User, LogOut, Sparkles } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const { logout } = useAuthStore();
 
+    const handleLogout = async () => {
+        await logout();
+        router.push("/");
+    };
+
     const links = [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/games", label: "Games", icon: Gamepad2 },
-        { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
-        { href: "/dashboard/profile", label: "Profile", icon: User },
+        { href: "/dashboard",             label: "Home",    icon: Home     },
+        { href: "/games",                 label: "Games",   icon: Gamepad2 },
+        { href: "/dashboard/leaderboard", label: "Ranks",   icon: Trophy   },
+        { href: "/dashboard/profile",     label: "Profile", icon: User     },
     ];
 
     return (
-        <aside className="hidden lg:flex w-72 flex-col h-[calc(100vh-6rem)] sticky top-24">
-            <div className="glass flex flex-col flex-1 p-4 gap-2 rounded-3xl border-white/20 dark:border-white/10 shadow-2xl relative overflow-hidden">
-                {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+        <aside className="hidden lg:flex w-64 flex-col h-[calc(100vh-6rem)] sticky top-24">
+            <div style={{
+                background: "rgba(10, 15, 35, 0.72)",
+                backdropFilter: "blur(28px) saturate(1.8)",
+                WebkitBackdropFilter: "blur(28px) saturate(1.8)",
+                border: "1px solid rgba(34, 211, 238, 0.18)",
+                borderRadius: 28,
+                boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+                padding: "20px 12px",
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                position: "relative",
+                overflow: "hidden",
+            }}>
+                {/* top accent line */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(34,211,238,0.4), rgba(99,102,241,0.3), transparent)", borderRadius: "28px 28px 0 0" }} />
+                {/* subtle gradient overlay */}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(34,211,238,0.03), transparent)", pointerEvents: "none", borderRadius: 28 }} />
 
-                <div className="px-4 py-4 flex items-center gap-2 mb-2">
-                    <div className="p-1 px-2 rounded-lg bg-primary/20 text-[10px] font-black text-primary uppercase tracking-widest border border-primary/20">
-                        Main Command
-                    </div>
+                {/* label */}
+                <div style={{ padding: "4px 12px 16px", position: "relative", zIndex: 1 }}>
+                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.35em", textTransform: "uppercase" }}>MAIN COMMAND</span>
                 </div>
 
-                <div className="flex-1 space-y-1">
-                    {links.map((link) => {
-                        const Icon = link.icon;
-                        const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));
+                {/* nav links — same pill style as bottom nav */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, position: "relative", zIndex: 1 }}>
+                    {links.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
 
                         return (
                             <Link
-                                key={link.href}
-                                href={link.href}
-                                className={cn(
-                                    "flex items-center gap-3 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all group relative overflow-hidden",
-                                    isActive
-                                        ? "text-primary bg-primary/10 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]"
-                                        : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
-                                )}
+                                key={item.href}
+                                href={item.href}
+                                style={{
+                                    position: "relative",
+                                    display: "flex", alignItems: "center", gap: 12,
+                                    padding: "12px 16px",
+                                    borderRadius: 20,
+                                    textDecoration: "none",
+                                    transition: "all 0.25s",
+                                    background: isActive ? "rgba(34,211,238,0.1)" : "transparent",
+                                    border: `1px solid ${isActive ? "rgba(34,211,238,0.3)" : "transparent"}`,
+                                    boxShadow: isActive ? "0 0 16px rgba(34,211,238,0.12)" : "none",
+                                }}
                             >
+                                {/* animated pill bg */}
+                                <AnimatePresence>
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="sidebar-pill"
+                                            style={{ position: "absolute", inset: 0, borderRadius: 20, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.28)" }}
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            transition={{ type: "spring", damping: 22, stiffness: 300 }}
+                                        />
+                                    )}
+                                </AnimatePresence>
+
+                                {/* icon box */}
+                                <div style={{
+                                    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+                                    background: isActive ? "rgba(34,211,238,0.12)" : "rgba(255,255,255,0.04)",
+                                    border: `1px solid ${isActive ? "rgba(34,211,238,0.35)" : "rgba(255,255,255,0.06)"}`,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    transition: "all 0.25s", position: "relative", zIndex: 1,
+                                }}>
+                                    <Icon style={{
+                                        width: 17, height: 17,
+                                        color: isActive ? "#22d3ee" : "#475569",
+                                        filter: isActive ? "drop-shadow(0 0 6px rgba(34,211,238,0.6))" : "none",
+                                        transition: "all 0.25s",
+                                    }} />
+                                </div>
+
+                                {/* label */}
+                                <span style={{
+                                    fontFamily: "'Orbitron', sans-serif",
+                                    fontSize: 11, fontWeight: 700,
+                                    letterSpacing: "0.12em",
+                                    textTransform: "uppercase",
+                                    color: isActive ? "#f8fafc" : "#475569",
+                                    transition: "color 0.25s",
+                                    position: "relative", zIndex: 1,
+                                    flex: 1,
+                                }}>
+                                    {item.label}
+                                </span>
+
+                                {/* active dot */}
                                 {isActive && (
                                     <motion.div
-                                        layoutId="sidebar-active"
-                                        className="absolute left-0 top-2 bottom-2 w-1.5 bg-primary rounded-r-full shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                                        layoutId="sidebar-dot"
+                                        style={{ width: 6, height: 6, borderRadius: "50%", background: "#22d3ee", boxShadow: "0 0 8px #22d3ee", flexShrink: 0, position: "relative", zIndex: 1 }}
                                     />
-                                )}
-                                <Icon className={cn("h-5 w-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-primary neon-glow" : "text-muted-foreground")} />
-                                <span className="flex-1">{link.label}</span>
-                                {isActive && (
-                                    <ChevronRight className="h-4 w-4 animate-in fade-in slide-in-from-left-2" />
                                 )}
                             </Link>
                         );
                     })}
                 </div>
 
-                <div className="mt-auto space-y-4 pt-4 border-t border-white/10">
-                    <div className="px-4">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-white/10 relative overflow-hidden group">
-                            <div className="relative z-10">
-                                <span className="text-[10px] font-black text-primary uppercase tracking-wider mb-1 block">Global Event</span>
-                                <p className="text-xs font-bold leading-tight">Arena Season 1 is now LIVE! Join now.</p>
-                            </div>
-                            <Sparkles className="absolute bottom-[-10px] right-[-10px] w-12 h-12 text-primary/10 group-hover:scale-125 transition-transform duration-700" />
-                        </div>
+                {/* bottom: season banner + sign out */}
+                <div style={{ position: "relative", zIndex: 1, marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    {/* season banner */}
+                    <div style={{ padding: "14px 16px", borderRadius: 16, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 8, position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)" }} />
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: "#6366f1", letterSpacing: "0.2em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Global Event</span>
+                        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8", lineHeight: 1.4 }}>Arena Season 1 is now LIVE! Join now.</p>
+                        <Sparkles style={{ position: "absolute", bottom: -4, right: -4, width: 40, height: 40, color: "rgba(99,102,241,0.15)" }} />
                     </div>
 
+                    {/* sign out */}
                     <button
-                        onClick={logout}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-sm font-bold text-muted-foreground rounded-2xl hover:bg-destructive/10 hover:text-destructive transition-all duration-300 group"
+                        onClick={handleLogout}
+                        style={{
+                            width: "100%", display: "flex", alignItems: "center", gap: 12,
+                            padding: "12px 16px", borderRadius: 16,
+                            background: "transparent", border: "1px solid transparent",
+                            color: "#475569", cursor: "pointer", transition: "all 0.2s",
+                            fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700,
+                            letterSpacing: "0.12em", textTransform: "uppercase",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; e.currentTarget.style.color = "#ef4444"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = "#475569"; }}
                     >
-                        <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-                        <span>Sign Out</span>
+                        <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <LogOut style={{ width: 16, height: 16 }} />
+                        </div>
+                        Sign Out
                     </button>
                 </div>
             </div>

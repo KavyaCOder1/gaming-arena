@@ -55,7 +55,7 @@ export function StatsCard({ title, value, icon: Icon, trend, color = "primary", 
             </div>
 
             <div className="relative z-10 mt-auto">
-                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-1 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: "70%" }}

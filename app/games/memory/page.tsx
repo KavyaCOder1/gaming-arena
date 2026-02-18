@@ -16,7 +16,7 @@ export default function MemoryPage() {
     ];
 
     return (
-        <div className="min-h-screen grid-bg pb-20">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }} className="min-h-screen grid-bg pb-20">
             <main className="container mx-auto px-6 py-8">
                 <div className="flex flex-col lg:flex-row gap-10">
                     {/* Left Column: Game Preview & Controls */}
@@ -206,6 +206,6 @@ export default function MemoryPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

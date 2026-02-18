@@ -13,8 +13,8 @@ interface GameHistoryTableProps {
 export function GameHistoryTable({ history }: GameHistoryTableProps) {
     if (!history || history.length === 0) {
         return (
-            <div className="text-center py-20 text-muted-foreground glass rounded-[2.5rem] border-white/5 space-y-4">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="text-center py-20 text-muted-foreground glass rounded-[2.5rem] border-black/5 dark:border-white/5 space-y-4">
+                <div className="w-16 h-16 bg-black/5 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Activity className="w-8 h-8 opacity-20" />
                 </div>
                 <p className="font-black uppercase tracking-widest text-xs">No Combat Data Found</p>
@@ -24,11 +24,11 @@ export function GameHistoryTable({ history }: GameHistoryTableProps) {
     }
 
     return (
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 dark:bg-black/20">
+        <div className="overflow-hidden rounded-[2rem] border border-black/5 dark:border-white/10 dark:bg-black/20">
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="border-b border-white/10 bg-white/5">
+                        <tr className="border-b border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5">
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Operation</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Performance</th>
                             <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Threat Level</th>
@@ -89,7 +89,7 @@ export function GameHistoryTable({ history }: GameHistoryTableProps) {
                 </table>
             </div>
 
-            <div className="p-6 bg-white/5 border-t border-white/5 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
+            <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-black/5 dark:border-white/5 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
                 <span>End of Logs</span>
                 <div className="flex gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
