@@ -3,7 +3,7 @@
 import { useAuthStore } from "@/store/auth-store";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { GameHistoryTable } from "@/components/dashboard/GameHistoryTable";
-import { Trophy, Gamepad2, Timer, Flame, ArrowRight, Sparkles, ChevronRight, Play } from "lucide-react";
+import { Trophy, Gamepad2, Timer, Flame, ArrowRight, Sparkles, ChevronRight, Play, User, Zap } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -56,141 +56,155 @@ export default function DashboardPage() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="space-y-10"
+            className="p-8"
         >
-            {/* Header / Welcome Section */}
-            <div className="relative rounded-[2.5rem] overflow-hidden group">
-                {/* Mesh Gradient Background */}
-                <div className="absolute inset-0 mesh-gradient opacity-80" />
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+                <div>
+                    <h1 className="font-heading text-4xl font-black italic tracking-wider text-foreground">OPERATIONS HUB</h1>
+                    <p className="text-muted-foreground tracking-[0.3em] text-[10px] uppercase font-bold mt-1">Sector 7-G / User Performance Protocol</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="glass-card px-6 py-2.5 flex items-center gap-3 border-secondary/20">
+                        <Sparkles className="w-4 h-4 text-amber-500 neon-glow" />
+                        <span className="font-heading font-black text-sm tracking-widest">{stats.totalGames * 10} XP</span>
+                    </div>
+                    <button className="glass-card p-2.5 hover:bg-white/10 transition-colors">
+                        <Timer className="w-5 h-5 text-secondary" />
+                    </button>
+                </div>
+            </header>
 
-                <div className="relative z-10 p-12 flex flex-col md:flex-row items-center justify-between gap-10">
-                    <div className="space-y-6 max-w-2xl text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-primary-foreground">
-                            <Sparkles className="w-3 h-3 text-primary neon-glow" />
-                            <span>Player Command Center</span>
+            <section className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div className="md:col-span-1 glass-card p-8 border-secondary/30 relative overflow-hidden flex flex-col items-center justify-center text-center group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent animate-shimmer opacity-20 pointer-events-none" />
+                    <div className="relative mb-6">
+                        <div className="w-28 h-28 rounded-full border-[3px] border-secondary p-1 group-hover:scale-105 transition-transform duration-500">
+                            <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
+                                {user?.username ? (
+                                    <span className="text-4xl font-black text-secondary">{user.username[0].toUpperCase()}</span>
+                                ) : (
+                                    <User className="w-12 h-12 text-slate-500" />
+                                )}
+                            </div>
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-white">
-                            WELCOME BACK, <br />
-                            <span className="text-secondary italic">{user?.username || "PLAYER"}</span>
-                        </h1>
-                        <p className="text-white/70 text-lg font-medium leading-relaxed">
-                            The arena is calling. Your current win rate is <span className="text-secondary font-bold">{stats.winRate}%</span>.
-                            Ready to push it even higher?
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center md:justify-start">
-                            <Link
-                                href="/games"
-                                className="px-8 py-4 rounded-2xl bg-white text-black font-black hover:scale-105 transition-all shadow-xl flex items-center justify-center gap-2"
-                            >
-                                <Play className="w-5 h-5 fill-current" />
-                                LAUNCH ARENA
-                            </Link>
-                            <Link
-                                href="/dashboard/leaderboard"
-                                className="px-8 py-4 rounded-2xl glass border-white/20 text-white font-black hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                            >
-                                <Trophy className="w-5 h-5" />
-                                RANKINGS
-                            </Link>
+                        <div className="absolute -bottom-2 translate-x-1/2 right-1/2 bg-secondary text-background px-4 py-1 rounded-lg text-[10px] font-black font-heading tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                            ELITE
                         </div>
                     </div>
+                    <h2 className="font-heading text-2xl font-black text-foreground drop-shadow-sm uppercase">{user?.username}</h2>
+                    <p className="text-muted-foreground text-[10px] font-black tracking-[0.2em] mt-2 uppercase">MEMBER SINCE 2024</p>
+                </div>
 
-                    {/* Decorative Element */}
-                    <div className="hidden lg:block relative">
-                        <div className="w-64 h-64 rounded-[3rem] bg-gradient-to-tr from-primary to-secondary rotate-12 animate-float shadow-[0_0_50px_rgba(var(--primary),0.3)]">
-                            <div className="absolute inset-2 rounded-[2.5rem] bg-background flex items-center justify-center">
-                                <Gamepad2 className="w-24 h-24 text-primary neon-glow" />
-                            </div>
+                <div className="glass-card p-8 flex flex-col justify-between relative overflow-hidden group">
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.3em]">Total Games</span>
+                        <Gamepad2 className="w-5 h-5 text-primary neon-glow" />
+                    </div>
+                    <div className="mt-4">
+                        <div className="text-5xl font-heading font-black text-foreground group-hover:text-primary transition-colors">{stats.totalGames}</div>
+                        <div className="flex items-center gap-1 text-green-400 text-[10px] font-black mt-2 uppercase tracking-widest">
+                            <ArrowRight className="w-3 h-3 -rotate-45" />
+                            <span>+12.5% VS LAST WEEK</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <StatsCard
-                    title="TOTAL SESSIONS"
-                    value={stats.totalGames}
-                    icon={Gamepad2}
-                    color="primary"
-                    trend="+12%"
-                    delay={0.1}
-                />
-                <StatsCard
-                    title="ARENA HIGH SCORE"
-                    value={stats.highScore}
-                    icon={Trophy}
-                    color="accent"
-                    delay={0.2}
-                />
-                <StatsCard
-                    title="ACTIVE TIME (MIN)"
-                    value={stats.playTime}
-                    icon={Timer}
-                    color="secondary"
-                    trend="+5m"
-                    delay={0.3}
-                />
-                <StatsCard
-                    title="SUCCESS RATE"
-                    value={`${stats.winRate}%`}
-                    icon={Flame}
-                    color="destructive"
-                    delay={0.4}
-                />
-            </div>
+                <div className="glass-card p-8 flex flex-col justify-between relative overflow-hidden group">
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.3em]">High Score</span>
+                        <Trophy className="w-5 h-5 text-secondary neon-glow" />
+                    </div>
+                    <div className="mt-4">
+                        <div className="text-5xl font-heading font-black text-foreground group-hover:text-secondary transition-colors">{stats.highScore.toLocaleString()}</div>
+                        <div className="text-muted-foreground/60 text-[10px] font-black mt-2 uppercase tracking-[0.2em]">PACMAN CLASSIC / HARD</div>
+                    </div>
+                </div>
 
-            {/* Content Split */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-                <div className="xl:col-span-2 space-y-8">
-                    <div className="flex items-center justify-between px-2">
-                        <div className="space-y-1">
-                            <h2 className="text-3xl font-black tracking-tighter uppercase italic">Mission Log</h2>
-                            <p className="text-sm text-muted-foreground font-medium">Your recent performance in the field</p>
+                <div className="glass-card p-8 flex flex-col justify-between relative overflow-hidden group">
+                    <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.3em]">Win/Loss Ratio</span>
+                        <Flame className="w-5 h-5 text-rose-500 neon-glow" />
+                    </div>
+                    <div className="mt-4">
+                        <div className="text-5xl font-heading font-black text-foreground group-hover:text-rose-500 transition-colors">{(stats.winRate / 100).toFixed(2)}</div>
+                        <div className="w-full bg-white/5 h-2 rounded-full mt-4 overflow-hidden p-[1px]">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${stats.winRate}%` }}
+                                className="h-full bg-gradient-to-r from-rose-500 to-primary rounded-full"
+                            />
                         </div>
-                        <Link href="/dashboard/profile" className="p-3 rounded-2xl glass border-white/10 hover:bg-white/5 transition-all">
-                            <ArrowRight className="w-5 h-5" />
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+                <div className="xl:col-span-2 glass-card overflow-hidden">
+                    <div className="p-8 border-b border-white/5 flex justify-between items-center">
+                        <h3 className="font-heading text-xl font-black text-foreground flex items-center gap-4">
+                            <Timer className="w-6 h-6 text-primary" />
+                            RECENT ACTIVITY
+                        </h3>
+                        <Link href="/dashboard/profile" className="text-[10px] text-secondary hover:underline uppercase font-black tracking-[0.3em]">
+                            View Full Log
                         </Link>
                     </div>
-                    <div className="premium-card p-2">
+                    <div className="p-2">
                         <GameHistoryTable history={history} />
                     </div>
                 </div>
 
                 <div className="space-y-8">
-                    <h2 className="text-3xl font-black tracking-tighter uppercase italic px-2">Rank Preview</h2>
-                    <div className="premium-card p-10 text-center relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                        <div className="relative z-10">
-                            <div className="w-32 h-32 mx-auto bg-amber-500/10 rounded-full flex items-center justify-center mb-8 border border-amber-500/20 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]">
-                                <span className="text-5xl font-black text-amber-500 drop-shadow-md">#42</span>
-                            </div>
-                            <h3 className="font-black text-2xl mb-2 tracking-tight">GLOBAL ELITE</h3>
-                            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-10">TOP 5% IN WORLD</p>
-
-                            <div className="space-y-4">
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                    <span className="text-muted-foreground">Progress to #41</span>
-                                    <span className="text-primary italic">25 PTS NEEDED</span>
+                    <div className="glass-card p-8">
+                        <h3 className="font-heading text-lg font-black text-foreground mb-8 flex items-center gap-4">
+                            <Trophy className="w-5 h-5 text-secondary" />
+                            SKILL DISTRIBUTION
+                        </h3>
+                        <div className="grid grid-cols-2 gap-8">
+                            {[
+                                { label: "Word Match", value: 68, color: "text-primary" },
+                                { label: "Tic Tac Toe", value: 82, color: "text-secondary" },
+                                { label: "Memory Matrix", value: 35, color: "text-rose-500" },
+                                { label: "Pacman", value: stats.winRate, color: "text-amber-500" }
+                            ].map((skill, i) => (
+                                <div key={i} className="flex flex-col items-center">
+                                    <div className="relative w-24 h-24 flex items-center justify-center mb-4">
+                                        <svg className="w-full h-full -rotate-90">
+                                            <circle cx="48" cy="48" r="40" className="fill-none stroke-white/5 stroke-[4]" />
+                                            <circle
+                                                cx="48" cy="48" r="40"
+                                                className={`fill-none stroke-current stroke-[4] ${skill.color}`}
+                                                style={{ strokeDasharray: "251.2", strokeDashoffset: 251.2 - (251.2 * skill.value) / 100 }}
+                                            />
+                                        </svg>
+                                        <span className="absolute font-heading text-lg font-black">{skill.value}%</span>
+                                    </div>
+                                    <span className="text-[9px] uppercase font-black tracking-widest text-muted-foreground text-center">{skill.label}</span>
                                 </div>
-                                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden p-[1px]">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        whileInView={{ width: "85%" }}
-                                        viewport={{ once: true }}
-                                        className="h-full bg-gradient-to-r from-primary to-secondary rounded-full shadow-[0_0_10px_var(--primary)]"
-                                    />
-                                </div>
-                            </div>
+                            ))}
+                        </div>
+                    </div>
 
-                            <Link
-                                href="/dashboard/leaderboard"
-                                className="mt-12 w-full py-4 rounded-2xl glass border-primary/20 text-primary font-black uppercase tracking-widest text-xs hover:bg-primary/10 transition-all flex items-center justify-center gap-2 group-hover:gap-4"
-                            >
-                                Full Rankings <ChevronRight className="w-4 h-4" />
-                            </Link>
+                    <div className="glass-card p-8">
+                        <h3 className="font-heading text-lg font-black text-foreground mb-6 flex items-center gap-4">
+                            <Sparkles className="w-5 h-5 text-amber-400" />
+                            MASTERED BADGES
+                        </h3>
+                        <div className="flex flex-wrap gap-4">
+                            {[
+                                { icon: Trophy, color: "text-amber-500", border: "border-amber-500/50" },
+                                { icon: Zap, color: "text-primary", border: "border-primary/50" },
+                                { icon: Timer, color: "text-emerald-500", border: "border-emerald-500/50" }
+                            ].map((badge, i) => (
+                                <div key={i} className={`w-14 h-14 glass-card flex items-center justify-center border ${badge.border} ${badge.color}`}>
+                                    <badge.icon className="w-7 h-7" />
+                                </div>
+                            ))}
+                            {[1, 2].map((_, i) => (
+                                <div key={i} className="w-14 h-14 glass-card flex items-center justify-center border-white/10 opacity-20 grayscale">
+                                    <Zap className="w-7 h-7" />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

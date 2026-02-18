@@ -16,56 +16,54 @@ interface GameCardProps {
 
 export function GameCard({ title, description, href, icon: Icon, image, delay = 0 }: GameCardProps) {
     return (
-        <Link href={href} className="block h-full">
+        <Link href={href} className="block h-full group">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay }}
-                whileHover={{ y: -5 }}
-                className="premium-card group relative h-[450px] overflow-hidden flex flex-col"
+                className="glass-card relative h-[450px] overflow-hidden flex flex-col border-white/10 hover:border-secondary/50 transition-all duration-500"
             >
                 {/* Image Background with Overlay */}
                 <div className="absolute inset-0 z-0">
                     <img
                         src={image}
                         alt={title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 grayscale-[0.5] group-hover:grayscale-0"
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-40 grayscale-[0.8] group-hover:grayscale-0"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-[#0F172A]/80 to-transparent" />
                 </div>
 
                 {/* Content */}
                 <div className="relative z-10 p-8 mt-auto flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 rounded-2xl bg-primary/20 backdrop-blur-md border border-primary/30 group-hover:bg-primary/30 transition-colors">
-                            <Icon className="w-6 h-6 text-primary neon-glow" />
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-secondary transition-colors">
+                            <Icon className="w-8 h-8 text-secondary neon-glow" />
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] font-black text-secondary tracking-widest uppercase">
-                            <Trophy className="w-3 h-3" />
-                            <span>1.2k Played</span>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-primary tracking-widest uppercase">
+                            <Users className="w-3 h-3" />
+                            <span>1.2k Live</span>
                         </div>
                     </div>
 
-                    <h3 className="text-3xl font-black mb-3 tracking-tighter group-hover:text-primary transition-colors uppercase italic">
+                    <h3 className="font-heading text-4xl font-black mb-3 tracking-tighter group-hover:text-secondary transition-colors uppercase italic leading-none">
                         {title}
                     </h3>
 
-                    <p className="text-muted-foreground font-medium text-sm leading-relaxed mb-8 line-clamp-3 group-hover:text-foreground transition-colors">
+                    <p className="text-muted-foreground font-medium text-[11px] leading-relaxed mb-8 line-clamp-2 uppercase tracking-widest opacity-60">
                         {description}
                     </p>
 
-                    <div className="relative overflow-hidden rounded-xl bg-primary group-hover:bg-primary/90 p-[1px] transition-all">
-                        <div className="bg-card group-hover:bg-primary transition-colors rounded-[11px] py-4 flex items-center justify-center gap-2">
-                            <span className="text-sm font-black tracking-[0.2em] group-hover:text-white transition-colors">ENTER ARENA</span>
-                            <Play className="w-3 h-3 fill-current group-hover:text-white" />
-                        </div>
+                    <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 flex items-center justify-center group-hover:bg-secondary transition-all group-hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                        <span className="relative z-10 text-[10px] font-black tracking-[0.3em] uppercase group-hover:text-background transition-colors">ENGAGE MISSION</span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-secondary/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     </div>
                 </div>
 
-                {/* Animated Gradient Border on Hover */}
-                <div className="absolute inset-0 border-2 border-primary/0 group-hover:border-primary/50 transition-colors rounded-2xl pointer-events-none" />
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                {/* Scanline Effect */}
+                <div className="absolute inset-0 pointer-events-none opacity-10 group-hover:opacity-20 transition-opacity" style={{ backgroundImage: "linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))", backgroundSize: "100% 2px, 3px 100%" }} />
             </motion.div>
         </Link>
     );
 }
+
+import { Users } from "lucide-react";

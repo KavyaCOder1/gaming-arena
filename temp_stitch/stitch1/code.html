@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Gaming Arena - Competitive User Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&amp;family=Rajdhani:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --background: #0F172A;
+            --surface: rgba(30, 41, 59, 0.7);
+            --accent: #6366F1;
+            --glow: #22D3EE;
+            --text: #F8FAFC;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(34, 211, 238, 0.05) 0%, transparent 50%);
+        }
+        .heading-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass-card {
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+            border-color: rgba(34, 211, 238, 0.5);
+        }
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-size: 200% 100%;
+        }
+        .circular-progress {
+            background: conic-gradient(var(--glow) calc(var(--percentage) * 1%), rgba(255,255,255,0.1) 0);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex">
+<aside class="w-64 border-r border-white/10 bg-slate-900/50 backdrop-blur-xl flex flex-col fixed h-full">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-cyan-400 rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.5)]">
+<span class="material-symbols-outlined text-white">sports_esports</span>
+</div>
+<span class="heading-font font-bold text-xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">ARENA</span>
+</div>
+<nav class="flex-1 px-4 space-y-2 mt-4">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-indigo-500/10 text-cyan-400 border border-cyan-400/30" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-semibold tracking-wide">DASHBOARD</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group" href="#">
+<span class="material-symbols-outlined">videogame_asset</span>
+<span class="font-semibold tracking-wide">GAMES</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-semibold tracking-wide">RANKINGS</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-semibold tracking-wide">CHALLENGES</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-semibold tracking-wide">SETTINGS</span>
+</a>
+</nav>
+<div class="p-4 border-t border-white/10">
+<div class="glass-card p-4 flex items-center gap-3">
+<div class="relative">
+<img alt="User" class="w-10 h-10 rounded-full border border-cyan-400/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADFxkq3HWirW2blTodeTDdcM4dQ3hpd5GulenjipEisYuRXJKvt29mf87Q4q1c2Kz_TntlmB32DFOzGEggXBJ-IKGuOLZZv4dP_ooQzkR2FimKmlKxmtTf1jLXzJfEJlia98dv1wewyV8NCT52iP3WNYP3jVmEH4-IBOsM7_qKhQeluu5T9gBrWaCKoCv2TzO4nX1rCd7gkwNc331W3LU4DYw37EYpsFua6seEXqkuO1iBzowNZ0baGGubZbyPNdXwGfjuHfAoo9w"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></div>
+</div>
+<div>
+<div class="text-sm font-bold heading-font uppercase">ShadowPlayer</div>
+<div class="text-[10px] text-cyan-400 font-mono">LVL 42 PRO</div>
+</div>
+<button class="ml-auto text-slate-400 hover:text-white">
+<span class="material-symbols-outlined text-sm">logout</span>
+</button>
+</div>
+</div>
+</aside>
+<main class="ml-64 flex-1 p-8">
+<header class="flex justify-between items-center mb-8">
+<div>
+<h1 class="heading-font text-3xl font-black italic tracking-wider text-white">OPERATIONS HUB</h1>
+<p class="text-slate-400 tracking-widest text-sm uppercase">Sector 7-G / User Performance Protocol</p>
+</div>
+<div class="flex gap-4">
+<div class="glass-card px-4 py-2 flex items-center gap-3 border-cyan-500/20">
+<span class="material-symbols-outlined text-amber-400">monetization_on</span>
+<span class="heading-font font-bold">2,450 XP</span>
+</div>
+<button class="glass-card p-2 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="md:col-span-1 glass-card p-6 neon-border relative overflow-hidden flex flex-col items-center justify-center text-center">
+<div class="shimmer absolute inset-0 opacity-20"></div>
+<div class="relative mb-4">
+<div class="w-24 h-24 rounded-full border-4 border-cyan-400 p-1">
+<img alt="User" class="w-full h-full rounded-full grayscale hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPTOqH_rsX2CKnllr_HhdRf2IR6rzEd2N8QzvxzJxNeI2o8YkpnCW9hikBK4mxLkmN2YYnMV5YEhUxN7sduptvDFPOjgNWdzMOE3mIqJlcXy2uZw42p6Yux9Agw1vPSbR6L-HuD-obSinkYTROTpDGRHTxoz_7sM0fbTaAaHbhI9udqpeb8QANz8ZfRBncLCUAVUAuMg_zknpqWS8qnlonSscqpxL8JdmJM83SNN1GKItThi6C3QfUiGIqYqOk3A0FTywSlesXrqs"/>
+</div>
+<div class="absolute -bottom-2 bg-cyan-400 text-slate-900 px-3 py-0.5 rounded text-xs font-bold heading-font">ELITE</div>
+</div>
+<h2 class="heading-font text-xl text-white">SHADOWPLAYER</h2>
+<p class="text-slate-400 text-xs tracking-tighter mt-1">MEMBER SINCE 2023</p>
+</div>
+<div class="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
+<div class="shimmer absolute inset-0 opacity-10"></div>
+<div class="flex justify-between items-start">
+<span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Total Games</span>
+<span class="material-symbols-outlined text-indigo-400">stadia_controller</span>
+</div>
+<div>
+<div class="text-4xl heading-font font-black text-white group-hover:text-indigo-400 transition-colors">1,284</div>
+<div class="flex items-center gap-1 text-green-400 text-xs mt-1">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span>+12.5% vs last week</span>
+</div>
+</div>
+</div>
+<div class="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
+<div class="shimmer absolute inset-0 opacity-10"></div>
+<div class="flex justify-between items-start">
+<span class="text-slate-400 uppercase text-xs font-bold tracking-widest">High Score</span>
+<span class="material-symbols-outlined text-cyan-400">emoji_events</span>
+</div>
+<div>
+<div class="text-4xl heading-font font-black text-white group-hover:text-cyan-400 transition-colors">98,205</div>
+<div class="text-slate-500 text-xs mt-1 uppercase tracking-tighter">Pacman Classic / Hard</div>
+</div>
+</div>
+<div class="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
+<div class="shimmer absolute inset-0 opacity-10"></div>
+<div class="flex justify-between items-start">
+<span class="text-slate-400 uppercase text-xs font-bold tracking-widest">Win/Loss Ratio</span>
+<span class="material-symbols-outlined text-pink-500">analytics</span>
+</div>
+<div>
+<div class="text-4xl heading-font font-black text-white group-hover:text-pink-500 transition-colors">2.48</div>
+<div class="w-full bg-white/5 h-1.5 rounded-full mt-3">
+<div class="bg-gradient-to-r from-pink-500 to-indigo-500 h-full rounded-full" style="width: 74%"></div>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<div class="xl:col-span-2 glass-card overflow-hidden">
+<div class="p-6 border-b border-white/5 flex justify-between items-center">
+<h3 class="heading-font text-lg text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-indigo-400">history</span>
+                        RECENT ACTIVITY
+                    </h3>
+<button class="text-xs text-cyan-400 hover:underline uppercase font-bold tracking-widest">View Full Log</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-white/5 text-slate-400 uppercase text-[10px] tracking-[0.2em] font-bold">
+<tr>
+<th class="px-6 py-4">Game Session</th>
+<th class="px-6 py-4">Score</th>
+<th class="px-6 py-4">Duration</th>
+<th class="px-6 py-4">Difficulty</th>
+<th class="px-6 py-4">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5 text-sm">
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+<span class="material-symbols-outlined text-sm">capture</span>
+</div>
+<span class="font-bold text-slate-200">Pacman Evolution</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">15,430</td>
+<td class="px-6 py-4 text-slate-400">04:25</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[10px]">HARD</span></td>
+<td class="px-6 py-4 text-green-400 font-bold">VICTORY</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+</div>
+<span class="font-bold text-slate-200">Memory Matrix</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">2,850</td>
+<td class="px-6 py-4 text-slate-400">01:45</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">MEDIUM</span></td>
+<td class="px-6 py-4 text-green-400 font-bold">VICTORY</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center text-green-500">
+<span class="material-symbols-outlined text-sm">spellcheck</span>
+</div>
+<span class="font-bold text-slate-200">Word Hunt Elite</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">4,120</td>
+<td class="px-6 py-4 text-slate-400">03:12</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[10px]">HARD</span></td>
+<td class="px-6 py-4 text-rose-500 font-bold">DEFEAT</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-cyan-500/10 flex items-center justify-center text-cyan-500">
+<span class="material-symbols-outlined text-sm">close</span>
+</div>
+<span class="font-bold text-slate-200">Tic Tac Toe X</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">100</td>
+<td class="px-6 py-4 text-slate-400">00:45</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">MEDIUM</span></td>
+<td class="px-6 py-4 text-slate-400 font-bold">DRAW</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors opacity-70">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+<span class="material-symbols-outlined text-sm">capture</span>
+</div>
+<span class="font-bold text-slate-200">Pacman Evolution</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">12,100</td>
+<td class="px-6 py-4 text-slate-400">03:55</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px]">MEDIUM</span></td>
+<td class="px-6 py-4 text-green-400 font-bold">VICTORY</td>
+</tr>
+<tr class="hover:bg-white/[0.02] transition-colors opacity-50">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center text-green-500">
+<span class="material-symbols-outlined text-sm">spellcheck</span>
+</div>
+<span class="font-bold text-slate-200">Word Hunt Elite</span>
+</div>
+</td>
+<td class="px-6 py-4 text-white font-mono">3,980</td>
+<td class="px-6 py-4 text-slate-400">03:00</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 text-[10px]">EASY</span></td>
+<td class="px-6 py-4 text-green-400 font-bold">VICTORY</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="space-y-6">
+<div class="glass-card p-6">
+<h3 class="heading-font text-lg text-white mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-cyan-400">donut_large</span>
+                        SKILL DISTRIBUTION
+                    </h3>
+<div class="grid grid-cols-2 gap-6">
+<div class="flex flex-col items-center">
+<div class="relative w-24 h-24 flex items-center justify-center mb-3">
+<div class="absolute inset-0 rounded-full border-4 border-white/5"></div>
+<div class="absolute inset-0 rounded-full border-4 border-t-indigo-500 border-r-indigo-500 border-b-transparent border-l-transparent -rotate-45"></div>
+<div class="flex flex-col items-center">
+<span class="heading-font text-xl font-bold">68%</span>
+</div>
+</div>
+<span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Word Search</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="relative w-24 h-24 flex items-center justify-center mb-3">
+<div class="absolute inset-0 rounded-full border-4 border-white/5"></div>
+<div class="absolute inset-0 rounded-full border-4 border-t-cyan-400 border-r-cyan-400 border-b-cyan-400 border-l-transparent rotate-12"></div>
+<div class="flex flex-col items-center">
+<span class="heading-font text-xl font-bold">82%</span>
+</div>
+</div>
+<span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Tic Tac Toe</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="relative w-24 h-24 flex items-center justify-center mb-3">
+<div class="absolute inset-0 rounded-full border-4 border-white/5"></div>
+<div class="absolute inset-0 rounded-full border-4 border-t-pink-500 border-r-transparent border-b-transparent border-l-transparent -rotate-90"></div>
+<div class="flex flex-col items-center">
+<span class="heading-font text-xl font-bold">35%</span>
+</div>
+</div>
+<span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Memory Game</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="relative w-24 h-24 flex items-center justify-center mb-3">
+<div class="absolute inset-0 rounded-full border-4 border-white/5"></div>
+<div class="absolute inset-0 rounded-full border-4 border-t-yellow-400 border-r-yellow-400 border-b-yellow-400 border-l-yellow-400 opacity-90"></div>
+<div class="flex flex-col items-center">
+<span class="heading-font text-xl font-bold">94%</span>
+</div>
+</div>
+<span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Pacman</span>
+</div>
+</div>
+</div>
+<div class="glass-card p-6">
+<h3 class="heading-font text-lg text-white mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-amber-400">workspace_premium</span>
+                        UNLOCKED BADGES
+                    </h3>
+<div class="flex flex-wrap gap-4">
+<div class="w-12 h-12 glass-card flex items-center justify-center border-yellow-500/50 text-yellow-500" title="Perfect Score">
+<span class="material-symbols-outlined">star</span>
+</div>
+<div class="w-12 h-12 glass-card flex items-center justify-center border-indigo-500/50 text-indigo-500" title="10 Win Streak">
+<span class="material-symbols-outlined">bolt</span>
+</div>
+<div class="w-12 h-12 glass-card flex items-center justify-center border-emerald-500/50 text-emerald-500" title="Marathon Player">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="w-12 h-12 glass-card flex items-center justify-center border-white/10 opacity-30 grayscale cursor-not-allowed">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<div class="w-12 h-12 glass-card flex items-center justify-center border-white/10 opacity-30 grayscale cursor-not-allowed">
+<span class="material-symbols-outlined">lock</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>
