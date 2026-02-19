@@ -24,12 +24,10 @@ export async function GET(request: Request) {
             take: 100, // Top 100
         });
 
-        const response = NextResponse.json({
+        return NextResponse.json({
             success: true,
             data: leaderboard,
         });
-        response.headers.set("Cache-Control", "public, max-age=600");
-        return response;
     } catch (error) {
         console.error("Leaderboard fetch error:", error);
         return NextResponse.json(

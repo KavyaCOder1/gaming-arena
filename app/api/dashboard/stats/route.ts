@@ -6,12 +6,10 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
-        const response = NextResponse.json(
+        return NextResponse.json(
             { error: "Unauthorized" },
             { status: 401 }
         );
-        response.headers.set("Cache-Control", "private, no-cache");
-        return response;
     }
 
     try {
@@ -54,7 +52,7 @@ export async function GET() {
             _sum: { duration: true }
         });
 
-        const response = NextResponse.json({
+        return NextResponse.json({
             success: true,
             stats: {
                 totalGames,
@@ -67,8 +65,6 @@ export async function GET() {
                 user: { username: user.username } // Flatten for UI consistency
             }))
         });
-        response.headers.set("Cache-Control", "private, max-age=300");
-        return response;
     } catch (error) {
         console.error("Dashboard stats error:", error);
         return NextResponse.json(

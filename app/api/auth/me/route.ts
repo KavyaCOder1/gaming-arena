@@ -5,18 +5,14 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
-        const response = NextResponse.json(
+        return NextResponse.json(
             { error: "Unauthorized" },
             { status: 401 }
         );
-        response.headers.set("Cache-Control", "private, no-cache");
-        return response;
     }
 
-    const response = NextResponse.json({
+    return NextResponse.json({
         success: true,
         user: session.user,
     });
-    response.headers.set("Cache-Control", "private, max-age=300");
-    return response;
 }

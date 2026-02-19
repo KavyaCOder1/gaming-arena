@@ -52,7 +52,6 @@ export async function POST(request: Request) {
             user: { id: user.id, username: user.username },
         });
 
-        response.headers.set("Cache-Control", "private, no-cache");
         response.cookies.set("session", session, {
             expires,
             httpOnly: true,

@@ -4,10 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Joystick, Trophy, Timer, Share2, Maximize2, CheckCircle2, Gamepad2, User, Search, AlertCircle, Play } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-
-const ScoreModal = dynamic(() => import("@/components/game/ScoreModal").then(mod => ({ default: mod.ScoreModal })), { ssr: false });
+import { ScoreModal } from "@/components/game/ScoreModal";
 
 export default function WordSearchPage() {
     const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");

@@ -30,9 +30,9 @@ export default function DashboardLayout({
                 </div>
 
                 <Navbar />
-                <div className="flex w-full pt-32 lg:pt-36 gap-6 px-4 sm:px-3 lg:px-6">
+                <div className="flex container mx-auto max-w-7xl pt-32 lg:pt-36 gap-6 px-4 sm:px-6 lg:px-8">
                     <Sidebar />
-                    <main className="flex-1 pb-32 lg:pb-10 overflow-x-hidden">
+                    <main className="flex-1 pb-32 lg:pb-10">
                         {children}
                     </main>
                 </div>

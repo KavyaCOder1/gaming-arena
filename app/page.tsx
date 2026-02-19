@@ -5,22 +5,19 @@ import { motion, Variants } from "framer-motion";
 import { Trophy, Zap, Search, Grid, LayoutGrid, Ghost, ChevronRight, Crown, Medal } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/Navbar";
-import dynamic from "next/dynamic";
-import { useEffect, useState, useTransition } from "react";
+import { GameCard } from "@/components/game/GameCard";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const GameCard = dynamic(() => import("@/components/game/GameCard").then(mod => ({ default: mod.GameCard })), { ssr: false });
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 
 export default function Home() {
   const { openAuthModal, isAuthenticated } = useAuthStore();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   const itemVariants: Variants = {
     hidden: { y: 30, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.25 } }
+    visible: { y: 0, opacity: 1, transition: { type: "spring", damping: 20, stiffness: 100 } }
   };
 
   const games = [
@@ -39,23 +36,20 @@ export default function Home() {
 
   const [activeGame, setActiveGame] = useState("WORD_SEARCH");
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
-  const [lbLoading, setLbLoading] = useState(false);
+  const [lbLoading, setLbLoading] = useState(true);
 
   useEffect(() => {
-    // Defer leaderboard fetch until after page is interactive
-    const timer = setTimeout(() => {
-      startTransition(async () => {
-        setLbLoading(true);
-        try {
-          const res = await fetch(`/api/leaderboard?gameType=${activeGame}`);
-          const json = await res.json();
-          if (json.success) setLeaderboardData(json.data.slice(0, 8));
-        } catch (e) { console.error(e); }
-        finally { setLbLoading(false); }
-      });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [activeGame, startTransition]);
+    const fetchLb = async () => {
+      setLbLoading(true);
+      try {
+        const res = await fetch(`/api/leaderboard?gameType=${activeGame}`);
+        const json = await res.json();
+        if (json.success) setLeaderboardData(json.data.slice(0, 8));
+      } catch (e) { console.error(e); }
+      finally { setLbLoading(false); }
+    };
+    fetchLb();
+  }, [activeGame]);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -76,7 +70,7 @@ export default function Home() {
       {/* ── HERO ── */}
       <section className="relative pt-32 pb-20 overflow-hidden min-h-[95vh] flex items-center grid-bg">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center text-center relative z-10 w-full">
-          <div
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-black tracking-[0.2em] mb-12 uppercase"
           >
             <span className="relative flex h-2 w-2">
@@ -84,22 +78,22 @@ export default function Home() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
             </span>
             Live Competitive Season 1
-          </div>
+          </motion.div>
 
-          <h1
+          <motion.h1 variants={itemVariants} initial="hidden" animate="visible"
             className="text-[12vw] md:text-[8rem] lg:text-[10rem] font-black neon-text mb-8 tracking-tight leading-[0.85] uppercase italic"
           >
             ENTER THE<br />ARENA
-          </h1>
+          </motion.h1>
 
-          <p
+          <motion.p variants={itemVariants} initial="hidden" animate="visible"
             className="max-w-2xl text-lg md:text-xl text-muted-foreground/80 mb-16 font-medium tracking-wide leading-relaxed"
           >
             Join the ultimate gaming ecosystem. Compete in high-stakes mini-games,
             climb the global leaderboards, and prove your dominance.
-          </p>
+          </motion.p>
 
-          <div
+          <motion.div variants={itemVariants} initial="hidden" animate="visible"
             className="flex flex-col sm:flex-row gap-6 mb-32 items-center justify-center w-full"
           >
             {isAuthenticated ? (
@@ -114,7 +108,7 @@ export default function Home() {
             <button onClick={() => scrollTo("leaderboard")}
               className="px-10 py-5 glass-card rounded-xl font-black text-xl tracking-[0.1em] hover:bg-white/10 transition-all flex items-center gap-3"
             >VIEW RANKINGS <Trophy className="w-6 h-6" /></button>
-          </div>
+          </motion.div>
 
           {/* ── FEATURED GAMES ── */}
           <div className="w-full" id="featured-games">

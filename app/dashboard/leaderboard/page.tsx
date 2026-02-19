@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { LeaderboardWithUser } from "@/types";
 import { Trophy, Medal, Crown, Timer, Zap } from "lucide-react";
 import { motion } from "framer-motion";
-
-const LeaderboardTable = dynamic(() => import("@/components/leaderboard/LeaderboardTable").then(mod => ({ default: mod.LeaderboardTable })), { ssr: false });
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 const card = { background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(34,211,238,0.12)", borderRadius: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.4)" };

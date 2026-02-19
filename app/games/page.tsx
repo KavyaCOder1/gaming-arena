@@ -1,10 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import dynamic from "next/dynamic";
+import { GameCard } from "@/components/game/GameCard";
 import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2 } from "lucide-react";
-
-const GameCard = dynamic(() => import("@/components/game/GameCard").then(mod => ({ default: mod.GameCard })), { ssr: false });
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 

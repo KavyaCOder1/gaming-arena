@@ -35,7 +35,9 @@ export default function AuthLayout({
                 </motion.div>
             </div>
 
-
+            <div className="p-8 text-center text-[10px] font-black tracking-widest text-muted-foreground/30 uppercase relative z-10">
+                &copy; 2026 Gaming Arena Security Protocol
+            </div>
         </div>
     );
 }
