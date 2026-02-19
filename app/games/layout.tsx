@@ -32,7 +32,7 @@ export default function GamesLayout({
                 <Navbar />
                 <div className="flex container mx-auto max-w-7xl pt-32 lg:pt-36 gap-6 px-4 sm:px-6 lg:px-8">
                     <Sidebar />
-                    <main className="flex-1 pb-32 lg:pb-10">
+                    <main className="flex-1 pb-28 lg:pb-10 flex flex-col items-stretch lg:items-stretch">
                         {children}
                     </main>
                 </div>

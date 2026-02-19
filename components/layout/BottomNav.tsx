@@ -20,7 +20,7 @@ export function BottomNav() {
     ];
 
     return (
-        <div className="lg:hidden" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, padding: "0 12px 12px" }}>
+        <div className="lg:hidden" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, padding: "0 12px max(12px, env(safe-area-inset-bottom))" }}>
             <div style={{
                 background: "rgba(10, 15, 35, 0.72)",
                 backdropFilter: "blur(28px) saturate(1.8)",

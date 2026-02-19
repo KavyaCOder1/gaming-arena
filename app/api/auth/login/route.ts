@@ -13,9 +13,10 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { username, password } = loginSchema.parse(body);
+        const normalizedUsername = username.toLowerCase();
 
         const user = await db.user.findUnique({
-            where: { username },
+            where: { username: normalizedUsername },
         });
 
         if (!user) {
