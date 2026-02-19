@@ -1,42 +1,27 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 
-export default function AuthLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", background: "#0F172A" }}>
             <Navbar />
 
-            {/* Animated Background Mesh */}
-            <div className="absolute inset-0 z-0 opacity-40 dark:opacity-60 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] -mr-96 -mt-96 animate-glow-pulse" />
-                <div className="absolute left-0 bottom-0 w-[600px] h-[600px] bg-secondary/20 rounded-full blur-[100px] -ml-64 -mb-64 animate-glow-pulse delay-1000" />
-                <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+            {/* same background as dashboard/games */}
+            <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+                <div style={{ position: "absolute", inset: 0, background: "#0F172A" }} />
+                <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right,rgba(99,102,241,0.05) 1px,transparent 1px),linear-gradient(to bottom,rgba(99,102,241,0.05) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+                <div style={{ position: "absolute", inset: 0, opacity: 0.2, backgroundImage: "radial-gradient(rgba(148,163,184,0.4) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+                <div style={{ position: "absolute", top: "10%", left: "5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%)" }} />
+                <div style={{ position: "absolute", bottom: "5%", right: "5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,rgba(34,211,238,0.08) 0%,transparent 70%)" }} />
             </div>
 
-            <div className="flex-1 flex items-center justify-center relative z-10 p-6 pt-32 pb-20">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="w-full max-w-md relative"
-                >
-                    {/* Glow effect for the form container */}
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-[2.5rem] blur-2xl opacity-50 group-hover:opacity-100 transition duration-1000" />
-
-                    <div className="relative">
-                        {children}
-                    </div>
-                </motion.div>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", paddingTop: "calc(72px + 40px)", paddingBottom: 40, position: "relative", zIndex: 1 }}>
+                {children}
             </div>
 
-            <div className="p-8 text-center text-[10px] font-black tracking-widest text-muted-foreground/30 uppercase relative z-10">
-                &copy; 2026 Gaming Arena Security Protocol
+            <div style={{ textAlign: "center", padding: "16px 24px", fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: "#1e293b", letterSpacing: "0.35em", textTransform: "uppercase", position: "relative", zIndex: 1 }}>
+                © 2026 GAMING ARENA SECURITY PROTOCOL
             </div>
         </div>
     );

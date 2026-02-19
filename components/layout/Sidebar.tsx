@@ -17,14 +17,19 @@ export function Sidebar() {
     };
 
     const links = [
-        { href: "/dashboard",             label: "Home",    icon: Home     },
-        { href: "/games",                 label: "Games",   icon: Gamepad2 },
-        { href: "/dashboard/leaderboard", label: "Ranks",   icon: Trophy   },
-        { href: "/dashboard/profile",     label: "Profile", icon: User     },
+        { href: "/dashboard", label: "Home", icon: Home },
+        { href: "/games", label: "Games", icon: Gamepad2 },
+        { href: "/dashboard/leaderboard", label: "Ranks", icon: Trophy },
+        { href: "/dashboard/profile", label: "Profile", icon: User },
     ];
 
     return (
-        <aside className="hidden lg:flex w-64 flex-col h-[calc(100vh-6rem)] sticky top-24">
+        <>
+        <style>{`
+            .sidebar-desktop { display: none; }
+            @media(min-width: 1024px) { .sidebar-desktop { display: flex; flex-direction: column; width: 256px; flex-shrink: 0; height: calc(100vh - 92px); position: sticky; top: 92px; } }
+        `}</style>
+        <aside className="sidebar-desktop">
             <div style={{
                 background: "rgba(10, 15, 35, 0.72)",
                 backdropFilter: "blur(28px) saturate(1.8)",
@@ -129,13 +134,7 @@ export function Sidebar() {
 
                 {/* bottom: season banner + sign out */}
                 <div style={{ position: "relative", zIndex: 1, marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    {/* season banner */}
-                    <div style={{ padding: "14px 16px", borderRadius: 16, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 8, position: "relative", overflow: "hidden" }}>
-                        <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)" }} />
-                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: "#6366f1", letterSpacing: "0.2em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Global Event</span>
-                        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8", lineHeight: 1.4 }}>Arena Season 1 is now LIVE! Join now.</p>
-                        <Sparkles style={{ position: "absolute", bottom: -4, right: -4, width: 40, height: 40, color: "rgba(99,102,241,0.15)" }} />
-                    </div>
+
 
                     {/* sign out */}
                     <button
@@ -159,5 +158,6 @@ export function Sidebar() {
                 </div>
             </div>
         </aside>
+        </>  
     );
 }

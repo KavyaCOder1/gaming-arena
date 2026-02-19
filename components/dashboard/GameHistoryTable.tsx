@@ -4,98 +4,119 @@ import { motion } from "framer-motion";
 import { GameHistoryWithUser } from "@/types";
 import { formatDate, formatTime } from "@/lib/utils";
 import { Trophy, Clock, Calendar, Activity, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface GameHistoryTableProps {
     history: GameHistoryWithUser[];
 }
 
+const LEVEL_STYLE: Record<string, { color: string; bg: string; border: string }> = {
+    EASY:   { color: "#10b981", bg: "rgba(16,185,129,0.10)",  border: "rgba(16,185,129,0.28)" },
+    MEDIUM: { color: "#f59e0b", bg: "rgba(245,158,11,0.10)",  border: "rgba(245,158,11,0.28)" },
+    HARD:   { color: "#ef4444", bg: "rgba(239,68,68,0.10)",   border: "rgba(239,68,68,0.28)"  },
+};
+
+const GAME_LABEL: Record<string, string> = {
+    WORD_SEARCH: "Word Search",
+    TIC_TAC_TOE: "Tic Tac Toe",
+    MEMORY:      "Memory",
+    PACMAN:      "Pacman",
+};
+
 export function GameHistoryTable({ history }: GameHistoryTableProps) {
     if (!history || history.length === 0) {
         return (
-            <div className="text-center py-20 text-muted-foreground glass rounded-[2.5rem] border-black/5 dark:border-white/5 space-y-4">
-                <div className="w-16 h-16 bg-black/5 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Activity className="w-8 h-8 opacity-20" />
+            <div style={{ textAlign: "center", padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                    <Activity style={{ width: 24, height: 24, color: "#334155" }} />
                 </div>
-                <p className="font-black uppercase tracking-widest text-xs">No Combat Data Found</p>
-                <p className="text-[10px] opacity-40">Initialize a game session to begin data logging</p>
+                <p style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase" }}>No Combat Data Found</p>
+                <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "#1e293b", fontWeight: 500, letterSpacing: "0.1em" }}>Initialize a game session to begin data logging</p>
             </div>
         );
     }
 
     return (
-        <div className="overflow-hidden rounded-[2rem] border border-black/5 dark:border-white/10 dark:bg-black/20">
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5">
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Operation</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Performance</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Threat Level</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Time in Field</th>
-                            <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Timestamp</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {history.map((game, index) => (
+        <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+                <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        {["Operation", "Performance", "Threat Level", "Time in Field", "Timestamp"].map(h => (
+                            <th key={h} style={{ padding: "10px 18px", textAlign: "left", fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", background: "rgba(255,255,255,0.02)", whiteSpace: "nowrap" }}>
+                                {h}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {history.map((game, i) => {
+                        const lvl = LEVEL_STYLE[game.level] ?? LEVEL_STYLE.MEDIUM;
+                        return (
                             <motion.tr
                                 key={game.id}
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="group hover:bg-primary/5 transition-all duration-300"
+                                transition={{ delay: i * 0.04 }}
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.2s" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,211,238,0.03)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                             >
-                                <td className="px-8 py-5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 text-primary group-hover:scale-110 transition-transform">
-                                            <Zap className="w-4 h-4 neon-glow" />
+                                {/* Operation */}
+                                <td style={{ padding: "13px 18px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                            <Zap style={{ width: 14, height: 14, color: "#6366f1", filter: "drop-shadow(0 0 4px rgba(99,102,241,0.6))" }} />
                                         </div>
-                                        <span className="font-black tracking-tight text-foreground/90 uppercase text-sm italic">
-                                            {game.gameType.replace("_", " ")}
+                                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "0.04em" }}>
+                                            {GAME_LABEL[game.gameType] ?? game.gameType.replace("_", " ")}
                                         </span>
                                     </div>
                                 </td>
-                                <td className="px-8 py-5">
-                                    <div className="flex items-center gap-2">
-                                        <Trophy className="h-4 w-4 text-amber-500 neon-glow" />
-                                        <span className="text-lg font-black tabular-nums tracking-tighter">{game.score}</span>
+
+                                {/* Performance */}
+                                <td style={{ padding: "13px 18px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <Trophy style={{ width: 14, height: 14, color: "#f59e0b", filter: "drop-shadow(0 0 4px rgba(245,158,11,0.5))" }} />
+                                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 900, color: "#f8fafc" }}>{game.score}</span>
                                     </div>
                                 </td>
-                                <td className="px-8 py-5">
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border",
-                                        game.level === 'EASY' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            game.level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                                    )}>
+
+                                {/* Threat Level */}
+                                <td style={{ padding: "13px 18px" }}>
+                                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: lvl.color, background: lvl.bg, border: `1px solid ${lvl.border}`, padding: "4px 10px", borderRadius: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>
                                         {game.level}
                                     </span>
                                 </td>
-                                <td className="px-8 py-5 text-muted-foreground font-bold text-xs">
-                                    <div className="flex items-center gap-2 tabular-nums">
-                                        <Clock className="h-3.5 w-3.5 opacity-50" />
-                                        {formatTime(game.duration)}
+
+                                {/* Time in Field */}
+                                <td style={{ padding: "13px 18px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <Clock style={{ width: 12, height: 12, color: "#334155" }} />
+                                        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 600, color: "#475569" }}>{formatTime(game.duration)}</span>
                                     </div>
                                 </td>
-                                <td className="px-8 py-5 text-muted-foreground/60 font-medium text-xs">
-                                    <div className="flex items-center gap-2 tabular-nums">
-                                        <Calendar className="h-3.5 w-3.5 opacity-30" />
-                                        {formatDate(game.createdAt)}
+
+                                {/* Timestamp */}
+                                <td style={{ padding: "13px 18px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <Calendar style={{ width: 12, height: 12, color: "#1e293b" }} />
+                                        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, fontWeight: 500, color: "#334155" }}>{formatDate(game.createdAt)}</span>
                                     </div>
                                 </td>
                             </motion.tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        );
+                    })}
+                </tbody>
+            </table>
 
-            <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-black/5 dark:border-white/5 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
-                <span>End of Logs</span>
-                <div className="flex gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/20 animate-pulse delay-700" />
+            {/* Footer */}
+            <div style={{ padding: "14px 18px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#1e293b", letterSpacing: "0.3em", textTransform: "uppercase" }}>End of Logs</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(99,102,241,0.4)", animation: "ghtPulse 1.5s infinite" }} />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(99,102,241,0.2)", animation: "ghtPulse 1.5s infinite 0.7s" }} />
                 </div>
             </div>
+            <style>{`@keyframes ghtPulse { 0%,100%{opacity:1} 50%{opacity:0.2} }`}</style>
         </div>
     );
 }

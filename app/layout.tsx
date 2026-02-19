@@ -39,7 +39,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${orbitron.variable} ${rajdhani.variable} antialiased min-h-screen flex flex-col`}
+        className={`${inter.variable} ${orbitron.variable} ${rajdhani.variable}`}
+        style={{ minHeight: "100vh", display: "flex", flexDirection: "column", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" }}
       >
         <ThemeProvider
           attribute="class"

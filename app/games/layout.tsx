@@ -4,35 +4,38 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import AuthGuard from "@/components/auth/AuthGuard";
 
-export default function GamesLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function GamesLayout({ children }: { children: React.ReactNode }) {
     return (
         <AuthGuard>
-            <div className="min-h-screen bg-[#0F172A] relative">
+            <div style={{ minHeight: "100vh", background: "#0F172A", position: "relative" }}>
 
-                {/* ── GLOBAL BACKGROUND (matches home page) ── */}
-                <div className="fixed inset-0 pointer-events-none -z-10">
-                    {/* base dark */}
-                    <div className="absolute inset-0 bg-[#0F172A]" />
-                    {/* grid lines */}
-                    <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to right, rgba(99,102,241,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(99,102,241,0.05) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-                    {/* dot overlay */}
-                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(rgba(148,163,184,0.4) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-                    {/* indigo blob top-left */}
-                    <div className="absolute top-[10%] left-[5%] w-[500px] h-[500px] rounded-full" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)" }} />
-                    {/* cyan blob bottom-right */}
-                    <div className="absolute bottom-[5%] right-[5%] w-[600px] h-[600px] rounded-full" style={{ background: "radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%)" }} />
-                    {/* extra subtle mid glow */}
-                    <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full" style={{ background: "radial-gradient(ellipse, rgba(99,102,241,0.04) 0%, transparent 70%)" }} />
+                {/* ── BACKGROUND ── */}
+                <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: -1 }}>
+                    <div style={{ position: "absolute", inset: 0, background: "#0F172A" }} />
+                    <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right,rgba(99,102,241,0.05) 1px,transparent 1px),linear-gradient(to bottom,rgba(99,102,241,0.05) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+                    <div style={{ position: "absolute", inset: 0, opacity: 0.2, backgroundImage: "radial-gradient(rgba(148,163,184,0.4) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+                    <div style={{ position: "absolute", top: "10%", left: "5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle,rgba(99,102,241,0.12) 0%,transparent 70%)" }} />
+                    <div style={{ position: "absolute", bottom: "5%", right: "5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle,rgba(34,211,238,0.08) 0%,transparent 70%)" }} />
+                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse,rgba(99,102,241,0.04) 0%,transparent 70%)" }} />
                 </div>
 
                 <Navbar />
-                <div className="flex container mx-auto max-w-7xl pt-32 lg:pt-36 gap-6 px-4 sm:px-6 lg:px-8">
+
+                <div style={{
+                    maxWidth: 1280,
+                    margin: "0 auto",
+                    paddingTop: 92,
+                    paddingBottom: 100,
+                    paddingLeft: 16,
+                    paddingRight: 16,
+                    display: "flex",
+                    gap: 24,
+                    alignItems: "flex-start",
+                    boxSizing: "border-box",
+                    width: "100%",
+                }}>
                     <Sidebar />
-                    <main className="flex-1 pb-28 lg:pb-10 flex flex-col items-stretch lg:items-stretch">
+                    <main style={{ flex: 1, minWidth: 0, width: "100%" }}>
                         {children}
                     </main>
                 </div>

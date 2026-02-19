@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
     }, [activeTab]);
 
     return (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ padding: "32px 24px 100px" }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ width: "100%" }}>
 
             {/* ── HEADER ── */}
             <div style={{ marginBottom: 36 }}>

@@ -217,7 +217,7 @@ export default function TicTacToePage() {
   const cfg = DIFF_CONFIG[difficulty];
 
   return (
-    <div style={{ minHeight: "100vh", paddingBottom: 100, width: "100%" }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 20, width: "100%", boxSizing: "border-box" }}>
 
       {/* ── RESULT FLASH OVERLAYS ─────────────────────────────────────────── */}
       <AnimatePresence>

@@ -21,7 +21,7 @@ export default function ProfilePage() {
     ];
 
     return (
-        <motion.div variants={stagger} initial="hidden" animate="show" style={{ padding: "32px 24px 100px", maxWidth: 900, margin: "0 auto" }}>
+        <motion.div variants={stagger} initial="hidden" animate="show" style={{ width: "100%", maxWidth: 900 }}>
 
             {/* ── HERO HEADER ── */}
             <motion.div variants={fadeUp} style={{ ...card, padding: "36px 32px", marginBottom: 24, position: "relative", overflow: "hidden", borderColor: "rgba(34,211,238,0.2)" }}>

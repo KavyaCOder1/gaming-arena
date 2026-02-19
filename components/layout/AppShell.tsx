@@ -4,7 +4,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import AuthGuard from "@/components/auth/AuthGuard";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+const NAVBAR_HEIGHT = 72; // px — must match Navbar desktop height
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <AuthGuard>
             <div style={{ minHeight: "100vh", background: "#0F172A", position: "relative" }}>
@@ -19,12 +21,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse,rgba(99,102,241,0.04) 0%,transparent 70%)" }} />
                 </div>
 
+                {/* ── NAVBAR ── */}
                 <Navbar />
 
+                {/* ── PAGE BODY ── */}
                 <div style={{
                     maxWidth: 1280,
                     margin: "0 auto",
-                    paddingTop: 92,
+                    paddingTop: NAVBAR_HEIGHT + 20,
                     paddingBottom: 100,
                     paddingLeft: 16,
                     paddingRight: 16,

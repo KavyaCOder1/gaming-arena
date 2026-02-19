@@ -43,6 +43,15 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
     const mobileTitle = currentPage?.label ?? (pathname === "/" ? "ARENA" : "ARENA");
 
     return (
+        <>
+        <style>{`
+            .nav-desktop { display: none; }
+            .nav-mobile  { display: flex; }
+            .nav-pill    { display: none; }
+            .nav-dropdown{ display: block; }
+            @media(min-width: 768px)  { .nav-desktop { display: flex; } .nav-mobile { display: none; } .nav-dropdown { display: none; } }
+            @media(min-width: 1024px) { .nav-pill { display: flex; } }
+        `}</style>
         <nav style={{
             position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
             background: "rgba(15, 23, 42, 0.55)",
@@ -57,7 +66,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
             {/* ══════════════════════════════════════════
                 DESKTOP BAR
             ══════════════════════════════════════════ */}
-            <div className="hidden md:flex" style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px", height: 72, alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+            <div className="nav-desktop" style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px", height: 72, alignItems: "center", justifyContent: "space-between", gap: 24 }}>
 
                 {/* Logo */}
                 <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", flexShrink: 0 }}>
@@ -71,7 +80,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
 
                 {/* ── CENTER: pill nav — only when user is logged in (sidebar pages) ── */}
                 {user ? (
-                    <div className="hidden lg:flex" style={{ alignItems: "center", gap: 4, background: "rgba(10,15,35,0.6)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(34,211,238,0.15)", borderRadius: 28, padding: "5px 6px", boxShadow: "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
+                    <div className="nav-pill" style={{ alignItems: "center", gap: 4, background: "rgba(10,15,35,0.6)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(34,211,238,0.15)", borderRadius: 28, padding: "5px 6px", boxShadow: "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
@@ -156,7 +165,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
             {/* ══════════════════════════════════════════
                 MOBILE TOP BAR
             ══════════════════════════════════════════ */}
-            <div className="flex md:hidden" style={{ height: 60, alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
+            <div className="nav-mobile" style={{ height: 60, alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
 
                 {/* Left: icon logo */}
                 <Link href="/" style={{ textDecoration: "none", flexShrink: 0 }}>
@@ -197,7 +206,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
             {/* ── MOBILE DROPDOWN ── */}
             <AnimatePresence>
                 {isMenuOpen && (
-                    <motion.div className="md:hidden"
+                    <motion.div className="nav-dropdown"
                         initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                         style={{ borderTop: "1px solid rgba(34,211,238,0.1)", background: "rgba(8,12,28,0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}
@@ -254,5 +263,6 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
                 )}
             </AnimatePresence>
         </nav>
+        </>
     );
 }
