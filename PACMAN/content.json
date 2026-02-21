@@ -1,0 +1,30 @@
+{
+    "id": "main",
+    "type": "content",
+    "name": "global",
+    "content": {
+        "startGame": "Start Game",
+        "highScore": "High Score",
+        "character": "Character",
+        "nickname": "abcxyz",
+        "muteLabel": "Tap to mute",
+        "unmuteLabel": "Tap to unmute",
+        "pauseLabel": "Tap to pause",
+        "unpauseLabel": "Tap to unpause",
+        "rotateLabel": "Rotate to play",
+        "playAgain": "Play Again",
+        "shareLabel": "Share",
+        "searchLabel": "Search",
+        "gameOver": "Game over",
+        "credit": "Credit",
+        "ready": "Ready!",
+        "changeDirection": "To change direction:",
+        "howTo2": "Press and move finger",
+        "howTo3": "or",
+        "howTo4": "swipe",
+        "moreGames": "More Games",
+        "howToDesktop": "use arrow keys",
+        "metaTitle": "PAC-MAN: Halloween 2025 Edition",
+        "metaDescription": "Today's interactive Doodle features a special Halloween edition of PAC-MAN, celebrating 45 years of this classic game. Click to play!"
+    }
+}

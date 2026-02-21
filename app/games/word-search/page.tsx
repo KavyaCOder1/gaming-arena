@@ -549,7 +549,7 @@ export default function WordSearchPage() {
                 {found.size}/{words.length}
               </span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(88px,1fr))", gap: 7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 7 }}>
               {words.map((word, idx) => {
                 const isF = found.has(word);
                 const col = FOUND_COLORS[idx % FOUND_COLORS.length];
@@ -557,7 +557,7 @@ export default function WordSearchPage() {
                   <motion.div key={word} animate={isF ? { scale: [1, 1.09, 1] } : {}} transition={{ duration: 0.22 }}
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 9, background: isF ? `${col}18` : "rgba(255,255,255,0.03)", border: `1px solid ${isF ? col + "44" : "rgba(255,255,255,0.06)"}`, boxShadow: isF ? `0 0 10px ${col}25` : "none", transition: "all 0.2s" }}>
                     <CheckCircle2 style={{ width: 11, height: 11, color: isF ? col : "#1e293b", flexShrink: 0 }} />
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2vw,10px)", fontWeight: 700, color: isF ? col : "#475569", textDecoration: isF ? "line-through" : "none", letterSpacing: "0.04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2vw,10px)", fontWeight: 700, color: isF ? col : "#475569", textDecoration: isF ? "line-through" : "none", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
                       {word}
                     </span>
                   </motion.div>

@@ -15,12 +15,14 @@ model User {
   createdAt   DateTime  @default(now())
   lastLoginAt DateTime?
 
-  level       UserLevel?
-  tttGames    TicTacToeGame[]
-  wsGames     WordSearchGame[]
-  leaderboard Leaderboard[]
-  tttSessions TicTacToeSession[]
-  wsSessions  WordSearchSession[]
+  level        UserLevel?
+  tttGames     TicTacToeGame[]
+  wsGames      WordSearchGame[]
+  pacmanGames    PacmanGame[]
+  pacmanSessions PacmanSession[]
+  leaderboard  Leaderboard[]
+  tttSessions  TicTacToeSession[]
+  wsSessions   WordSearchSession[]
 }
 
 // ─── Level / XP ───────────────────────────────────────────────────────────────
@@ -106,17 +108,44 @@ model WordSearchGame {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+// ─── Pacman active session (security token) ─────────────────────────────────────
+model PacmanSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique  // HMAC token sent to iframe, must be returned on finish
+  startedAt DateTime @default(now())
+  used      Boolean  @default(false)  // consumed on first /finish call
+  expiresAt DateTime // startedAt + 2h
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, used])
+  @@index([expiresAt])  // for cleanup
+}
+
+// ─── Pacman game records ────────────────────────────────────────────────────────
+model PacmanGame {
+  id        String   @id @default(cuid())
+  userId    String
+  score     Int
+  stage     Int      @default(1)
+  xpEarned  Int      @default(0)
+  duration  Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([score(sort: Desc)])
+}
+
 // ─── Leaderboard ──────────────────────────────────────────────────────────────
 model Leaderboard {
-  id         String         @id @default(cuid())
+  id         String          @id @default(cuid())
   userId     String
   gameType   GameType
-  difficulty GameDifficulty
+  difficulty GameDifficulty? // null for difficulty-less games like PACMAN
   highScore  Int
-  updatedAt  DateTime       @updatedAt
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, gameType, difficulty])
-  @@index([gameType, difficulty, highScore(sort: Desc)])
+  @@index([gameType, highScore(sort: Desc)])
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────

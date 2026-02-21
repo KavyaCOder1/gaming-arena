@@ -1,0 +1,70 @@
+<!--
+  GAMING ARENA BRIDGE v5 - MINIMAL
+  postMessage calls are now injected DIRECTLY into index.min.js
+  This file just needs to handle the reset on new game.
+-->
+<!DOCTYPE html>
+<html data-generated-by="stalefish@0.1.0" data-geo="ALL" data-locale="en_ALL" dir="ltr" lang="en">
+<head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code" rel="stylesheet">
+    <link href="index.min.css" rel="stylesheet">
+    <link href="favicon.ico" rel="icon" sizes="any">
+    <link href="favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="apple-touch-icon-180x180.png" rel="apple-touch-icon">
+    <meta content="initial-scale=1, minimum-scale=1, width=device-width, viewport-fit=cover" name="viewport">
+    <meta content="PAC-MAN: Halloween 2025 Edition" property="og:title">
+    <title>PAC-MAN: Halloween 2025 Edition</title>
+    <script>
+      (function () {
+        'use strict';
+
+        // postMessage calls are patched directly into index.min.js:
+        //   pacman_score_update  → every score change
+        //   pacman_game_over     → last life lost
+        //   pacman_restart       → Play Again clicked
+
+        // Expose Quit & Save helper — reads score from pcm-game
+        // (runs after game JS loads since we use DOMContentLoaded)
+        var _gameOverFired = false;
+
+        window.addEventListener('message', function(e) {
+          if (e.data && e.data.type === 'pacman_restart') {
+            _gameOverFired = false;
+          }
+          if (e.data && e.data.type === 'pacman_game_over') {
+            _gameOverFired = true;
+          }
+        });
+
+        window.__pacmanRequestScore = function () {
+          if (_gameOverFired) return;
+          // Walk shadow DOM to get live score from registry
+          try {
+            var root = document.querySelector('pcm-root');
+            var sr   = root && root.shadowRoot;
+            var el   = sr && sr.querySelector('pcm-game');
+            var game = el && el.game;
+            if (game) {
+              var score = game.registry.get('score') || 0;
+              var stage = game.registry.get('currentLevelNumber') || 1;
+              _gameOverFired = true;
+              window.parent.postMessage({ type: 'pacman_game_over', score: score, stage: stage, level: stage }, '*');
+            }
+          } catch(e) {}
+        };
+
+      }());
+    </script>
+</head>
+<body>
+    <style>
+        :root { --font-stack: sans-serif; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    </style>
+    <span aria-hidden="true" style="font-family: var(--font-stack);"></span>
+    <script defer src="index.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAC-MAN</title>
+  <link href="index.min.css" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    #game-container canvas { max-width: 100%; max-height: 100%; }
+    #exit-btn {
+      position: fixed; top: 16px; right: 16px; z-index: 9999;
+      background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.4);
+      color: #22d3ee; font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 10px 18px; border-radius: 10px; cursor: pointer;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      backdrop-filter: blur(8px); transition: all 0.2s;
+    }
+    #exit-btn:hover { background: rgba(34, 211, 238, 0.25); transform: scale(1.05); }
+    #score-display {
+      position: fixed; top: 16px; left: 16px; z-index: 9999;
+      background: rgba(0,0,0,0.7); border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #fff; font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700;
+      padding: 10px 16px; border-radius: 10px; backdrop-filter: blur(8px);
+    }
+    #score-display span { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div id="exit-btn" onclick="exitGame()">EXIT</div>
+  <div id="score-display">SCORE: <span id="current-score">0</span></div>
+  
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const difficulty = urlParams.get('difficulty') || 'MEDIUM';
+    const sessionId = urlParams.get('sessionId') || '';
+    
+    let gameStarted = false;
+    let lastScore = 0;
+    let gameEnded = false;
+    let startTime = Date.now();
+    
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'PACMAN_CONFIG') {
+        window.pacmanDifficulty = e.data.difficulty;
+        window.pacmanSessionId = e.data.sessionId;
+      }
+    });
+    
+    function exitGame() {
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      parent.postMessage({
+        type: 'PACMAN_EXIT',
+        score: lastScore,
+        duration: duration,
+        completed: false,
+        sessionId: sessionId
+      }, '*');
+    }
+    
+    function endGame(score) {
+      if (gameEnded) return;
+      gameEnded = true;
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      parent.postMessage({
+        type: 'PACMAN_END',
+        score: score,
+        duration: duration,
+        completed: true,
+        sessionId: sessionId
+      }, '*');
+    }
+    
+    function updateScore(score) {
+      if (score !== lastScore) {
+        lastScore = score;
+        document.getElementById('current-score').textContent = score.toLocaleString();
+      }
+    }
+    
+    setInterval(() => {
+      try {
+        const scoreEl = document.querySelector('[class*="score"], .score');
+        if (scoreEl) {
+          const s = parseInt(scoreEl.textContent.replace(/[^0-9]/g, '') || '0');
+          if (s > 0) updateScore(s);
+        }
+        
+        const gameOverEl = document.querySelector('[class*="game-over"], [class*="gameOver"]');
+        if (gameOverEl && !gameEnded && lastScore > 0) {
+          setTimeout(() => endGame(lastScore), 500);
+        }
+      } catch(e) {}
+    }, 500);
+  </script>
+  
+  <script src="index.min.js" defer></script>
+</body>
+</html>

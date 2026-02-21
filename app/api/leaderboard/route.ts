@@ -62,6 +62,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data });
     }
 
+    if (gameType === "PACMAN") {
+      // Best score per user from leaderboard table
+      const rows = await db.leaderboard.findMany({
+        where:   { gameType: "PACMAN", difficulty: null },
+        include: { user: { select: { id: true, username: true } } },
+        orderBy: { highScore: "desc" },
+        take:    20,
+      });
+
+      const data = rows.map(r => ({
+        user:      r.user,
+        highScore: r.highScore,
+        totalXp:   r.highScore,
+      }));
+
+      return NextResponse.json({ success: true, data });
+    }
+
     // Fallback: return empty
     return NextResponse.json({ success: true, data: [] });
   } catch (error) {

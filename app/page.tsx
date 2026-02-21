@@ -177,20 +177,19 @@ export default function Home() {
             })}
           </div>
 
-          {/* leaderboard table */}
+          {/* leaderboard list */}
           <div style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(34,211,238,0.12)", borderRadius: 24, overflow: "hidden", boxShadow: "0 4px 32px rgba(0,0,0,0.4)" }}>
             {/* table head */}
-            <div style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "grid", gridTemplateColumns: "60px 1fr 140px", gap: 12 }}>
-              {["RANK", "PLAYER", "SCORE"].map((h) => (
+            <div style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "grid", gridTemplateColumns: "60px 1fr 140px 100px", gap: 12 }}>
+              {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map((h) => (
                 <span key={h} style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: C.muted, letterSpacing: "0.3em", textTransform: "uppercase" }}>{h}</span>
               ))}
             </div>
 
-            {/* rows */}
             {lbLoading ? (
               <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 10 }}>
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} style={{ height: 52, borderRadius: 12, background: "rgba(255,255,255,0.03)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div key={`skeleton-${i}`} style={{ height: 52, borderRadius: 12, background: "rgba(255,255,255,0.03)", animation: "pulse 1.5s ease-in-out infinite" }} />
                 ))}
               </div>
             ) : leaderboardData.length === 0 ? (
@@ -203,28 +202,31 @@ export default function Home() {
                 const { color, icon: RankIcon } = rankStyle(i);
                 const isTop3 = i < 3;
                 return (
-                  <motion.div key={entry.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                    style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,255,255,0.03)", display: "grid", gridTemplateColumns: "60px 1fr 140px", gap: 12, alignItems: "center", background: isTop3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent", transition: "background 0.2s" }}
+                  <motion.div key={entry.id ?? `lb-${i}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                    style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,255,255,0.03)", display: "grid", gridTemplateColumns: "60px 1fr 140px 100px", gap: 12, alignItems: "center", background: isTop3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent", transition: "background 0.2s" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(34,211,238,0.04)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = isTop3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent"; }}
                   >
-                    {/* rank */}
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       {RankIcon ? <RankIcon style={{ width: 16, height: 16, color }} /> : null}
                       <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: isTop3 ? 16 : 13, fontWeight: 900, color, fontStyle: isTop3 ? "italic" : "normal" }}>
                         {String(i + 1).padStart(2, "0")}
                       </span>
                     </div>
-                    {/* player */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ width: 34, height: 34, borderRadius: "50%", background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: isTop3 ? `0 0 10px ${color}40` : "none" }}>
                         <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 13, fontWeight: 900, color: "#fff" }}>{entry.user?.username?.[0]?.toUpperCase() ?? "?"}</span>
                       </div>
                       <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, color: isTop3 ? C.text : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{entry.user?.username ?? "Unknown"}</span>
                     </div>
-                    {/* score */}
-                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 15, fontWeight: 900, color: isTop3 ? color : C.cyan, filter: isTop3 ? `drop-shadow(0 0 6px ${color}60)` : "none" }}>
-                      {entry.highScore?.toLocaleString()}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 15, fontWeight: 900, color: isTop3 ? color : "#f59e0b", filter: isTop3 ? `drop-shadow(0 0 6px ${color}60)` : "none" }}>
+                        {entry.totalXp?.toLocaleString() ?? entry.highScore?.toLocaleString()}
+                      </span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, color: C.muted, letterSpacing: "0.2em" }}>XP</span>
+                    </div>
+                    <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, fontWeight: 700, color: "#64748b" }}>
+                      {entry.matches ?? "—"}
                     </span>
                   </motion.div>
                 );
