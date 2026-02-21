@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Gamepad2, Trophy, User, LogOut, Sparkles } from "lucide-react";
+import { Home, Gamepad2, Trophy, User, LogOut } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { motion, AnimatePresence } from "framer-motion";
+import { XpBadge } from "@/components/game/XpBadge";
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -132,8 +133,11 @@ export function Sidebar() {
                     })}
                 </div>
 
-                {/* bottom: season banner + sign out */}
+                {/* bottom: XP badge + sign out */}
                 <div style={{ position: "relative", zIndex: 1, marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ marginBottom: 12 }}>
+                        <XpBadge variant="expanded" />
+                    </div>
 
 
                     {/* sign out */}

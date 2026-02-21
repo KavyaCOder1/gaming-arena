@@ -7,40 +7,119 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── User ─────────────────────────────────────────────────────────────────────
 model User {
+  id          String    @id
+  username    String    @unique
+  password    String
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  level       UserLevel?
+  tttGames    TicTacToeGame[]
+  wsGames     WordSearchGame[]
+  leaderboard Leaderboard[]
+  tttSessions TicTacToeSession[]
+  wsSessions  WordSearchSession[]
+}
+
+// ─── Level / XP ───────────────────────────────────────────────────────────────
+model UserLevel {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  xp        Int      @default(0)
+  rank      UserRank @default(ROOKIE)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Active Tic-Tac-Toe Session (server owns all game logic) ──────────────────
+// One row = one live game. Created by POST /api/games/ttt/start.
+// The server is the ONLY thing that writes board, aiLastCell, result, finished.
+// Client sends only: sessionId + playerCell. Server computes AI, updates board,
+// returns new state. Client cannot lie about anything.
+model TicTacToeSession {
+  id          String         @id @default(cuid())
+  userId      String
+  difficulty  GameDifficulty
+  board       String         // JSON: (null|"X"|"O")[]  — 9 cells
+  aiLastCell  Int?           // last cell AI played (returned to client for animation)
+  result      GameResult?    // set by server when game ends
+  finished    Boolean        @default(false)
+  startedAt   DateTime       @default(now())
+  finishedAt  DateTime?
+  savedAt     DateTime?      // set when finish-game writes the permanent record
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, finished])
+}
+
+// ─── Permanent Tic-Tac-Toe game record ────────────────────────────────────────
+model TicTacToeGame {
+  id         String         @id @default(cuid())
+  userId     String
+  result     GameResult
+  difficulty GameDifficulty
+  score      Int
+  xpEarned   Int            @default(0)
+  duration   Int
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ─── Active Word Search Session (server-authoritative) ──────────────────────────
+// Server generates grid + places words. Client only reports which cells it selected.
+// On finish, XP is awarded only if all words were found (completed = true).
+model WordSearchSession {
   id           String         @id @default(cuid())
-  username     String         @unique
-  password     String
-  createdAt    DateTime       @default(now())
-  lastLoginAt  DateTime?
-  gameHistory  GameHistory[]
-  leaderboard  Leaderboard[]
+  userId       String
+  difficulty   GameDifficulty
+  gridSize     Int
+  gridData     String         // JSON: string[][] — the full grid
+  placedWords  String         // JSON: PlacedWord[] — { word, cells }[]
+  foundWords   String         @default("[]") // JSON: string[] — words validated by server
+  totalWords   Int
+  finished     Boolean        @default(false)
+  completed    Boolean        @default(false) // true if all words found
+  startedAt    DateTime       @default(now())
+  finishedAt   DateTime?
+  savedAt      DateTime?      // set once finish route writes the permanent record
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, finished])
 }
 
-model GameHistory {
-  id        String      @id @default(cuid())
-  userId    String
-  gameType  GameType
-  level     Difficulty
-  score     Int
-  duration  Int         // in seconds
-  createdAt DateTime    @default(now())
-
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+// ─── Word Search game records ─────────────────────────────────────────────────
+model WordSearchGame {
+  id         String         @id @default(cuid())
+  userId     String
+  difficulty GameDifficulty
+  score      Int
+  xpEarned   Int            @default(0)
+  wordsFound Int
+  totalWords Int
+  completed  Boolean        @default(false)
+  duration   Int
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt(sort: Desc)])
 }
 
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
 model Leaderboard {
-  id        String      @id @default(cuid())
-  userId    String
-  gameType  GameType
-  highScore Int
-  updatedAt DateTime    @updatedAt
-
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, gameType])
+  id         String         @id @default(cuid())
+  userId     String
+  gameType   GameType
+  difficulty GameDifficulty
+  highScore  Int
+  updatedAt  DateTime       @updatedAt
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, gameType, difficulty])
+  @@index([gameType, difficulty, highScore(sort: Desc)])
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
 enum GameType {
   WORD_SEARCH
   TIC_TAC_TOE
@@ -48,8 +127,21 @@ enum GameType {
   PACMAN
 }
 
-enum Difficulty {
+enum GameDifficulty {
   EASY
   MEDIUM
   HARD
+}
+
+enum GameResult {
+  WIN
+  LOSE
+  DRAW
+}
+
+enum UserRank {
+  ROOKIE
+  VETERAN
+  ELITE
+  LEGEND
 }

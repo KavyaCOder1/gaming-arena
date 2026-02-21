@@ -6,6 +6,7 @@ import { Gamepad2, LogOut, Menu, X, Home, Trophy, User, Swords } from "lucide-re
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { XpBadge } from "@/components/game/XpBadge";
 
 interface NavbarProps {
     onGamesClick?: () => void;
@@ -134,7 +135,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
                                 </div>
                                 <div>
                                     <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#f8fafc", textTransform: "uppercase", letterSpacing: "0.05em" }}>{user.username}</div>
-                                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 10, color: "#22d3ee", fontWeight: 700, letterSpacing: "0.1em" }}>LVL 42 PRO</div>
+                                    <XpBadge variant="compact" />
                                 </div>
                             </Link>
                             <button onClick={handleLogout}
@@ -219,9 +220,9 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, color: "#f8fafc", textTransform: "uppercase", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.username}</div>
-                                    <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11, color: "#22d3ee", fontWeight: 700, letterSpacing: "0.15em" }}>LVL 42 · ELITE OPERATIVE</div>
+                                    <div style={{ marginTop: 3 }}><XpBadge variant="compact" /></div>
                                 </div>
-                                <div style={{ padding: "3px 10px", borderRadius: 6, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.25)", fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.15em" }}>PRO</div>
+                
                             </div>
                         )}
 
@@ -250,7 +251,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
                                 <button onClick={handleLogout}
                                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "13px", borderRadius: 14, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", color: "#ef4444", fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", cursor: "pointer" }}
                                 >
-                                    <LogOut style={{ width: 15, height: 15 }} /> TERMINATE SESSION
+                                    <LogOut style={{ width: 15, height: 15 }} /> SIGN OUT
                                 </button>
                             ) : (
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
