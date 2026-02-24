@@ -165,13 +165,7 @@ export default function WordSearchPage() {
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   const resetGame = async () => {
-    if (status === "playing" && sessionIdRef.current && user) {
-      const dur = Math.max(Math.floor((Date.now() - startRef.current) / 1000), 5);
-      fetch("/api/games/ws/finish", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sessionIdRef.current, duration: dur }),
-      }).catch(console.error);
-    }
+    // No finish call on abort — incomplete games award nothing and /finish is read-only anyway
     sessionIdRef.current = null;
     setStatus("idle"); setGrid([]); setWords([]);
     setFound(new Set()); setFoundCells(new Map());
@@ -215,23 +209,17 @@ export default function WordSearchPage() {
       toastTimer.current = setTimeout(() => setToast(null), 2200);
 
       if (json.completed) {
+        // XP already saved by /validate — no /finish call needed
         const dur = Math.max(Math.floor((Date.now() - startRef.current) / 1000), 5);
         setStatus("win");
         setStats(s => ({ ...s, cleared: s.cleared + 1 }));
-        setSessionXp(x => x + xpRewardRef.current);
-
-        if (user && sessionIdRef.current) {
-          fetch("/api/games/ws/finish", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId: sessionIdRef.current, duration: dur }),
-          }).then(r => {
-            if (r.ok) {
-              sessionIdRef.current = null;
-              if (typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
-            }
-          }).catch(console.error);
-        }
-
+        setSessionXp(x => x + (json.xpEarned ?? xpRewardRef.current));
+        xpRewardRef.current = json.xpEarned ?? xpRewardRef.current;
+        sessionIdRef.current = null;
+        if (typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
+        fetch("/api/leaderboard?gameType=WORD_SEARCH").then(r => r.json()).then(lb => {
+          if (lb?.success) setLeaderboard(lb.data.slice(0, 8));
+        }).catch(console.error);
         setHistory(prev => [{
           id: crypto.randomUUID(), difficulty,
           wordsFound: json.foundCount, totalWords: json.totalWords,

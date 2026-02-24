@@ -7,6 +7,7 @@ import { Trophy, Crown, Medal, Sparkles } from "lucide-react";
 interface Props {
   entries:         LeaderboardEntry[];
   showDifficulty?: boolean; // kept for API compat — no longer used
+  matchesLabel?:   string;  // override the "Matches" column header
 }
 
 function rankMeta(rank: number) {
@@ -16,7 +17,7 @@ function rankMeta(rank: number) {
   return           { color: "#334155",      Icon: null,   bg: "transparent",             border: "transparent"            };
 }
 
-export function LeaderboardTable({ entries }: Props) {
+export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
   if (!entries || entries.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -32,8 +33,8 @@ export function LeaderboardTable({ entries }: Props) {
       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 420 }}>
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            {["Rank", "Player", "Total XP", "Matches"].map(h => (
-              <th key={h} style={{ padding: "10px 18px", textAlign: h === "Total XP" || h === "Matches" ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
+            {["Rank", "Player", "Total XP", matchesLabel].map(h => (
+              <th key={h} style={{ padding: "10px 18px", textAlign: h === "Total XP" || h === matchesLabel ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
             ))}
           </tr>
         </thead>

@@ -204,7 +204,7 @@ export function AuthModal() {
                                             <Gamepad2 style={{ color: C.cyan, width: 22, height: 22 }} />
                                         </div>
                                         <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 17, fontWeight: 900, color: C.text, letterSpacing: "-0.02em" }}>
-                                            GAMING<span style={{ color: C.cyan }}>ARENA</span>
+                                            GAMING <span style={{ color: C.cyan }}>ARENA</span>
                                         </span>
                                     </div>
                                     <h2 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,3vw,34px)", fontWeight: 900, color: C.text, lineHeight: 0.9, textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.03em", marginBottom: 14 }}>
@@ -279,7 +279,7 @@ export function AuthModal() {
                                             <Gamepad2 style={{ color: C.cyan, width: 17, height: 17 }} />
                                         </div>
                                         <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 15, fontWeight: 900, color: C.text, letterSpacing: "-0.01em" }}>
-                                            GAMING<span style={{ color: C.cyan }}>ARENA</span>
+                                            GAMING <span style={{ color: C.cyan }}>ARENA</span>
                                         </span>
                                     </div>
                                     <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.cyan, letterSpacing: "0.35em", textTransform: "uppercase", marginBottom: 4 }}>Access Portal</p>
@@ -300,7 +300,7 @@ export function AuthModal() {
                                             <Gamepad2 style={{ color: C.cyan, width: isMobile ? 26 : 32, height: isMobile ? 26 : 32 }} />
                                         </div>
                                         <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: isMobile ? 20 : 26, fontWeight: 900, color: C.text, letterSpacing: "-0.02em" }}>
-                                            GAMING<span style={{ color: C.cyan }}>ARENA</span>
+                                            GAMING <span style={{ color: C.cyan }}>ARENA</span>
                                         </span>
                                     </div>
                                 </motion.div>

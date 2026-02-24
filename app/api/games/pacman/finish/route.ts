@@ -1,18 +1,25 @@
 /**
  * POST /api/games/pacman/finish
  *
- * Security layers (in order):
- *  1. Auth        — must be a logged-in user
- *  2. Token       — must supply token returned by /start
- *  3. Ownership   — token must belong to the requesting user
- *  4. Expiry      — token expires 2h after /start
- *  5. One-use     — token is marked used on first success, rejected after
- *  6. HMAC sig    — token signature verified server-side (can't forge)
- *  7. Time sanity — reported duration must match real elapsed time (±60s)
- *  8. Score sanity— score can't exceed what's physically achievable in the time
- *  9. Stage sanity— can't be on stage N if not enough time has passed
+ * READ score/stage FROM DB — client cannot send or alter them.
+ * Client only sends: { receipt } — the HMAC receipt issued by /commit.
  *
- * Receives: { token, score, stage, duration }
+ * Flow:
+ *   /start  → token (session proof)
+ *   /commit → receipt (score proof, score stored in DB)
+ *   /finish → verifies receipt, reads score/stage from DB, awards XP
+ *
+ * Security:
+ *  1. Auth         — must be logged-in user
+ *  2. Receipt sig  — HMAC verified against DB-stored receipt (constant-time)
+ *  3. Ownership    — session belongs to requesting user
+ *  4. One-use      — marks session used atomically, rejects duplicates
+ *  5. Expiry       — receipt expires with session (2h from start)
+ *  6. Score/stage  — read exclusively from DB (written by /commit) — client cannot alter
+ *
+ * Hitting this directly without /commit → no receipt → 400.
+ * Replaying the receipt → already-used session → 409.
+ * Forging a receipt → HMAC mismatch → 403.
  */
 import { NextResponse } from "next/server";
 import { db }           from "@/lib/db";
@@ -25,16 +32,20 @@ const SECRET = process.env.PACMAN_TOKEN_SECRET
   ?? process.env.NEXTAUTH_SECRET
   ?? "pacman-fallback-secret-change-me";
 
-function verifyToken(token: string, sessionId: string, userId: string, startedAt: Date): boolean {
+function verifyReceipt(
+  receipt:   string,
+  sessionId: string,
+  score:     number,
+  stage:     number,
+  commitAt:  Date,
+): boolean {
   const expected = createHmac("sha256", SECRET)
-    .update(`${sessionId}:${userId}:${startedAt.getTime()}`)
+    .update(`receipt:${sessionId}:${score}:${stage}:${commitAt.getTime()}`)
     .digest("hex");
-  const actual = token.split(".")[1] ?? "";
-  if (expected.length !== actual.length) return false;
-  // Constant-time comparison
+  if (expected.length !== receipt.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i++)
-    diff |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
+    diff |= expected.charCodeAt(i) ^ receipt.charCodeAt(i);
   return diff === 0;
 }
 
@@ -46,79 +57,62 @@ function calcXp(score: number, stage: number): number {
 }
 
 const schema = z.object({
-  token:    z.string().min(10).max(300),
-  score:    z.number().int().min(0).max(9_999_999),
-  stage:    z.number().int().min(1).max(8).default(1),
-  duration: z.number().int().min(1).max(7200),
+  receipt: z.string().min(10).max(300),
 });
 
 export async function POST(req: Request) {
-  // ── 1. Auth ───────────────────────────────────────────────────────────────
+  // 1. Auth
   const session = await getSession();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const userId = session.user.id;
 
-  // ── 2. Parse body ─────────────────────────────────────────────────────────
+  // 2. Parse body — only receipt, no score/stage/duration from client
   let body: z.infer<typeof schema>;
   try { body = schema.parse(await req.json()); }
   catch { return NextResponse.json({ error: "Invalid request" }, { status: 400 }); }
 
-  const { token, score, stage, duration } = body;
+  const { receipt } = body;
 
-  // ── 3. Look up session by token ───────────────────────────────────────────
-  const pacSession = await db.pacmanSession.findUnique({ where: { token } });
-  if (!pacSession)
-    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
+  // 3. Find session by receipt
+  const pac = await db.pacmanSession.findFirst({ where: { receipt } });
+  if (!pac || pac.committedScore === null || pac.committedStage === null || !pac.commitAt)
+    return NextResponse.json({ error: "Invalid or missing receipt" }, { status: 400 });
 
-  // ── 4. Ownership ──────────────────────────────────────────────────────────
-  if (pacSession.userId !== userId)
-    return NextResponse.json({ error: "Token mismatch" }, { status: 403 });
+  // 4. Ownership
+  if (pac.userId !== userId)
+    return NextResponse.json({ error: "Receipt mismatch" }, { status: 403 });
 
-  // ── 5. One-use ────────────────────────────────────────────────────────────
-  if (pacSession.used)
-    return NextResponse.json({ error: "Token already used" }, { status: 409 });
+  // 5. One-use
+  if (pac.used)
+    return NextResponse.json({ error: "Already saved" }, { status: 409 });
 
-  // ── 6. Expiry ─────────────────────────────────────────────────────────────
-  if (pacSession.expiresAt < new Date())
+  // 6. Expiry
+  if (pac.expiresAt < new Date())
     return NextResponse.json({ error: "Session expired" }, { status: 403 });
 
-  // ── 7. HMAC verification ──────────────────────────────────────────────────
-  if (!verifyToken(token, pacSession.id, userId, pacSession.startedAt))
-    return NextResponse.json({ error: "Invalid token signature" }, { status: 403 });
+  // 7. Verify receipt HMAC — score/stage cannot have been altered
+  if (!verifyReceipt(receipt, pac.id, pac.committedScore, pac.committedStage, pac.commitAt))
+    return NextResponse.json({ error: "Receipt verification failed" }, { status: 403 });
 
-  // ── 8. Time sanity ────────────────────────────────────────────────────────
-  // Real elapsed = now - when /start was called. Allow 60s buffer for lag/tab-switch.
-  const realElapsed = Math.floor((Date.now() - pacSession.startedAt.getTime()) / 1000);
-  if (duration > realElapsed + 60)
-    return NextResponse.json({ error: "Duration exceeds session time" }, { status: 400 });
-
-  // ── 9. Score sanity ───────────────────────────────────────────────────────
-  // PAC-MAN max burst: 4 ghosts back-to-back = 1600 pts. Sustained ~500 pts/sec max.
-  const maxScore = Math.max(realElapsed * 600, 1600);
-  if (score > maxScore)
-    return NextResponse.json({ error: "Score not achievable in session time" }, { status: 400 });
-
-  // ── 10. Stage sanity ──────────────────────────────────────────────────────
-  // Each neighbourhood takes at minimum ~60s to clear
-  const maxStage = Math.min(8, Math.floor(realElapsed / 60) + 1);
-  if (stage > maxStage)
-    return NextResponse.json({ error: "Stage not reachable in session time" }, { status: 400 });
-
-  // ── All checks passed ─────────────────────────────────────────────────────
+  // 8. All checks passed — read score/stage from DB (never from client)
+  const score    = pac.committedScore;
+  const stage    = pac.committedStage;
+  const duration = Math.max(Math.floor((Date.now() - pac.startedAt.getTime()) / 1000), 1);
   const xpEarned = calcXp(score, stage);
+
   let newXp = 0, newRank = "ROOKIE";
 
   try {
     await db.$transaction(async (tx) => {
-      // Mark token as used immediately (prevents race-condition double submits)
-      await tx.pacmanSession.update({
-        where: { id: pacSession.id },
+      // Mark used atomically — prevents race-condition double-submits
+      const upd = await tx.pacmanSession.updateMany({
+        where: { id: pac.id, used: false },
         data:  { used: true },
       });
+      if (upd.count === 0) throw Object.assign(new Error("dup"), { code: "DUP" });
 
-      // Save game history
+      // Save game record
       await tx.pacmanGame.create({
         data: { userId, score, stage, xpEarned, duration },
       });
@@ -147,7 +141,9 @@ export async function POST(req: Request) {
 
       await tx.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
     });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "DUP")
+      return NextResponse.json({ error: "Already saved" }, { status: 409 });
     console.error("[pacman/finish]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

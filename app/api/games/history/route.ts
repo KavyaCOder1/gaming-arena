@@ -32,6 +32,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: games });
     }
 
+    if (gameType === "MEMORY") {
+      const games = await db.memoryGame.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return NextResponse.json({ success: true, data: games });
+    }
+
     // No gameType — return both
     const [ttt, ws] = await Promise.all([
       db.ticTacToeGame.findMany({

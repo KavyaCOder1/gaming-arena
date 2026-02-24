@@ -75,7 +75,7 @@ export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
                         <Gamepad2 style={{ width: 22, height: 22, color: "#fff" }} />
                     </div>
                     <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 18, fontWeight: 900, color: "#f8fafc", letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>
-                        GAMING<span style={{ color: "#22d3ee" }}>ARENA</span>
+                        GAMING <span style={{ color: "#22d3ee" }}>ARENA</span>
                     </span>
                 </Link>
 

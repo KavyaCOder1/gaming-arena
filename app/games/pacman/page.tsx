@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Trophy, Crown, Medal, Zap, Ghost,
-  Grid3X3, RefreshCw, Maximize2, Minimize2, Clock, Star,
+  Grid3X3, RefreshCw, Maximize2, Minimize2, Clock, Star, Gamepad2
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
@@ -113,39 +113,49 @@ export default function PacmanPage() {
   }, [status]); // eslint-disable-line
 
   // ── Save score ───────────────────────────────────────────────────────────
+  // Flow: /commit (lock score server-side, get receipt) → /finish (receipt-only, reads score from DB)
   const saveScore = useCallback(async (score: number, stage: number) => {
     if (savedRef.current) return;
     savedRef.current = true;
 
-    const dur = Math.max(Math.floor((Date.now() - startRef.current) / 1000), 5);
     const xp = calcXp(score, stage);
-
     setLastScore(score);
     setLastStage(stage);
     setLastXp(xp);
     setStatus("finished");
     setStats(s => ({
-      played: s.played + 1,
+      played:    s.played + 1,
       bestScore: Math.max(s.bestScore, score),
       bestStage: Math.max(s.bestStage, stage),
     }));
 
-    if (user && score > 0) {
-      try {
-        const res = await fetch("/api/games/pacman/finish", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: tokenRef.current, score, stage, duration: dur }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          setSessionXp(s => s + (json.xpEarned ?? xp));
-          if (typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
-          fetchLb();
-          fetchHistory();
-        }
-      } catch (e) { console.error(e); }
-    }
+    if (!user || !tokenRef.current) return;
+
+    try {
+      // Step 1: commit — server validates & stores score, returns signed receipt
+      const commitRes = await fetch("/api/games/pacman/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenRef.current, score, stage }),
+      });
+      const commitJson = await commitRes.json();
+      if (!commitJson.success || !commitJson.receipt) return;
+
+      // Step 2: finish — server reads score from DB (receipt is the only input)
+      const finishRes = await fetch("/api/games/pacman/finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receipt: commitJson.receipt }),
+      });
+      const json = await finishRes.json();
+      if (json.success) {
+        setLastXp(json.xpEarned ?? xp);
+        setSessionXp(s => s + (json.xpEarned ?? xp));
+        if (typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
+        fetchLb();
+        fetchHistory();
+      }
+    } catch (e) { console.error(e); }
   }, [user, fetchLb, fetchHistory]);
 
   // ── postMessage listener ─────────────────────────────────────────────────
@@ -335,8 +345,18 @@ export default function PacmanPage() {
             {/* IDLE placeholder */}
             {status === "idle" && (
               <div style={{ width: "100%", height: "clamp(420px,54vw,620px)", background: "rgba(8,12,28,0.96)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-                <motion.div animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.06, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
-                  <Ghost style={{ width: 72, height: 72, color: C.cyan, filter: `drop-shadow(0 0 20px ${C.cyan})` }} />
+                <motion.div animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.04, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, #6366f1, #22d3ee)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 32px rgba(34,211,238,0.5), 0 0 60px rgba(99,102,241,0.3)" }}>
+                      <Gamepad2 style={{ width: 36, height: 36, color: "#fff", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.6))" }} />
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,32px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                        GAMING<span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}> ARENA</span>
+                      </div>
+                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", marginTop: 4 }}>PAC-MAN · HALLOWEEN 2025</div>
+                    </div>
+                  </div>
                 </motion.div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3vw,24px)", fontWeight: 900, color: C.text, letterSpacing: "0.08em", marginBottom: 6 }}>PAC-MAN HALLOWEEN 2025</div>
@@ -369,7 +389,7 @@ export default function PacmanPage() {
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 16px rgba(245,158,11,0.5))" }}>
                     {lastScore.toLocaleString()}
                   </div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#334155", letterSpacing: "0.3em", marginTop: 4 }}>FINAL SCORE</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#64748b", letterSpacing: "0.3em", marginTop: 4, fontWeight: 700 }}>FINAL SCORE</div>
                   <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
                     {[
                       { label: "STAGE", value: `${lastStage} / 8`, color: C.cyan },
@@ -377,9 +397,9 @@ export default function PacmanPage() {
                       { label: "TIME", value: fmt(gameTime), color: "#a78bfa" },
                     ].map((s, i) => (
                       <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
-                        style={{ padding: "8px 16px", borderRadius: 10, background: "rgba(15,23,42,0.8)", border: `1px solid ${s.color}30`, textAlign: "center" }}>
-                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 3 }}>{s.label}</div>
-                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 16, fontWeight: 900, color: s.color }}>{s.value}</div>
+                        style={{ padding: "12px 20px", borderRadius: 12, background: `rgba(15,23,42,0.9)`, border: `1px solid ${s.color}55`, textAlign: "center", boxShadow: `0 0 16px ${s.color}20` }}>
+                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", marginBottom: 6, fontWeight: 700 }}>{s.label}</div>
+                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 20, fontWeight: 900, color: s.color, textShadow: `0 0 12px ${s.color}80`, filter: `drop-shadow(0 0 6px ${s.color}60)` }}>{s.value}</div>
                       </motion.div>
                     ))}
                   </div>

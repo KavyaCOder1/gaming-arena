@@ -1,137 +1,124 @@
+<!--
+  GAMING ARENA BRIDGE v6
+  - postMessage calls injected directly into index.min.js
+  - Logo replaced via MutationObserver watching Shadow DOM
+-->
 <!DOCTYPE html>
 <html data-generated-by="stalefish@0.1.0" data-geo="ALL" data-locale="en_ALL" dir="ltr" lang="en">
 <head>
     <meta charset="utf-8">
     <link href="https://fonts.googleapis.com" rel="preconnect">
     <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code&family=Orbitron:wght@900&display=swap" rel="stylesheet">
     <link href="index.min.css" rel="stylesheet">
     <link href="favicon.ico" rel="icon" sizes="any">
     <link href="favicon.svg" rel="icon" type="image/svg+xml">
     <link href="apple-touch-icon-180x180.png" rel="apple-touch-icon">
     <meta content="initial-scale=1, minimum-scale=1, width=device-width, viewport-fit=cover" name="viewport">
+    <meta content="PAC-MAN: Halloween 2025 Edition" property="og:title">
     <title>PAC-MAN: Halloween 2025 Edition</title>
 
     <script>
     (function () {
       'use strict';
 
-      // ── 1. Intercept fetch to inject username into content.json ────────────────
-      // The game fetches content.json once at startup to get b.nickname (shown on
-      // the intro screen as "CHARACTER / NICKNAME"). We intercept that fetch and
-      // replace the nickname with the username passed in from the parent via
-      // window.__pacmanUsername (set by the parent page before iframe loads).
-      var _origFetch = window.fetch.bind(window);
-      window.fetch = function (input, init) {
-        var url = (typeof input === 'string') ? input : (input && input.url) || '';
-        if (url === 'content.json' || url.indexOf('content.json') !== -1) {
-          return _origFetch(input, init).then(function (resp) {
-            return resp.json().then(function (data) {
-              var username = window.__pacmanUsername || 'PLAYER';
-              // content.json → { content: { nickname, character, ... } }
-              if (data && data.content) {
-                data.content.nickname  = username.toUpperCase();
-                data.content.character = 'PAC-MAN';
-              }
-              var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-              return new Response(blob, { status: 200, headers: { 'Content-Type': 'application/json' } });
-            });
-          });
-        }
-        return _origFetch(input, init);
-      };
+      /* ─── Gaming Arena SVG Logo ─────────────────────────────────────── */
+      // Single <text> with two <tspan> = zero gap, browser handles layout perfectly
+      var LOGO_SVG = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 60"',
+             ' style="display:block;width:100%;max-width:314px;height:auto">',
+          '<defs>',
+            '<linearGradient id="ga-g" x1="0%" y1="0%" x2="100%" y2="100%">',
+              '<stop offset="0%" stop-color="#6366f1"/>',
+              '<stop offset="100%" stop-color="#22d3ee"/>',
+            '</linearGradient>',
+            '<filter id="ga-gl" x="-50%" y="-50%" width="200%" height="200%">',
+              '<feGaussianBlur stdDeviation="5" result="b"/>',
+              '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>',
+            '</filter>',
+          '</defs>',
 
-      // ── 2. Hook into Phaser registry once the game is ready ───────────────────
-      // The game web-component is <pcm-game>.  After it renders it has a `.game`
-      // property which is the Phaser.Game instance.  We wait for it then attach
-      // listeners to Phaser's registry event system.
-      //
-      // Registry events we care about:
-      //   "changedata-currentScene"  → fires with value "game-over" at end
-      //   "changedata-score"         → fires whenever score updates (live tracking)
-      //   "changedata-currentLevelNumber" → fires when level/stage advances
-      //
-      var _hooked       = false;
-      var _lastScore    = 0;
-      var _lastLevel    = 1;
-      var _gameOverSent = false;
+          /* — cyan glow halo — */
+          '<rect x="1" y="1" width="58" height="58" rx="16" fill="#22d3ee" opacity="0.15" filter="url(#ga-gl)"/>',
+          /* — gradient box — */
+          '<rect x="3" y="3" width="54" height="54" rx="14" fill="url(#ga-g)"/>',
 
-      function hookPhaserGame(gameEl) {
-        if (_hooked) return;
-        var game = gameEl.game;
-        if (!game || !game.registry) return;
-        _hooked = true;
+          /* — Lucide Gamepad2 (24×24 viewBox, scaled 1.75×, centered at 30,30) — */
+          '<g transform="translate(30,30) scale(1.75) translate(-12,-12)"',
+             ' stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">',
+            '<line x1="6" y1="12" x2="10" y2="12"/>',
+            '<line x1="8" y1="10" x2="8" y2="14"/>',
+            '<line x1="15" y1="13" x2="15.01" y2="13" stroke-width="2.6"/>',
+            '<line x1="18" y1="11" x2="18.01" y2="11" stroke-width="2.6"/>',
+            '<path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.544-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+          '</g>',
 
-        var reg = game.registry;
+          /* — ONE text element, two tspan — browser joins them with zero gap — */
+          '<text y="37" font-family="Orbitron,Arial Black,sans-serif" font-weight="900" font-size="23">',
+            '<tspan x="69" fill="#f8fafc">GAMING</tspan>',
+            '<tspan fill="#22d3ee" filter="url(#ga-gl)" dx="8">ARENA</tspan>',
+          '</text>',
 
-        // Live score tracking (optional – used for "quit & save" button)
-        reg.events.on('changedata-score', function (parent, value) {
-          _lastScore = value || 0;
-          window.parent.postMessage({ type: 'pacman_score_update', score: _lastScore }, '*');
-        });
+          /* — subtitle — */
+          '<text x="69" y="52" font-family="Arial,sans-serif" font-size="9" fill="#475569" letter-spacing="1.5">PAC-MAN \u00b7 HALLOWEEN 2025</text>',
+        '</svg>'
+      ].join('');
 
-        // Level / stage tracking
-        reg.events.on('changedata-currentLevelNumber', function (parent, value) {
-          _lastLevel = value || 1;
-          window.parent.postMessage({ type: 'pacman_level_update', level: _lastLevel }, '*');
-        });
-
-        // Game over — the authoritative signal
-        reg.events.on('changedata-currentScene', function (parent, value) {
-          if (value === 'game-over' && !_gameOverSent) {
-            _gameOverSent = true;
-            // Give Phaser one tick to finalise the score in registry
-            setTimeout(function () {
-              var finalScore = reg.get('score') || _lastScore || 0;
-              var finalLevel = reg.get('currentLevelNumber') || _lastLevel || 1;
-              window.parent.postMessage({
-                type:  'pacman_game_over',
-                score: finalScore,
-                level: finalLevel,
-              }, '*');
-            }, 50);
-          }
-        });
-
-        // Also listen for registry bulk-set to catch score at game-over scene start
-        reg.events.on('changedata', function (parent, key, value) {
-          if (key === 'score')             _lastScore = value || 0;
-          if (key === 'currentLevelNumber') _lastLevel = value || 1;
-        });
-
-        // Reset flags when a new game starts (currentScene goes to first level)
-        reg.events.on('changedata-currentScene', function (parent, value) {
-          if (value !== 'game-over') {
-            _gameOverSent = false;
-          }
-        });
+      /* ─── Inject logo into Shadow DOM once it appears ───────────────── */
+      function injectLogo(shadowRoot) {
+        var wrapper = shadowRoot.querySelector('.logo-wrapper');
+        if (!wrapper) return false;
+        var img = wrapper.querySelector('img');
+        if (!img) return false;
+        var div = document.createElement('div');
+        div.innerHTML = LOGO_SVG;
+        img.replaceWith(div.firstChild);
+        return true;
       }
 
-      // Poll for <pcm-game> element and its .game property
-      var _pollTimer = setInterval(function () {
-        var el = document.querySelector('pcm-game');
-        if (el && el.game && el.game.registry) {
-          clearInterval(_pollTimer);
-          hookPhaserGame(el);
-        }
-      }, 100);
+      function watchForLogo() {
+        var attempts = 0;
+        var timer = setInterval(function() {
+          attempts++;
+          try {
+            var root = document.querySelector('pcm-root');
+            if (!root || !root.shadowRoot) return;
+            var game = root.shadowRoot.querySelector('pcm-game');
+            if (!game || !game.shadowRoot) return;
+            if (injectLogo(game.shadowRoot)) {
+              clearInterval(timer);
+              return;
+            }
+          } catch(e) {}
+          if (attempts > 100) clearInterval(timer);
+        }, 100);
+      }
 
-      // Stop polling after 60s (game definitely loaded or failed)
-      setTimeout(function () { clearInterval(_pollTimer); }, 60000);
+      document.addEventListener('DOMContentLoaded', watchForLogo);
 
-      // ── 3. Expose a manual trigger for the "Quit & Save" button ─────────────
-      // When user clicks QUIT in the parent page, we read the live score from
-      // the game registry and post it back.
+      /* ─── postMessage bridge (Quit & Save) ──────────────────────────── */
+      var _gameOverFired = false;
+
+      window.addEventListener('message', function(e) {
+        if (!e.data) return;
+        if (e.data.type === 'pacman_restart')  _gameOverFired = false;
+        if (e.data.type === 'pacman_game_over') _gameOverFired = true;
+      });
+
       window.__pacmanRequestScore = function () {
-        var el  = document.querySelector('pcm-game');
-        var reg = el && el.game && el.game.registry;
-        var score = (reg && reg.get('score')) || _lastScore || 0;
-        var level = (reg && reg.get('currentLevelNumber')) || _lastLevel || 1;
-        window.parent.postMessage({
-          type:  'pacman_game_over',
-          score: score,
-          level: level,
-        }, '*');
+        if (_gameOverFired) return;
+        try {
+          var root = document.querySelector('pcm-root');
+          var sr   = root && root.shadowRoot;
+          var el   = sr && sr.querySelector('pcm-game');
+          var game = el && el.game;
+          if (game) {
+            var score = game.registry.get('score') || 0;
+            var stage = game.registry.get('currentLevelNumber') || 1;
+            _gameOverFired = true;
+            window.parent.postMessage({ type: 'pacman_game_over', score: score, stage: stage }, '*');
+          }
+        } catch(e) {}
       };
 
     }());
@@ -140,12 +127,7 @@
 <body>
     <style>
         :root { --font-stack: sans-serif; }
-        html, body {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            overflow: hidden;
-            background: #000;
-        }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
     </style>
     <span aria-hidden="true" style="font-family: var(--font-stack);"></span>
     <script defer src="index.min.js"></script>

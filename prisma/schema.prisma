@@ -23,6 +23,8 @@ model User {
   leaderboard  Leaderboard[]
   tttSessions  TicTacToeSession[]
   wsSessions   WordSearchSession[]
+  memoryGames    MemoryGame[]
+  memorySessions MemorySession[]
 }
 
 // ─── Level / XP ───────────────────────────────────────────────────────────────
@@ -50,7 +52,9 @@ model TicTacToeSession {
   finished    Boolean        @default(false)
   startedAt   DateTime       @default(now())
   finishedAt  DateTime?
-  savedAt     DateTime?      // set when finish-game writes the permanent record
+  savedAt     DateTime?      // stamped by /move when game ends — /finish is read-only after
+  score       Int?           // computed by /move on game end, read back by /finish
+  xpEarned    Int?           // computed by /move on game end, read back by /finish
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, finished])
@@ -83,10 +87,11 @@ model WordSearchSession {
   foundWords   String         @default("[]") // JSON: string[] — words validated by server
   totalWords   Int
   finished     Boolean        @default(false)
-  completed    Boolean        @default(false) // true if all words found
+  completed    Boolean        @default(false)  // true if all words found
   startedAt    DateTime       @default(now())
-  finishedAt   DateTime?
-  savedAt      DateTime?      // set once finish route writes the permanent record
+  completedAt  DateTime?      // stamped by /validate when last word found — duration source of truth
+  savedAt      DateTime?      // stamped by /validate on completion (read-only after)
+  xpEarned     Int?           // computed + stored by /validate on completion
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, finished])
@@ -110,13 +115,18 @@ model WordSearchGame {
 
 // ─── Pacman active session (security token) ─────────────────────────────────────
 model PacmanSession {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique  // HMAC token sent to iframe, must be returned on finish
-  startedAt DateTime @default(now())
-  used      Boolean  @default(false)  // consumed on first /finish call
-  expiresAt DateTime // startedAt + 2h
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  userId          String
+  token           String    @unique  // HMAC session token — passed to iframe
+  startedAt       DateTime  @default(now())
+  used            Boolean   @default(false)   // set true by /finish atomically
+  expiresAt       DateTime  // startedAt + 2h
+  // Committed score — written by /commit, read by /finish. Client cannot alter.
+  committedScore  Int?      // score stored at commit time
+  committedStage  Int?      // stage stored at commit time
+  commitAt        DateTime? // when /commit was called
+  receipt         String?   @unique // HMAC receipt = proof score is unaltered
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, used])
   @@index([expiresAt])  // for cleanup
 }
@@ -146,6 +156,44 @@ model Leaderboard {
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, gameType, difficulty])
   @@index([gameType, highScore(sort: Desc)])
+}
+
+// ─── Memory active session (server-authoritative) ──────────────────────────────
+// Server shuffles + stores the deck. Client only sends flip requests.
+// Server tracks which cards are matched — client cannot lie.
+model MemorySession {
+  id           String         @id @default(cuid())
+  userId       String
+  difficulty   GameDifficulty
+  deckData     String         // JSON: { id, sym, pairId }[] — full shuffled deck
+  matchedPairs String         @default("[]") // JSON: number[] — matched pairIds
+  totalPairs   Int
+  moves        Int            @default(0)
+  finished     Boolean        @default(false)
+  completed    Boolean        @default(false)
+  startedAt    DateTime       @default(now())
+  completedAt  DateTime?      // stamped by /flip when last pair matched — duration source of truth
+  savedAt      DateTime?      // stamped by /finish after writing permanent record
+  score        Int?           // computed by /flip on completion, read back by /finish
+  xpEarned     Int?           // computed by /flip on completion, read back by /finish
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, finished])
+}
+
+// ─── Memory game records ─────────────────────────────────────────────────────
+model MemoryGame {
+  id         String         @id @default(cuid())
+  userId     String
+  difficulty GameDifficulty
+  score      Int
+  xpEarned   Int            @default(0)
+  moves      Int
+  matched    Int
+  duration   Int
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────

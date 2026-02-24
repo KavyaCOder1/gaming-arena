@@ -83,10 +83,10 @@ export default function TicTacToePage() {
     }).catch(console.error).finally(() => setLbLoading(false));
   }, [user]);
 
-  const handleGameEnd = useCallback(async (finalBoard: Cell[], outcome: "win" | "lose" | "draw") => {
-    const dur = Math.floor((Date.now() - startRef.current) / 1000);
+  // score/xpEarned come from /move response — /finish awards nothing and is not called
+  const handleGameEnd = useCallback((finalBoard: Cell[], outcome: "win" | "lose" | "draw", pts: number) => {
+    const dur    = Math.floor((Date.now() - startRef.current) / 1000);
     const result = outcome === "win" ? "WIN" : outcome === "lose" ? "LOSE" : "DRAW";
-    const pts = SCORE_DISPLAY[result][difficulty];
 
     setWinLine(findWinLine(finalBoard));
     setStatus(outcome);
@@ -100,20 +100,11 @@ export default function TicTacToePage() {
     }));
     setHistory(prev => [{ id: crypto.randomUUID(), result, difficulty, score: pts, duration: dur, date: new Date() }, ...prev].slice(0, 20));
 
-    if (!user || !sessionIdRef.current) return;
-    try {
-      const res = await fetch("/api/games/ttt/finish", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sessionIdRef.current, duration: Math.max(dur, 3) }),
-      });
-      if (res.ok) {
-        sessionIdRef.current = null;
-        if (typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
-        fetch("/api/leaderboard?gameType=TIC_TAC_TOE").then(r => r.json()).then(lb => {
-          if (lb?.success) setLeaderboard(lb.data.slice(0, 8));
-        }).catch(console.error);
-      }
-    } catch (e) { console.error(e); }
+    sessionIdRef.current = null;
+    if (user && typeof (window as any).__refreshXp === "function") (window as any).__refreshXp();
+    if (user) fetch("/api/leaderboard?gameType=TIC_TAC_TOE").then(r => r.json()).then(lb => {
+      if (lb?.success) setLeaderboard(lb.data.slice(0, 8));
+    }).catch(console.error);
   }, [user, difficulty]);
 
   const handleClick = useCallback(async (idx: number) => {
@@ -138,11 +129,14 @@ export default function TicTacToePage() {
 
       if (!res.ok) { setBoard(board); setAiThinking(false); setIsMyTurn(true); return; }
 
-      const { board: newBoard, status: gameStatus } = await res.json();
+      const { board: newBoard, status: gameStatus, score: moveScore } = await res.json();
       setBoard(newBoard);
 
-      if (gameStatus === "win" || gameStatus === "draw") { setAiThinking(false); await handleGameEnd(newBoard, gameStatus); return; }
-      if (gameStatus === "lose") { setTimeout(async () => { setAiThinking(false); await handleGameEnd(newBoard, "lose"); }, 400); return; }
+      // Use score from /move response (server-computed). Fallback to client display table if missing.
+      const pts = moveScore ?? SCORE_DISPLAY[gameStatus === "win" ? "WIN" : gameStatus === "draw" ? "DRAW" : "LOSE"]?.[difficulty] ?? 0;
+
+      if (gameStatus === "win" || gameStatus === "draw") { setAiThinking(false); handleGameEnd(newBoard, gameStatus, pts); return; }
+      if (gameStatus === "lose") { setTimeout(() => { setAiThinking(false); handleGameEnd(newBoard, "lose", pts); }, 400); return; }
 
       setAiThinking(false);
       setIsMyTurn(true);

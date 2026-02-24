@@ -94,11 +94,15 @@ export const XP_TABLE = {
     LOSE: { EASY:  5,  MEDIUM: 12,  HARD:  25 },
   },
   WORD_SEARCH: {
-    // XP awarded ONLY when ALL words are found (game completed)
-    // No XP for partial / giving up
     COMPLETE: { EASY: 80, MEDIUM: 180, HARD: 350 },
   },
+  MEMORY: {
+    COMPLETE: { EASY: 80,  MEDIUM: 200, HARD: 400 },
+    // Bonus XP per move under par (calculated server-side)
+  },
 } as const;
+
+export const MEMORY_PAR_MOVES = { EASY: 20, MEDIUM: 40, HARD: 80 } as const;
 
 // ─── Score table (leaderboard values) ───────────────────────────────────────
 export const SCORE_TABLE = {

@@ -62,6 +62,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data });
     }
 
+    if (gameType === "MEMORY") {
+      const rows = await db.memoryGame.groupBy({
+        by: ["userId"],
+        _sum: { xpEarned: true },
+        _count: { id: true },
+        orderBy: { _sum: { xpEarned: "desc" } },
+        take: 20,
+      });
+
+      const userIds = rows.map((r) => r.userId);
+      const users   = await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, username: true },
+      });
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+
+      const data = rows
+        .filter((r) => userMap[r.userId])
+        .map((r) => ({
+          user:    userMap[r.userId],
+          totalXp: r._sum.xpEarned ?? 0,
+          matches: r._count.id,
+        }));
+
+      return NextResponse.json({ success: true, data });
+    }
+
     if (gameType === "PACMAN") {
       // Best score per user from leaderboard table
       const rows = await db.leaderboard.findMany({
