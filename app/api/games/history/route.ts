@@ -32,6 +32,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: games });
     }
 
+    if (gameType === "SPACE_SHOOTER") {
+      const games = await db.spaceShooterGame.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return NextResponse.json({ success: true, data: games });
+    }
+
+    if (gameType === "SNAKE") {
+      const games = await db.snakeGame.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return NextResponse.json({ success: true, data: games });
+    }
+
     if (gameType === "MEMORY") {
       const games = await db.memoryGame.findMany({
         where: { userId },

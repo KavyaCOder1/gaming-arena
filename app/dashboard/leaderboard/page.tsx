@@ -3,17 +3,19 @@
 import { useState, useEffect } from "react";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { LeaderboardEntry } from "@/types";
-import { Trophy, Crown, Zap, Ghost } from "lucide-react";
+import { Trophy, Crown, Zap, Ghost, Swords, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 const card = { background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(34,211,238,0.12)", borderRadius: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.4)" };
 
 const GAME_TABS = [
-  { id: "TIC_TAC_TOE", label: "Tic-Tac-Toe", icon: Crown },
-  { id: "WORD_SEARCH",  label: "Word Search",  icon: Zap   },
-  { id: "MEMORY",       label: "Memory",        icon: Trophy },
-  { id: "PACMAN",       label: "Pac-Man",       icon: Ghost  },
+  { id: "TIC_TAC_TOE", label: "Tic-Tac-Toe", icon: Crown  },
+  { id: "WORD_SEARCH", label: "Word Search",  icon: Zap    },
+  { id: "MEMORY",      label: "Memory",       icon: Trophy },
+  { id: "PACMAN",      label: "Pac-Man",      icon: Ghost  },
+  { id: "SNAKE",         label: "Snake",        icon: Swords  },
+  { id: "SPACE_SHOOTER", label: "Star Siege",   icon: Rocket  },
 ];
 
 export default function LeaderboardPage() {
@@ -28,7 +30,7 @@ export default function LeaderboardPage() {
         const res  = await fetch(`/api/leaderboard?gameType=${activeGame}`);
         const json = await res.json();
         if (json.success) {
-          // PACMAN returns highScore — normalise to totalXp/matches for the shared table
+          // PACMAN and SPACE_SHOOTER return highScore — normalise to totalXp/matches
           const normalised = (json.data as any[]).map((r: any) => ({
             user:    r.user,
             totalXp: r.totalXp ?? r.highScore ?? 0,
@@ -80,7 +82,7 @@ export default function LeaderboardPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.cyan, boxShadow: `0 0 8px ${C.cyan}` }} />
             <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: "0.25em", textTransform: "uppercase" }}>
-              {GAME_TABS.find(t => t.id === activeGame)?.label} {activeGame === "PACMAN" ? "· High Score" : "· All Modes"}
+              {GAME_TABS.find(t => t.id === activeGame)?.label} {(activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER") ? "· High Score" : "· All Modes"}
             </span>
           </div>
           <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.18em" }}>

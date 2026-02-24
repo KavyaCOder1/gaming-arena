@@ -25,6 +25,10 @@ model User {
   wsSessions   WordSearchSession[]
   memoryGames    MemoryGame[]
   memorySessions MemorySession[]
+  snakeSessions         SnakeSession[]         @relation("SnakeSessions")
+  snakeGames            SnakeGame[]            @relation("SnakeGames")
+  spaceShooterSessions  SpaceShooterSession[]  @relation("SpaceShooterSessions")
+  spaceShooterGames     SpaceShooterGame[]     @relation("SpaceShooterGames")
 }
 
 // ─── Level / XP ───────────────────────────────────────────────────────────────
@@ -196,12 +200,77 @@ model MemoryGame {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+model SnakeSession {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("SnakeSessions", fields: [userId], references: [id], onDelete: Cascade)
+  
+  difficulty        String    // easy, medium, hard
+  coresCollected    Int       @default(0)
+  survivalTime      Int       @default(0)
+  score             Int       @default(0)
+  snakeLength       Int       @default(3)
+  
+  gameStartedAt     DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SnakeGame {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("SnakeGames", fields: [userId], references: [id], onDelete: Cascade)
+  
+  difficulty        String    // easy, medium, hard
+  coresCollected    Int
+  survivalTime      Int
+  score             Int
+  snakeLength       Int
+  xpEarned          Int
+  
+  savedAt           DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([xpEarned])
+  @@index([createdAt])
+}
+
 // ─── Enums ────────────────────────────────────────────────────────────────────
+model SpaceShooterSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("SpaceShooterSessions", fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model SpaceShooterGame {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("SpaceShooterGames", fields: [userId], references: [id], onDelete: Cascade)
+  score        Int
+  wave         Int
+  kills        Int
+  survivalTime Int
+  xpEarned     Int
+  savedAt      DateTime @default(now())
+  createdAt    DateTime @default(now())
+  @@index([userId])
+  @@index([score(sort: Desc)])
+  @@index([createdAt])
+}
+
 enum GameType {
   WORD_SEARCH
   TIC_TAC_TOE
   MEMORY
   PACMAN
+  SNAKE
+  SPACE_SHOOTER
 }
 
 enum GameDifficulty {

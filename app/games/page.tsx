@@ -2,15 +2,17 @@
 
 import { motion } from "framer-motion";
 import { GameCard } from "@/components/game/GameCard";
-import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2 } from "lucide-react";
+import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2, Worm, Rocket } from "lucide-react";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 
 const games = [
-    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.", image: "https://media.discordapp.net/attachments/1395699416589140000/1474741789046079652/kjahwiu2748_05_46_34_PM.png?ex=699af3d1&is=6999a251&hm=caddbd77f41765f9c2e2da56436399b91b1f368909ba37a5b3024df795149a8d&=&format=webp&quality=lossless&width=582&height=873", icon: Search, href: "/games/word-search", color: "blue" },
-    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?", image: "https://media.discordapp.net/attachments/1395699416589140000/1474749077110390885/ChatGPT_Image_Feb_21_2026_06_15_58_PM.png?ex=699afa9b&is=6999a91b&hm=0fbd50897698ca8a96754e3d206b6ae4250506c217d9b7577bcf6ef6a52c3343&=&format=webp&quality=lossless&width=873&height=873", icon: Grid, href: "/games/tic-tac-toe", color: "green" },
-    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.", image: "https://images.unsplash.com/photo-1611996575749-79a3a250f968?q=80&w=1000&auto=format&fit=crop", icon: LayoutGrid, href: "/games/memory", color: "purple" },
-    { title: "Pacman", description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.", image: "https://media.discordapp.net/attachments/1395699416589140000/1474735832286888129/a7ae5153-4a3a-4e71-8c71-84e0065b82c8.png?ex=699aee45&is=69999cc5&hm=b1627fd1faa6f9401685ba45558841b32882c83f1d2134492e58950f01f1c5a2&=&format=webp&quality=lossless&width=582&height=873", icon: Ghost, href: "/games/pacman", color: "yellow" },
+    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",         image: "/wordsearch.webp",  icon: Search,    href: "/games/word-search",   color: "blue"   },
+    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",          image: "/tictactoe.webp",  icon: Grid,      href: "/games/tic-tac-toe",  color: "green"  },
+    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",           image: "/memorygame.png",  icon: LayoutGrid,href: "/games/memory",       color: "purple" },
+    { title: "Pacman",      description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                        image: "/pacman_img.webp", icon: Ghost,     href: "/games/pacman",       color: "yellow" },
+    { title: "Snake Arena", description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                   image: "/snake.webp",      icon: Worm,      href: "/games/snake",        color: "green"  },
+    { title: "Star Siege",  description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",      image: "/starsiege.webp",  icon: Rocket,    href: "/games/space-shooter",color: "yellow" },
 ];
 
 const filterBtns = ["All Zones", "Strategic", "Arcade", "Puzzle"];
@@ -76,8 +78,8 @@ export default function GamesPage() {
                 </div>
             </div>
 
-            {/* ── GAMES GRID ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,240px),1fr))", gap: 16 }}>
+            {/* ── GAMES GRID - RESPONSIVE ── */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                 {games.map((game, i) => (
                     <motion.div
                         key={i}
@@ -101,6 +103,21 @@ export default function GamesPage() {
             <style>{`
                 @keyframes gPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
                 @media(min-width:560px){ #games-hero-icon { display: block !important; } }
+                @media (max-width: 768px) {
+                    [style*="gridTemplateColumns: repeat(2"] {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                    }
+                }
+                @media (min-width: 768px) {
+                    [style*="gridTemplateColumns: repeat(2"] {
+                        grid-template-columns: repeat(3, 1fr) !important;
+                    }
+                }
+                @media (min-width: 1024px) {
+                    [style*="gridTemplateColumns: repeat(2"] {
+                        grid-template-columns: repeat(4, 1fr) !important;
+                    }
+                }
             `}</style>
         </motion.div>
     );

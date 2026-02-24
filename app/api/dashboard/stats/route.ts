@@ -115,6 +115,8 @@ export async function GET() {
       wsGames,
       memGames,
       pacGames,
+      snakeGames,
+      ssGames,
 
       // ALL games needed for accurate rating calculation
       allTtt,
@@ -127,12 +129,16 @@ export async function GET() {
       wsDur,
       memDur,
       pacDur,
+      snakeDur,
+      ssDur,
 
       // total counts
       tttCount,
       wsCount,
       memCount,
       pacCount,
+      snakeCount,
+      ssCount,
 
       // total XP
       xpRow,
@@ -142,6 +148,8 @@ export async function GET() {
       db.wordSearchGame.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 5 }),
       db.memoryGame.findMany({    where: { userId }, orderBy: { createdAt: "desc" }, take: 5 }),
       db.pacmanGame.findMany({    where: { userId }, orderBy: { createdAt: "desc" }, take: 5 }),
+      db.snakeGame.findMany({          where: { userId }, orderBy: { createdAt: "desc" }, take: 5 }),
+      db.spaceShooterGame.findMany({    where: { userId }, orderBy: { createdAt: "desc" }, take: 5 }),
 
       // All games for rating (capped at last 50 for perf — recent form matters more)
       db.ticTacToeGame.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 50, select: { result: true, difficulty: true } }),
@@ -154,12 +162,16 @@ export async function GET() {
       db.wordSearchGame.aggregate({ where: { userId }, _sum: { duration: true } }),
       db.memoryGame.aggregate({    where: { userId }, _sum: { duration: true } }),
       db.pacmanGame.aggregate({    where: { userId }, _sum: { duration: true } }),
+      db.snakeGame.aggregate({          where: { userId }, _sum: { survivalTime: true } }),
+      db.spaceShooterGame.aggregate({   where: { userId }, _sum: { survivalTime: true } }),
 
       // Counts
       db.ticTacToeGame.count({ where: { userId } }),
       db.wordSearchGame.count({ where: { userId } }),
       db.memoryGame.count({    where: { userId } }),
       db.pacmanGame.count({    where: { userId } }),
+      db.snakeGame.count({         where: { userId } }),
+      db.spaceShooterGame.count({  where: { userId } }),
 
       db.userLevel.findUnique({ where: { userId }, select: { xp: true } }),
     ]);
@@ -167,9 +179,11 @@ export async function GET() {
     const totalSeconds = (tttDur._sum.duration ?? 0)
       + (wsDur._sum.duration ?? 0)
       + (memDur._sum.duration ?? 0)
-      + (pacDur._sum.duration ?? 0);
+      + (pacDur._sum.duration ?? 0)
+      + (snakeDur._sum.survivalTime ?? 0)
+      + (ssDur._sum.survivalTime ?? 0);
 
-    const totalGames = tttCount + wsCount + memCount + pacCount;
+    const totalGames = tttCount + wsCount + memCount + pacCount + snakeCount + ssCount;
     const totalXp    = xpRow?.xp ?? 0;
 
     const rating = calcRating({
@@ -199,6 +213,8 @@ export async function GET() {
         wordSearch: wsGames,
         memory:     memGames,
         pacman:     pacGames,
+        snake:        snakeGames,
+        spaceShooter: ssGames,
       },
     });
   } catch (error) {

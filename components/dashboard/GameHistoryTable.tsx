@@ -10,16 +10,16 @@ interface GameHistoryTableProps {
 }
 
 const LEVEL_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-    EASY:   { color: "#10b981", bg: "rgba(16,185,129,0.10)",  border: "rgba(16,185,129,0.28)" },
-    MEDIUM: { color: "#f59e0b", bg: "rgba(245,158,11,0.10)",  border: "rgba(245,158,11,0.28)" },
-    HARD:   { color: "#ef4444", bg: "rgba(239,68,68,0.10)",   border: "rgba(239,68,68,0.28)"  },
+    EASY: { color: "#10b981", bg: "rgba(16,185,129,0.10)", border: "rgba(16,185,129,0.28)" },
+    MEDIUM: { color: "#f59e0b", bg: "rgba(245,158,11,0.10)", border: "rgba(245,158,11,0.28)" },
+    HARD: { color: "#ef4444", bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.28)" },
 };
 
 const GAME_LABEL: Record<string, string> = {
     WORD_SEARCH: "Word Search",
     TIC_TAC_TOE: "Tic Tac Toe",
-    MEMORY:      "Memory",
-    PACMAN:      "Pacman",
+    MEMORY: "Memory",
+    PACMAN: "Pacman",
 };
 
 export function GameHistoryTable({ history }: GameHistoryTableProps) {
@@ -49,7 +49,7 @@ export function GameHistoryTable({ history }: GameHistoryTableProps) {
                 </thead>
                 <tbody>
                     {history.map((game, i) => {
-                        const lvl = LEVEL_STYLE[game.level] ?? LEVEL_STYLE.MEDIUM;
+                        const lvl = LEVEL_STYLE[game.difficulty] ?? LEVEL_STYLE.MEDIUM;
                         return (
                             <motion.tr
                                 key={game.id}
@@ -67,7 +67,7 @@ export function GameHistoryTable({ history }: GameHistoryTableProps) {
                                             <Zap style={{ width: 14, height: 14, color: "#6366f1", filter: "drop-shadow(0 0 4px rgba(99,102,241,0.6))" }} />
                                         </div>
                                         <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "0.04em" }}>
-                                            {GAME_LABEL[game.gameType] ?? game.gameType.replace("_", " ")}
+                                            {game.gameType ? (GAME_LABEL[game.gameType] ?? game.gameType.replace("_", " ")) : "Unknown"}
                                         </span>
                                     </div>
                                 </td>
@@ -83,7 +83,7 @@ export function GameHistoryTable({ history }: GameHistoryTableProps) {
                                 {/* Threat Level */}
                                 <td style={{ padding: "13px 18px" }}>
                                     <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, fontWeight: 700, color: lvl.color, background: lvl.bg, border: `1px solid ${lvl.border}`, padding: "4px 10px", borderRadius: 6, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                                        {game.level}
+                                        {game.difficulty}
                                     </span>
                                 </td>
 

@@ -107,6 +107,52 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data });
     }
 
+    if (gameType === "SNAKE") {
+      // Aggregate total XP earned + match count from SnakeGame records
+      // (same pattern as TIC_TAC_TOE / MEMORY / WORD_SEARCH leaderboards)
+      const rows = await db.snakeGame.groupBy({
+        by: ["userId"],
+        _sum: { xpEarned: true },
+        _count: { id: true },
+        orderBy: { _sum: { xpEarned: "desc" } },
+        take: 20,
+      });
+
+      const userIds = rows.map((r) => r.userId);
+      const users   = await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, username: true },
+      });
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+
+      const data = rows
+        .filter((r) => userMap[r.userId])
+        .map((r) => ({
+          user:    userMap[r.userId],
+          totalXp: r._sum.xpEarned ?? 0,
+          matches: r._count.id,
+        }));
+
+      return NextResponse.json({ success: true, data });
+    }
+
+    if (gameType === "SPACE_SHOOTER") {
+      // Best score per user from leaderboard table (same as PACMAN pattern)
+      const rows = await db.leaderboard.findMany({
+        where:   { gameType: "SPACE_SHOOTER", difficulty: null },
+        include: { user: { select: { id: true, username: true } } },
+        orderBy: { highScore: "desc" },
+        take:    20,
+      });
+      const data = rows.map(r => ({
+        user:      r.user,
+        highScore: r.highScore,
+        totalXp:   r.highScore,
+        matches:   undefined,
+      }));
+      return NextResponse.json({ success: true, data });
+    }
+
     // Fallback: return empty
     return NextResponse.json({ success: true, data: [] });
   } catch (error) {

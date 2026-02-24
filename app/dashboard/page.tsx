@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAuthStore } from "@/store/auth-store";
-import { Gamepad2, Timer, Star, User, Ghost, Brain, Search, Info, X } from "lucide-react";
+import { Gamepad2, Timer, Star, User, Ghost, Brain, Search, Info, X, Zap } from "lucide-react";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -53,10 +53,12 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
 
   const [stats,   setStats]   = useState<Stats>({ totalGames: 0, totalSeconds: 0, playTimeLabel: "0m", rating: 0, totalXp: 0 });
-  const [tttHist, setTttHist] = useState<any[]>([]);
-  const [wsHist,  setWsHist]  = useState<any[]>([]);
-  const [memHist, setMemHist] = useState<any[]>([]);
-  const [pacHist, setPacHist] = useState<any[]>([]);
+  const [tttHist,   setTttHist]   = useState<any[]>([]);
+  const [wsHist,    setWsHist]    = useState<any[]>([]);
+  const [memHist,   setMemHist]   = useState<any[]>([]);
+  const [pacHist,   setPacHist]   = useState<any[]>([]);
+  const [snakeHist, setSnakeHist] = useState<any[]>([]);
+  const [ssHist,    setSsHist]    = useState<any[]>([]);
   const [level,   setLevel]   = useState<UserLevelData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,10 +74,12 @@ export default function DashboardPage() {
         const levelJson = await levelRes.json();
         if (statsJson.success) {
           setStats(statsJson.stats);
-          setTttHist(statsJson.recentGames?.ticTacToe  ?? []);
-          setWsHist( statsJson.recentGames?.wordSearch  ?? []);
-          setMemHist(statsJson.recentGames?.memory      ?? []);
-          setPacHist(statsJson.recentGames?.pacman      ?? []);
+          setTttHist(  statsJson.recentGames?.ticTacToe  ?? []);
+          setWsHist(   statsJson.recentGames?.wordSearch  ?? []);
+          setMemHist(  statsJson.recentGames?.memory      ?? []);
+          setPacHist(  statsJson.recentGames?.pacman      ?? []);
+          setSnakeHist(statsJson.recentGames?.snake       ?? []);
+          setSsHist(   statsJson.recentGames?.spaceShooter ?? []);
         }
         if (levelJson.success) setLevel(levelJson.data);
       } catch (e) { console.error(e); }
@@ -372,6 +376,66 @@ export default function DashboardPage() {
                       { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                       { label: "Stage", value: <ValueCell color={C.cyan}>LV {g.stage}</ValueCell> },
                       { label: "Time",  value: <TimeCell>{fmt(g.duration)}</TimeCell> },
+                    ]} />
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── SPACE SHOOTER ── */}
+        <div style={{ ...card, overflow: "hidden" }}>
+          <GameCardHeader title="STAR SIEGE" icon={<span style={{ fontSize: 15 }}>🚀</span>} href="/games/space-shooter" />
+          {loading ? <SkeletonRows /> : ssHist.length === 0 ? <EmptyState /> : (
+            <div>
+              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["SCORE","WAVE","KILLS","XP","TIME"]} />
+              {ssHist.map((g, i) => {
+                const last = i === ssHist.length - 1;
+                return (
+                  <React.Fragment key={g.id}>
+                    <GameRow last={last} cols="1fr 60px 70px 65px 65px">
+                      <ValueCell color="#f59e0b" size={13}>{(g.score ?? 0).toLocaleString()}</ValueCell>
+                      <ValueCell color="#22d3ee">{g.wave ?? 1}</ValueCell>
+                      <ValueCell color="#ef4444">{g.kills ?? 0}</ValueCell>
+                      <ValueCell color="#10b981">+{g.xpEarned ?? 0}</ValueCell>
+                      <TimeCell>{fmt(g.survivalTime ?? 0)}</TimeCell>
+                    </GameRow>
+                    <MobileGameRow last={last} cells={[
+                      { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{(g.score ?? 0).toLocaleString()}</ValueCell> },
+                      { label: "Wave",  value: <ValueCell color="#22d3ee">{g.wave ?? 1}</ValueCell> },
+                      { label: "Kills", value: <ValueCell color="#ef4444">{g.kills ?? 0}</ValueCell> },
+                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned ?? 0}</ValueCell> },
+                    ]} />
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── SNAKE ── */}
+        <div style={{ ...card, overflow: "hidden" }}>
+          <GameCardHeader title="SNAKE" icon={<span style={{ fontSize: 15 }}>🐍</span>} href="/games/snake" />
+          {loading ? <SkeletonRows /> : snakeHist.length === 0 ? <EmptyState /> : (
+            <div>
+              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["DIFF","CHIPS","SCORE","XP","TIME"]} />
+              {snakeHist.map((g, i) => {
+                const last = i === snakeHist.length - 1;
+                return (
+                  <React.Fragment key={g.id}>
+                    <GameRow last={last} cols="1fr 60px 70px 65px 65px">
+                      <DiffTag diff={g.difficulty} />
+                      <ValueCell color="#22d3ee">{g.coresCollected ?? 0}</ValueCell>
+                      <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell>
+                      <ValueCell color="#10b981">+{g.xpEarned}</ValueCell>
+                      <TimeCell>{fmt(g.survivalTime ?? 0)}</TimeCell>
+                    </GameRow>
+                    <MobileGameRow last={last} cells={[
+                      { label: "Diff",  value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Chips", value: <ValueCell color="#22d3ee">{g.coresCollected ?? 0}</ValueCell> },
+                      { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell> },
+                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
