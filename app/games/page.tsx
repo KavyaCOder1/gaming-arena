@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GameCard } from "@/components/game/GameCard";
-import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2, Worm, Rocket, Grid3X3 } from "lucide-react";
+import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2, Worm, Rocket, Grid3X3, Target } from "lucide-react";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 
@@ -14,6 +14,7 @@ const games = [
     { title: "Pacman",           description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                            image: "/pacman_img.webp",   icon: Ghost,    href: "/games/pacman",        color: "yellow", imagePosition: "center 20%" },
     { title: "Snake Arena",      description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                       image: "/snake.webp",        icon: Worm,     href: "/games/snake",         color: "green"  },
     { title: "Star Siege",       description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",          image: "/starsiege.webp",    icon: Rocket,   href: "/games/space-shooter", color: "yellow" },
+    { title: "Block Breaker",    description: "Break all blocks across 10 levels. Classic arcade action with power-ups and customizable extras!",       image: "/block-breaker.webp", icon: Target,  href: "/games/block-breaker", color: "cyan"   },
 ];
 
 const filterBtns = ["All Zones", "Strategic", "Arcade", "Puzzle"];
@@ -98,23 +99,9 @@ export default function GamesPage() {
             </div>
 
             <style>{`
-                @keyframes gPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-                @media(min-width:560px){ #games-hero-icon { display: block !important; } }
-                @media (max-width: 768px) {
-                    [style*="gridTemplateColumns: repeat(2"] {
-                        grid-template-columns: repeat(2, 1fr) !important;
-                    }
-                }
-                @media (min-width: 768px) {
-                    [style*="gridTemplateColumns: repeat(2"] {
-                        grid-template-columns: repeat(3, 1fr) !important;
-                    }
-                }
-                @media (min-width: 1024px) {
-                    [style*="gridTemplateColumns: repeat(2"] {
-                        grid-template-columns: repeat(4, 1fr) !important;
-                    }
-                }
+                @media (min-width: 1024px) { #games-hero-icon { display: block !important; } }
+                @media (min-width: 768px) { [style*="gridTemplateColumns"] { grid-template-columns: repeat(3, 1fr) !important; } }
+                @media (min-width: 1280px) { [style*="gridTemplateColumns"] { grid-template-columns: repeat(4, 1fr) !important; } }
             `}</style>
         </motion.div>
     );

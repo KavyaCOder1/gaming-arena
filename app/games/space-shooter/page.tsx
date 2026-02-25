@@ -951,11 +951,20 @@ export default function SpaceShooterPage() {
         const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
         let w: number, h: number;
         if (isFull) {
-          // In fullscreen, use the actual screen size
-          w = window.innerWidth  || window.screen.width  || 400;
-          h = window.innerHeight || window.screen.height || 600;
-          w = Math.max(w, window.screen.width  || 0);
-          h = Math.max(h, window.screen.height || 0);
+          const vw = window.innerWidth  || window.screen.width  || 400;
+          const vh = window.innerHeight || window.screen.height || 600;
+          const isPortrait = vh > vw;
+          if (isPortrait) {
+            // Portrait mobile fullscreen: canvas is CSS-constrained to 9:16 centred in viewport
+            // Calculate the actual rendered canvas size to match
+            h = vh;
+            w = Math.round(h * 9 / 16);
+            if (w > vw) { w = vw; h = Math.round(w * 16 / 9); }
+          } else {
+            // Landscape / desktop: fill full screen
+            w = vw;
+            h = vh;
+          }
         } else {
           const rect = container.getBoundingClientRect();
           w = Math.round(rect.width)  || container.offsetWidth  || 400;
@@ -1929,7 +1938,7 @@ export default function SpaceShooterPage() {
           .ss-canvas-container { aspect-ratio: 3 / 4 !important; min-height: unset !important; }
         }
 
-        /* ── FULLSCREEN: wrapper + container both fill every pixel of the screen ── */
+        /* ── FULLSCREEN: wrapper fills entire screen ── */
         .ss-game-wrapper:fullscreen,
         .ss-game-wrapper:-webkit-full-screen,
         .ss-game-wrapper:-moz-full-screen {
@@ -1941,17 +1950,32 @@ export default function SpaceShooterPage() {
           border-radius: 0 !important;
           background: #020817 !important;
           overflow: hidden !important;
-          display: block !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
         }
-        /* Inside fullscreen: canvas container must fill the full wrapper, no aspect-ratio */
+        /* Canvas: portrait on mobile (fills height), landscape on desktop (fills width) */
         .ss-game-wrapper:fullscreen .ss-canvas-container,
         .ss-game-wrapper:-webkit-full-screen .ss-canvas-container,
         .ss-game-wrapper:-moz-full-screen .ss-canvas-container {
-          position: absolute !important;
-          inset: 0 !important;
-          width: 100% !important; height: 100% !important;
-          aspect-ratio: unset !important;    /* KILL the aspect-ratio — fill the screen */
+          position: relative !important;
+          inset: unset !important;
           min-height: unset !important;
+          /* Portrait phones: fill height, maintain 9:16 aspect */
+          height: 100vh !important;
+          width: auto !important;
+          aspect-ratio: 9 / 16 !important;
+          max-width: 100vw !important;
+        }
+        /* Landscape / desktop: fill width instead */
+        @media (orientation: landscape) {
+          .ss-game-wrapper:fullscreen .ss-canvas-container,
+          .ss-game-wrapper:-webkit-full-screen .ss-canvas-container {
+            height: 100vh !important;
+            width: auto !important;
+            aspect-ratio: unset !important;
+            max-width: 100vw !important;
+          }
         }
 
         /* ── MOBILE: natural scrollable page layout ── */

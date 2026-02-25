@@ -31,6 +31,8 @@ model User {
   spaceShooterGames     SpaceShooterGame[]      @relation("SpaceShooterGames")
   connectDotsSessions   ConnectDotsSession[]    @relation("ConnectDotsSessions")
   connectDotsGames      ConnectDotsGame[]       @relation("ConnectDotsGames")
+  blockBreakerSessions  BlockBreakerSession[]   @relation("BlockBreakerSessions")
+  blockBreakerGames     BlockBreakerGame[]      @relation("BlockBreakerGames")
 }
 
 // ─── Level / XP ───────────────────────────────────────────────────────────────
@@ -304,6 +306,56 @@ model SpaceShooterGame {
   @@index([createdAt])
 }
 
+// ─── Block Breaker Session (active game) ──────────────────────────────────────
+model BlockBreakerSession {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("BlockBreakerSessions", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Game configuration
+  paddleSize        String    // "NORMAL" | "LARGE" | "XL"
+  extraBalls        Int       // number of extra balls purchased
+  hasGun            Boolean   // whether gun powerup is enabled
+  
+  // Game state (updated during play)
+  level             Int       @default(1)
+  score             Int       @default(0)
+  lives             Int       @default(3)
+  blocksDestroyed   Int       @default(0)
+  
+  startedAt         DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── Block Breaker Game Record (permanent) ────────────────────────────────────
+model BlockBreakerGame {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("BlockBreakerGames", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Final game stats
+  level             Int
+  score             Int
+  blocksDestroyed   Int
+  duration          Int       // seconds
+  xpEarned          Int
+  
+  // Extras used
+  paddleSize        String    // "NORMAL" | "LARGE" | "XL"
+  extraBalls        Int
+  hadGun            Boolean
+  
+  createdAt         DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([score(sort: Desc)])
+  @@index([xpEarned])
+  @@index([createdAt])
+}
+
 enum GameType {
   WORD_SEARCH
   TIC_TAC_TOE
@@ -312,6 +364,7 @@ enum GameType {
   SNAKE
   SPACE_SHOOTER
   CONNECT_DOTS
+  BLOCK_BREAKER
 }
 
 enum GameDifficulty {

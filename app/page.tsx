@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
-import { Trophy, Zap, Search, Grid, LayoutGrid, Ghost, ChevronRight, Crown, Medal, Swords, Rocket, Layers } from "lucide-react";
+import { Trophy, Zap, Search, Grid, LayoutGrid, Ghost, ChevronRight, Crown, Medal, Swords, Rocket, Layers, Target } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/Navbar";
 import { GameCard } from "@/components/game/GameCard";
@@ -21,22 +21,23 @@ export default function Home() {
   };
 
   const games = [
-    { title: "Word Search",  description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.", image: "/wordsearch.webp",  icon: Search,     href: "/games/word-search", color: "blue"   },
-    { title: "Tic Tac Toe",  description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?", image: "/tictactoe.webp",  icon: Grid,       href: "/games/tic-tac-toe", color: "green"  },
-    { title: "Memory Game",  description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.", image: "/memorygame.png",  icon: LayoutGrid, href: "/games/memory",      color: "purple" },
-    { title: "Pacman",       description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",              image: "/pacman_img.webp", icon: Ghost,      href: "/games/pacman",      color: "yellow" },
-    { title: "Snake Arena",  description: "Grow your snake by eating XP chips. Survive as long as possible and top the leaderboard.", image: "/snake.webp",       icon: Swords,     href: "/games/snake",         color: "green"  },
-    { title: "Star Siege",   description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!", image: "/starsiege.webp", icon: Rocket,     href: "/games/space-shooter", color: "yellow" },
+    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.", image: "/wordsearch.webp", icon: Search, href: "/games/word-search", color: "blue" },
+    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?", image: "/tictactoe.webp", icon: Grid, href: "/games/tic-tac-toe", color: "green" },
+    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.", image: "/memorygame.png", icon: LayoutGrid, href: "/games/memory", color: "purple" },
+    { title: "Pacman", description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.", image: "/pacman_img.webp", icon: Ghost, href: "/games/pacman", color: "yellow" },
+    { title: "Snake Arena", description: "Grow your snake by eating XP chips. Survive as long as possible and top the leaderboard.", image: "/snake.webp", icon: Swords, href: "/games/snake", color: "green" },
+    { title: "Star Siege", description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!", image: "/starsiege.webp", icon: Rocket, href: "/games/space-shooter", color: "yellow" },
   ];
 
   const gameTypes = [
-    { id: "WORD_SEARCH",   label: "Word Search",      icon: Search     },
-    { id: "TIC_TAC_TOE",  label: "Tic Tac Toe",      icon: Grid       },
-    { id: "MEMORY",       label: "Memory",           icon: LayoutGrid },
-    { id: "PACMAN",       label: "Pacman",           icon: Ghost      },
-    { id: "SNAKE",        label: "Snake",            icon: Swords     },
-    { id: "SPACE_SHOOTER",label: "Star Siege",       icon: Rocket     },
-    { id: "CONNECT_DOTS", label: "Connect The Dots", icon: Layers     },
+    { id: "WORD_SEARCH", label: "Word Search", icon: Search },
+    { id: "TIC_TAC_TOE", label: "Tic Tac Toe", icon: Grid },
+    { id: "MEMORY", label: "Memory", icon: LayoutGrid },
+    { id: "PACMAN", label: "Pacman", icon: Ghost },
+    { id: "SNAKE", label: "Snake", icon: Swords },
+    { id: "SPACE_SHOOTER", label: "Star Siege", icon: Rocket },
+    { id: "CONNECT_DOTS", label: "Connect The Dots", icon: Layers },
+    { id: "BLOCK_BREAKER", label: "Block Breaker", icon: Target },
   ];
 
   const [activeGame, setActiveGame] = useState("WORD_SEARCH");
@@ -62,9 +63,9 @@ export default function Home() {
   };
 
   const rankStyle = (i: number) => {
-    if (i === 0) return { color: "#f59e0b", icon: Crown  };
-    if (i === 1) return { color: "#94a3b8", icon: Medal  };
-    if (i === 2) return { color: "#b45309", icon: Medal  };
+    if (i === 0) return { color: "#f59e0b", icon: Crown };
+    if (i === 1) return { color: "#94a3b8", icon: Medal };
+    if (i === 2) return { color: "#b45309", icon: Medal };
     return { color: C.muted, icon: null };
   };
 
@@ -127,7 +128,7 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8" style={{ alignItems: "stretch" }}>
-            {games.map((game, i) => <GameCard key={i} {...game} delay={i * 0.1} />)}
+              {games.map((game, i) => <GameCard key={i} {...game} delay={i * 0.1} />)}
             </div>
           </div>
         </div>
