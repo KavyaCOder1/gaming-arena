@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
-import { Trophy, Zap, Search, Grid, LayoutGrid, Ghost, ChevronRight, Crown, Medal, Swords, Rocket } from "lucide-react";
+import { Trophy, Zap, Search, Grid, LayoutGrid, Ghost, ChevronRight, Crown, Medal, Swords, Rocket, Layers } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Navbar } from "@/components/layout/Navbar";
 import { GameCard } from "@/components/game/GameCard";
@@ -30,12 +30,13 @@ export default function Home() {
   ];
 
   const gameTypes = [
-    { id: "WORD_SEARCH",  label: "Word Search",  icon: Search     },
-    { id: "TIC_TAC_TOE", label: "Tic Tac Toe",  icon: Grid       },
-    { id: "MEMORY",      label: "Memory",       icon: LayoutGrid },
-    { id: "PACMAN",      label: "Pacman",       icon: Ghost      },
-    { id: "SNAKE",         label: "Snake",        icon: Swords  },
-    { id: "SPACE_SHOOTER", label: "Star Siege",   icon: Rocket  },
+    { id: "WORD_SEARCH",   label: "Word Search",      icon: Search     },
+    { id: "TIC_TAC_TOE",  label: "Tic Tac Toe",      icon: Grid       },
+    { id: "MEMORY",       label: "Memory",           icon: LayoutGrid },
+    { id: "PACMAN",       label: "Pacman",           icon: Ghost      },
+    { id: "SNAKE",        label: "Snake",            icon: Swords     },
+    { id: "SPACE_SHOOTER",label: "Star Siege",       icon: Rocket     },
+    { id: "CONNECT_DOTS", label: "Connect The Dots", icon: Layers     },
   ];
 
   const [activeGame, setActiveGame] = useState("WORD_SEARCH");
@@ -125,8 +126,8 @@ export default function Home() {
                 EXPLORE ALL <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-              {games.map((game, i) => <GameCard key={i} {...game} delay={i * 0.1} />)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8" style={{ alignItems: "stretch" }}>
+            {games.map((game, i) => <GameCard key={i} {...game} delay={i * 0.1} />)}
             </div>
           </div>
         </div>
@@ -225,9 +226,13 @@ export default function Home() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 15, fontWeight: 900, color: isTop3 ? color : "#f59e0b", filter: isTop3 ? `drop-shadow(0 0 6px ${color}60)` : "none" }}>
-                        {entry.totalXp?.toLocaleString() ?? entry.highScore?.toLocaleString()}
+                        {(activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER")
+                          ? (entry.highScore?.toLocaleString() ?? "0")
+                          : (entry.totalXp?.toLocaleString() ?? "0")}
                       </span>
-                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, color: C.muted, letterSpacing: "0.2em" }}>XP</span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, color: C.muted, letterSpacing: "0.2em" }}>
+                        {(activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER") ? "SCORE" : "XP"}
+                      </span>
                     </div>
                     <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 14, fontWeight: 700, color: "#64748b" }}>
                       {entry.matches ?? "—"}

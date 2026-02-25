@@ -12,6 +12,7 @@ interface GameCardProps {
     image: string;
     color?: string;
     delay?: number;
+    imagePosition?: string;
 }
 
 const COLOR_MAP: Record<string, { accent: string; glow: string; border: string; bg: string }> = {
@@ -21,11 +22,11 @@ const COLOR_MAP: Record<string, { accent: string; glow: string; border: string; 
     yellow: { accent: "#f59e0b", glow: "rgba(245,158,11,0.35)",  border: "rgba(245,158,11,0.4)",  bg: "rgba(245,158,11,0.08)"  },
 };
 
-export function GameCard({ title, description, href, icon: Icon, image, color = "blue", delay = 0 }: GameCardProps) {
+export function GameCard({ title, description, href, icon: Icon, image, color = "blue", delay = 0, imagePosition }: GameCardProps) {
     const c = COLOR_MAP[color] ?? COLOR_MAP.blue;
 
     return (
-        <Link href={href} style={{ display: "block", textDecoration: "none" }}>
+        <Link href={href} style={{ display: "flex", flexDirection: "column", textDecoration: "none", height: "100%" }}>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -36,6 +37,7 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                     overflow: "hidden",
                     display: "flex",
                     flexDirection: "column",
+                    height: "100%",
                     borderRadius: 18,
                     background: "rgba(10,15,35,0.9)",
                     backdropFilter: "blur(16px)",
@@ -59,7 +61,7 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                             width: "100%",
                             height: "100%",
                             objectFit: "cover",
-                            objectPosition: "center center",
+                            objectPosition: imagePosition ?? "top center",
                         }}
                     />
                     {/* Bottom fade to blend into content area */}
@@ -85,7 +87,7 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                     </div>
 
                     {/* Description */}
-                    <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "clamp(10px,2.5vw,12px)", fontWeight: 500, color: "#94a3b8", letterSpacing: "0.05em", lineHeight: 1.5, margin: 0 }}>
+                    <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "clamp(10px,2.5vw,12px)", fontWeight: 500, color: "#94a3b8", letterSpacing: "0.05em", lineHeight: 1.5, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {description}
                     </p>
 

@@ -519,9 +519,29 @@ export default function SnakePage() {
       const fs = !!document.fullscreenElement;
       setIsFullscreen(fs);
       isFullscreenRef.current = fs;
+      // When fullscreen, resize Phaser canvas to fill the square area
+      if (fs && gameRef.current) {
+        const size = Math.min(window.screen.width, window.screen.height);
+        setTimeout(() => {
+          [0, 100, 300, 600].forEach(delay => setTimeout(() => {
+            if (!gameRef.current) return;
+            const iw = window.innerWidth, ih = window.innerHeight;
+            const sq = Math.min(iw, ih);
+            try { gameRef.current.scale.resize(sq, sq); } catch {}
+          }, delay));
+        }, 0);
+      } else if (!fs && gameRef.current && containerRef.current) {
+        // Restore normal size
+        const w = containerRef.current.getBoundingClientRect().width;
+        if (w > 0) try { gameRef.current.scale.resize(w, w); } catch {}
+      }
     };
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -559,6 +579,12 @@ export default function SnakePage() {
 
   const endGame = useCallback(async () => {
     if (!mutedRef.current) playDie(audioRef.current);
+    // Auto-exit fullscreen when game ends
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else if ((document as any).webkitFullscreenElement) {
+      (document as any).webkitExitFullscreen?.();
+    }
     const sc = scoreRef.current, co = coresRef.current, el = elapsedRef.current;
     const ln = sceneRef.current?.snake?.length ?? 3;
     const xp = Math.round(co * 5 * DIFF_CONFIG[diffRef.current].xpMult);
@@ -873,7 +899,7 @@ export default function SnakePage() {
         </motion.div>
 
         {/* ── PHASER CANVAS BORDER BOX — difficulty color only on border/glow, NOT title ── */}
-        <div ref={gameWrapperRef} style={{
+        <div ref={gameWrapperRef} className="snk-game-wrapper" style={{
           background: "rgba(2,8,23,0.98)",
           border: isFullscreen ? "none" : `2px solid ${isPlaying ? cfg.color : isOver ? "#ef4444" : isPaused ? "#f59e0b" : "rgba(34,211,238,0.2)"}`,
           borderRadius: isFullscreen ? 0 : 16,
@@ -885,11 +911,6 @@ export default function SnakePage() {
               : `0 6px 32px rgba(0,0,0,0.8)`,
           transition: "border-color 0.4s, box-shadow 0.4s",
           position: "relative",
-          display: isFullscreen ? "flex" : "block",
-          alignItems: isFullscreen ? "center" : undefined,
-          justifyContent: isFullscreen ? "center" : undefined,
-          width: isFullscreen ? "100vw" : undefined,
-          height: isFullscreen ? "100vh" : undefined,
         }}>
           {/* Fullscreen toggle button */}
           <button onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
@@ -903,7 +924,8 @@ export default function SnakePage() {
           {/* canvas mount */}
           <div
             ref={containerRef}
-            style={{ width: isFullscreen ? "min(100vw,100vh)" : "100%", maxWidth: isFullscreen ? "100vh" : undefined, position: "relative", cursor: "crosshair", aspectRatio: "1 / 1" }}
+            className="snk-canvas-container"
+            style={{ position: "relative", cursor: "crosshair", aspectRatio: "1 / 1", width: "100%" }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
@@ -995,28 +1017,20 @@ export default function SnakePage() {
               )}
             </AnimatePresence>
           </div>
-          {/* ── FULLSCREEN D-PAD OVERLAY (touch/mobile only) ── */}
+          {/* ── FULLSCREEN D-PAD — overlays the canvas at bottom-center ── */}
           {isFullscreen && (isMobile || hasTouchScreen) && (
-            <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 30, pointerEvents: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "72px 72px 72px", gridTemplateRows: "72px 72px 72px", gap: 8 }}>
+            <div className="snk-dpad-overlay">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,60px)", gridTemplateRows: "repeat(3,60px)", gap: 6 }}>
                 <div />
-                <button onClick={() => mobileDir(0, -1)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
-                  <ChevronUp style={{ width: 32, height: 32 }} />
-                </button>
+                <button onClick={() => mobileDir(0, -1)} className="snk-dpad-btn" style={{ border: `2px solid ${cfg.border}`, color: cfg.color, boxShadow: `0 0 14px ${cfg.glow}` }}><ChevronUp style={{ width: 28, height: 28 }} /></button>
                 <div />
-                <button onClick={() => mobileDir(-1, 0)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
-                  <ChevronLeft style={{ width: 32, height: 32 }} />
-                </button>
-                <button onClick={(isPlaying || isPaused) ? togglePause : undefined} style={{ borderRadius: 16, background: isPaused ? "rgba(34,211,238,0.2)" : "rgba(2,8,23,0.82)", border: isPaused ? `2px solid rgba(34,211,238,0.6)` : `2px solid ${cfg.border}`, color: isPaused ? "#22d3ee" : cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, touchAction: "manipulation", backdropFilter: "blur(8px)" }}>
+                <button onClick={() => mobileDir(-1, 0)} className="snk-dpad-btn" style={{ border: `2px solid ${cfg.border}`, color: cfg.color, boxShadow: `0 0 14px ${cfg.glow}` }}><ChevronLeft style={{ width: 28, height: 28 }} /></button>
+                <button onClick={(isPlaying || isPaused) ? togglePause : undefined} className="snk-dpad-btn" style={{ border: isPaused ? `2px solid rgba(34,211,238,0.6)` : `2px solid ${cfg.border}`, color: isPaused ? "#22d3ee" : cfg.color, background: isPaused ? "rgba(34,211,238,0.2)" : "rgba(2,8,23,0.9)" }}>
                   {isPaused ? "▶" : "⏸"}
                 </button>
-                <button onClick={() => mobileDir(1, 0)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
-                  <ChevronRight style={{ width: 32, height: 32 }} />
-                </button>
+                <button onClick={() => mobileDir(1, 0)} className="snk-dpad-btn" style={{ border: `2px solid ${cfg.border}`, color: cfg.color, boxShadow: `0 0 14px ${cfg.glow}` }}><ChevronRight style={{ width: 28, height: 28 }} /></button>
                 <div />
-                <button onClick={() => mobileDir(0, 1)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
-                  <ChevronDown style={{ width: 32, height: 32 }} />
-                </button>
+                <button onClick={() => mobileDir(0, 1)} className="snk-dpad-btn" style={{ border: `2px solid ${cfg.border}`, color: cfg.color, boxShadow: `0 0 14px ${cfg.glow}` }}><ChevronDown style={{ width: 28, height: 28 }} /></button>
                 <div />
               </div>
             </div>
@@ -1250,7 +1264,63 @@ export default function SnakePage() {
       <style>{`
         @keyframes snkPulse { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
         @keyframes snkSkel  { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        :fullscreen { background: #020817; }
+
+        /* ── FULLSCREEN: wrapper fills entire screen ── */
+        .snk-game-wrapper:fullscreen,
+        .snk-game-wrapper:-webkit-full-screen {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          background: #020817 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 0 !important;
+          border: none !important;
+          border-radius: 0 !important;
+          overflow: hidden !important;
+        }
+        /* Canvas container: square, centered, leaves room for D-pad */
+        .snk-game-wrapper:fullscreen .snk-canvas-container,
+        .snk-game-wrapper:-webkit-full-screen .snk-canvas-container {
+          width: min(100vw, calc(100vh - 220px)) !important;
+          max-width: min(100vw, calc(100vh - 220px)) !important;
+          aspect-ratio: 1 / 1 !important;
+          flex-shrink: 0 !important;
+        }
+        /* Phaser canvas always fills its container */
+        .snk-canvas-container canvas {
+          width: 100% !important;
+          height: 100% !important;
+          display: block !important;
+        }
+        /* D-pad positioned below canvas in fullscreen */
+        .snk-dpad-overlay {
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 30;
+          pointer-events: auto;
+        }
+        .snk-dpad-btn {
+          border-radius: 14px;
+          background: rgba(2,8,23,0.88);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          touch-action: manipulation;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          transition: background 0.15s;
+        }
+        .snk-dpad-btn:active { background: rgba(34,211,238,0.15) !important; }
+
+        /* ── Mobile table tweaks ── */
         @media(max-width:540px){
           .snk-lb-head   { grid-template-columns: 36px 1fr 90px !important; }
           .snk-lb-head > *:nth-child(4) { display: none !important; }

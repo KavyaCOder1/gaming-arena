@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Crown, Medal, RefreshCw, Zap, Grid3X3, Rocket, Shield, Target, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, Crown, Medal, RefreshCw, Zap, Grid3X3, Rocket, Shield, Target, Maximize, Minimize, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 
-type GameStatus = "idle" | "playing" | "over";
+type GameStatus = "idle" | "playing" | "paused" | "over";
 interface LBEntry { user: { username: string }; highScore: number; totalXp: number }
 interface HistRecord { id: string; score: number; wave: number; kills: number; survivalTime: number; date: Date }
 
@@ -102,6 +102,7 @@ function buildScene(cb: {
   onHpChange: (hp: number) => void;
   onShieldChange: (s: number) => void;
   onSizeChange: (lvl: number) => void;
+  onBossWave: (wave: number) => void;
   getStatus: () => GameStatus;
   triggerDie: () => void;
   playBullet: () => void;
@@ -115,45 +116,35 @@ function buildScene(cb: {
   class SpaceScene {
     static key = "SpaceScene";
 
-    // Player
     playerX = 0; playerY = 0;
     playerHP = 100; playerShield = 0;
-    // Ship size grows with kills: 0=small, 1=medium, 2=large, 3=max
     shipLevel = 0; kills = 0;
-    KILLS_FOR_LEVEL = [10, 30, 70]; // kills needed to reach each next level
+    KILLS_FOR_LEVEL = [10, 30, 70];
 
-    // Game state
     wave = 1; score = 0; elapsed = 0; timerTick = 0; waveTimer = 0;
     dead = false; _nextSpawn: number | undefined;
 
-    // Missile
     missileCd = false; missileCdTimer = 0;
     MISSILE_COOL = 1500;
 
-    // Auto-fire
     fireCd = 0; FIRE_RATE = 175;
 
-    // Collections
     bullets: any[] = []; missiles: any[] = []; enemies: any[] = [];
     particles: any[] = []; stars: any[] = []; powerups: any[] = [];
     nebulaOrbs: any[] = [];
 
-    // Phaser graphics
     bgGfx!: any; shipGfx!: any; bulletGfx!: any;
     enemyGfx!: any; fxGfx!: any;
 
-    // Input
     pointerX = 0; pointerY = 0;
-    // Touch tracking for swipe
     touchStartX = 0; touchStartY = 0; touchStartTime = 0;
     lastTapTime = 0;
-
-    // Screen shake
     shakeMag = 0;
+    isTouching = false; // true while finger is down — suppresses mouse follow
 
     create(this: any) {
-      const W = this.sys.game.config.width as number;
-      const H = this.sys.game.config.height as number;
+      const W = this.scale.width as number;
+      const H = this.scale.height as number;
 
       this.bgGfx = this.add.graphics().setDepth(0);
       this.shipGfx = this.add.graphics().setDepth(3);
@@ -161,10 +152,9 @@ function buildScene(cb: {
       this.enemyGfx = this.add.graphics().setDepth(3);
       this.fxGfx = this.add.graphics().setDepth(5);
 
-      this.playerX = W / 2; this.playerY = H * 0.82;
-      this.pointerX = W / 2; this.pointerY = H * 0.82;
+      this.playerX = W / 2; this.playerY = H * 0.75;
+      this.pointerX = W / 2; this.pointerY = H * 0.75;
 
-      // Stars (3 layers of parallax)
       this.stars = Array.from({ length: 220 }, () => ({
         x: Math.random() * W, y: Math.random() * H,
         speed: 0.25 + Math.random() * 2.2,
@@ -173,7 +163,6 @@ function buildScene(cb: {
         col: [0xffffff, 0x22d3ee, 0xa78bfa, 0xfbbf24, 0x93c5fd][Math.floor(Math.random() * 5)],
       }));
 
-      // Nebula clouds
       this.nebulaOrbs = Array.from({ length: 7 }, () => ({
         x: Math.random() * W, y: Math.random() * H,
         vx: (Math.random() - 0.5) * 0.12, vy: 0.2 + Math.random() * 0.4,
@@ -182,46 +171,72 @@ function buildScene(cb: {
         col: [0x6366f1, 0x22d3ee, 0xa78bfa, 0x0f172a, 0x1e1b4b, 0x0c4a6e][Math.floor(Math.random() * 6)],
       }));
 
-      // Pointer input
       this.input.on("pointermove", (p: any) => {
         if (cb.getStatus() !== "playing") return;
+        // Ignore synthetic pointer events fired from touch — touch handled separately
+        if (this.isTouching) return;
         this.pointerX = p.x; this.pointerY = p.y;
       });
-      // Right-click missile
       this.input.on("pointerdown", (p: any) => {
         if (cb.getStatus() !== "playing") return;
         if (p.rightButtonDown()) { this.launchMissile(); cb.playMissile(); }
         else { this.pointerX = p.x; this.pointerY = p.y; }
       });
-      // Disable browser context menu on canvas
       this.game.canvas.addEventListener("contextmenu", (e: Event) => e.preventDefault());
 
-      // Touch: swipe to move, double-tap missile
       this.game.canvas.addEventListener("touchstart", (e: TouchEvent) => {
         if (cb.getStatus() !== "playing") return;
+        this.isTouching = true;
         const t = e.touches[0];
-        this.touchStartX = t.clientX; this.touchStartY = t.clientY;
-        this.touchStartTime = Date.now();
         const now = Date.now();
-        if (now - this.lastTapTime < 320) {
-          this.launchMissile(); cb.playMissile();
-        }
+
+        // Detect double-tap for missile
+        const isDoubleTap = (now - this.lastTapTime) < 320;
         this.lastTapTime = now;
+
+        if (isDoubleTap) {
+          // Fire missile — do NOT reset touchStart so swipe delta stays clean
+          this.launchMissile(); cb.playMissile();
+          // Also reset the reference point to current finger pos
+          // so the NEXT touchmove doesn't snap ship to old position
+          this.touchStartX = t.clientX;
+          this.touchStartY = t.clientY;
+        } else {
+          // First tap: just set the drag reference, don't move ship yet
+          this.touchStartX = t.clientX;
+          this.touchStartY = t.clientY;
+        }
+        this.touchStartTime = now;
         e.preventDefault();
       }, { passive: false });
 
+      this.game.canvas.addEventListener("touchend", () => {
+        this.isTouching = false;
+      });
+      this.game.canvas.addEventListener("touchcancel", () => {
+        this.isTouching = false;
+      });
+
       this.game.canvas.addEventListener("touchmove", (e: TouchEvent) => {
         if (cb.getStatus() !== "playing") return;
-        const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = W / rect.width, scaleY = H / rect.height;
-        const t = e.touches[0];
-        // Move ship relative to touch delta from start
-        const dx = (t.clientX - this.touchStartX) * scaleX;
-        const dy = (t.clientY - this.touchStartY) * scaleY;
-        this.touchStartX = t.clientX; this.touchStartY = t.clientY;
-        this.playerX = Math.max(20, Math.min(W - 20, this.playerX + dx));
-        this.playerY = Math.max(H * 0.4, Math.min(H - 20, this.playerY + dy));
-        this.pointerX = this.playerX; this.pointerY = this.playerY;
+        const touch = e.touches[0];
+        const rect  = this.game.canvas.getBoundingClientRect();
+        // Scale raw pixel delta to Phaser world units
+        const scaleX = this.scale.width  / rect.width;
+        const scaleY = this.scale.height / rect.height;
+        const dx = (touch.clientX - this.touchStartX) * scaleX;
+        const dy = (touch.clientY - this.touchStartY) * scaleY;
+        // Always update reference — pure delta drag, ship never snaps
+        this.touchStartX = touch.clientX;
+        this.touchStartY = touch.clientY;
+        // Guard against a huge first delta caused by double-tap resetting start
+        const maxStep = Math.min(this.scale.width, this.scale.height) * 0.25; // 25% of screen max per move
+        const clampedDx = Math.max(-maxStep, Math.min(maxStep, dx));
+        const clampedDy = Math.max(-maxStep, Math.min(maxStep, dy));
+        this.playerX = Math.max(20, Math.min(this.scale.width  - 20, this.playerX + clampedDx));
+        this.playerY = Math.max(20, Math.min(this.scale.height - 20, this.playerY + clampedDy));
+        this.pointerX = this.playerX;
+        this.pointerY = this.playerY;
         e.preventDefault();
       }, { passive: false });
 
@@ -229,19 +244,19 @@ function buildScene(cb: {
     }
 
     update(this: any, _time: number, delta: number) {
-      const W = this.sys.game.config.width as number;
-      const H = this.sys.game.config.height as number;
+      // ALWAYS read live dimensions from scale manager, never from config
+      const W = this.scale.width as number;
+      const H = this.scale.height as number;
       const status = cb.getStatus();
 
       this.bgGfx.clear(); this.shipGfx.clear(); this.bulletGfx.clear();
       this.enemyGfx.clear(); this.fxGfx.clear();
 
-      // Screen shake
       this.shakeMag *= 0.80;
       const sx = this.shakeMag > 0.5 ? (Math.random() - 0.5) * this.shakeMag * 2 : 0;
       const sy = this.shakeMag > 0.5 ? (Math.random() - 0.5) * this.shakeMag * 2 : 0;
 
-      // ── Background ──
+      // Background
       this.bgGfx.fillStyle(0x020817, 1);
       this.bgGfx.fillRect(0, 0, W, H);
       (this.nebulaOrbs as any[]).forEach(o => {
@@ -258,7 +273,7 @@ function buildScene(cb: {
         this.bgGfx.fillCircle(sx + s.x, sy + s.y, s.r);
       });
 
-      // ── IDLE: animated preview ──
+      // IDLE animated preview
       if (status === "idle") {
         const t = Date.now() / 1000;
         const cx = W / 2, cy = H / 2, pulse = 1 + 0.06 * Math.sin(t * 2.2);
@@ -280,13 +295,20 @@ function buildScene(cb: {
         return;
       }
 
-      // ── PLAYING ──────────────────────────────────────────────────────────
+      // Paused — draw frozen frame with dim overlay
+      if (status === "paused") {
+        this.drawParticles(0, sx, sy); // no advance
+        this.fxGfx.fillStyle(0x020817, 0.55); this.fxGfx.fillRect(0, 0, W, H);
+        // Draw paused ship
+        const shipScale = 1 + this.shipLevel * 0.22;
+        this.drawShip(this.shipGfx, this.playerX, this.playerY, shipScale, 0, 0x22d3ee, this.shipLevel);
+        return;
+      }
 
-      // Timer
+      // PLAYING ──────────────────────────────────────────────────────────
       this.timerTick += delta;
       if (this.timerTick >= 1000) { this.timerTick -= 1000; this.elapsed++; cb.onTick(this.elapsed); }
 
-      // Missile cooldown tracker
       if (this.missileCd) {
         this.missileCdTimer += delta;
         const pct = Math.min(1, this.missileCdTimer / this.MISSILE_COOL);
@@ -297,7 +319,6 @@ function buildScene(cb: {
         }
       }
 
-      // Ship size level by kills
       const prevLevel = this.shipLevel;
       for (let i = 0; i < this.KILLS_FOR_LEVEL.length; i++) {
         if (this.kills >= this.KILLS_FOR_LEVEL[i]) this.shipLevel = i + 1;
@@ -305,33 +326,25 @@ function buildScene(cb: {
       this.shipLevel = Math.min(this.shipLevel, 3);
       if (this.shipLevel !== prevLevel) cb.onSizeChange(this.shipLevel);
 
-      // Player movement — mouse follow (desktop)
       const dx = this.pointerX - this.playerX;
       const dy = this.pointerY - this.playerY;
-      const followSpd = 8;
-      this.playerX += dx * followSpd * (delta / 1000);
-      this.playerY += dy * followSpd * (delta / 1000);
+      this.playerX += dx * 8 * (delta / 1000);
+      this.playerY += dy * 8 * (delta / 1000);
       this.playerX = Math.max(20, Math.min(W - 20, this.playerX));
-      this.playerY = Math.max(H * 0.4, Math.min(H - 20, this.playerY));
+      this.playerY = Math.max(20, Math.min(H - 20, this.playerY));
 
-      // Auto-fire — angled spread based on ship level
       this.fireCd -= delta;
-      if (this.fireCd <= 0) {
-        this.fireCd = this.FIRE_RATE;
-        this.shootBullets();
-        cb.playBullet();
-      }
+      if (this.fireCd <= 0) { this.fireCd = this.FIRE_RATE; this.shootBullets(); cb.playBullet(); }
 
-      // Wave progression
       this.waveTimer += delta;
       const waveMs = Math.max(7000, 28000 - this.wave * 800);
       if (this.waveTimer >= waveMs) {
         this.waveTimer = 0; this.wave++;
         cb.onWave(this.wave);
+        if (this.wave % 5 === 0) cb.onBossWave(this.wave);
         this.spawnWave(W, H);
       }
 
-      // Enemy trickle spawn
       const spawnRate = Math.max(350, 2200 - this.wave * 140);
       if (this._nextSpawn === undefined) this._nextSpawn = spawnRate;
       this._nextSpawn -= delta;
@@ -340,14 +353,11 @@ function buildScene(cb: {
         this.spawnEnemy(W, H);
       }
 
-      // Update bullets (angled)
       this.bullets = (this.bullets as any[]).filter(b => {
-        b.x += b.vx * (delta / 16);
-        b.y += b.vy * (delta / 16);
+        b.x += b.vx * (delta / 16); b.y += b.vy * (delta / 16);
         return b.y > -30 && b.x > -30 && b.x < W + 30;
       });
 
-      // Update missiles (homing)
       this.missiles = (this.missiles as any[]).filter(m => {
         let nearDist = 1e9, target: any = null;
         (this.enemies as any[]).forEach(e => {
@@ -355,10 +365,8 @@ function buildScene(cb: {
           const d = Math.hypot(e.x - m.x, e.y - m.y);
           if (d < nearDist) { nearDist = d; target = e; }
         });
-        if (target) {
-          const dir = norm2({ x: target.x - m.x, y: target.y - m.y });
-          m.vx += dir.x * 0.9; m.vy += dir.y * 0.9;
-        } else { m.vy -= 0.6; }
+        if (target) { const dir = norm2({ x: target.x - m.x, y: target.y - m.y }); m.vx += dir.x * 0.9; m.vy += dir.y * 0.9; }
+        else { m.vy -= 0.6; }
         const spd2 = len2({ x: m.vx, y: m.vy });
         if (spd2 > 15) { m.vx = m.vx / spd2 * 15; m.vy = m.vy / spd2 * 15; }
         m.x += m.vx * (delta / 16); m.y += m.vy * (delta / 16);
@@ -367,7 +375,6 @@ function buildScene(cb: {
         return m.y > -60 && m.x > -60 && m.x < W + 60;
       });
 
-      // Update enemies
       const t = Date.now() / 1000;
       (this.enemies as any[]).forEach(e => {
         e.t += delta * 0.001;
@@ -375,22 +382,16 @@ function buildScene(cb: {
           case "basic": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 1.8 + e.phase) * 1.3; break;
           case "fast": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 5.5 + e.phase) * 3.2; break;
           case "tank": e.y += e.speed * (delta / 16); break;
-          case "stealth": // fades in and out, moves diagonally
-            e.y += e.speed * (delta / 16);
-            e.x += Math.cos(e.t * 1.2 + e.phase) * 2.0;
-            e.alpha = 0.3 + 0.7 * Math.abs(Math.sin(e.t * 1.5));
-            break;
-          case "splitter": // when killed splits into 2 fast ones
-            e.y += e.speed * (delta / 16);
-            e.x += Math.sin(e.t * 2.5 + e.phase) * 1.8;
-            break;
-          case "zigzag":  // sharp direction changes
+          case "stealth":
+            e.y += e.speed * (delta / 16); e.x += Math.cos(e.t * 1.2 + e.phase) * 2.0;
+            e.alpha = 0.3 + 0.7 * Math.abs(Math.sin(e.t * 1.5)); break;
+          case "splitter": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 2.5 + e.phase) * 1.8; break;
+          case "zigzag":
             e.y += e.speed * (delta / 16);
             e.zigTimer = (e.zigTimer ?? 0) + delta;
             if (e.zigTimer > 400 + Math.random() * 300) { e.zigTimer = 0; e.zigDir = -(e.zigDir ?? 1); }
-            e.x += (e.zigDir ?? 1) * e.speed * 1.6 * (delta / 16);
-            break;
-          case "bomber":  // drops mines
+            e.x += (e.zigDir ?? 1) * e.speed * 1.6 * (delta / 16); break;
+          case "bomber":
             e.y += e.speed * (delta / 16);
             e.mineTimer = (e.mineTimer ?? 0) + delta;
             if (e.mineTimer > 1800) {
@@ -406,7 +407,6 @@ function buildScene(cb: {
             const bsr = Math.max(500, 2200 - this.wave * 90);
             if (e.shotTimer >= bsr) {
               e.shotTimer = 0;
-              // Boss fires spread of 3
               for (let k = -1; k <= 1; k++) {
                 const ang = Math.atan2(this.playerY - e.y, this.playerX - e.x) + k * 0.3;
                 this.enemies.push({ x: e.x, y: e.y + 24, type: "enemyBullet", vx: Math.cos(ang) * 5.5, vy: Math.sin(ang) * 5.5, hp: 1, maxHp: 1, t: 0, phase: 0, speed: 0, alpha: 1 });
@@ -418,9 +418,8 @@ function buildScene(cb: {
         e.x = Math.max(-70, Math.min(W + 70, e.x));
       });
 
-      // ── Bullet → enemy collision ──
-      const deadEnemies = new Set<number>();
-      const deadBullets = new Set<number>();
+      // Bullet → enemy collision
+      const deadEnemies = new Set<number>(); const deadBullets = new Set<number>();
       (this.bullets as any[]).forEach((b, bi) => {
         (this.enemies as any[]).forEach((e, ei) => {
           if (e.type === "enemyBullet") return;
@@ -434,18 +433,14 @@ function buildScene(cb: {
         });
       });
 
-      // ── Missile → enemy AoE ──
+      // Missile → enemy AoE
       this.missiles = (this.missiles as any[]).filter(m => {
         let hit = false;
         (this.enemies as any[]).forEach((e, ei) => {
           if (e.type === "enemyBullet") return;
-          if (Math.hypot(m.x - e.x, m.y - e.y) < 60) {
-            hit = true; e.hp -= 90;
-            if (e.hp <= 0) deadEnemies.add(ei);
-          }
+          if (Math.hypot(m.x - e.x, m.y - e.y) < 60) { hit = true; e.hp -= 90; if (e.hp <= 0) deadEnemies.add(ei); }
         });
         if (!hit) return true;
-        // AoE chain
         (this.enemies as any[]).forEach((e, ei) => {
           if (e.type === "enemyBullet") return;
           if (Math.hypot(m.x - e.x, m.y - e.y) < 90) { e.hp -= 45; if (e.hp <= 0) deadEnemies.add(ei); }
@@ -454,16 +449,12 @@ function buildScene(cb: {
         return false;
       });
 
-      // Remove dead enemies
       Array.from(deadEnemies).sort((a, b) => b - a).forEach(i => this.enemies.splice(i, 1));
       Array.from(deadBullets).sort((a, b) => b - a).forEach(i => this.bullets.splice(i, 1));
 
-      // ── Enemy → player ──
+      // Enemy → player
       this.enemies = (this.enemies as any[]).filter(e => {
-        if (e.y > H + 80) {
-          // Enemy passed through — no HP penalty, just remove it
-          return false;
-        }
+        if (e.y > H + 80) return false;
         if (e.x < -70 || e.x > W + 70) return false;
         const hitR = e.type === "boss" ? 46 : e.type === "enemyBullet" ? 5 : e.type === "mine" ? 22 : 22;
         const shipR = 12 + this.shipLevel * 4;
@@ -477,7 +468,6 @@ function buildScene(cb: {
         return true;
       });
 
-      // Power-ups
       this.powerups = (this.powerups as any[]).filter(p => {
         p.y += 1.3 * (delta / 16); p.rot = (p.rot ?? 0) + 0.04;
         if (Math.hypot(p.x - this.playerX, p.y - this.playerY) < 26) {
@@ -490,38 +480,25 @@ function buildScene(cb: {
         return p.y < H + 40;
       });
 
-      // ── Render ──
+      // Render
       this.drawParticles(delta, sx, sy);
 
-      // Power-ups
       (this.powerups as any[]).forEach(p => {
         const col = p.type === "hp" ? 0x10b981 : p.type === "rapid" ? 0xf59e0b : 0x22d3ee;
-        const rot = p.rot ?? 0;
         this.fxGfx.fillStyle(col, 0.12 + 0.06 * Math.sin(t * 3 + p.x));
         this.fxGfx.fillCircle(sx + p.x, sy + p.y, 24);
-        this.fxGfx.lineStyle(2, col, 0.85);
-        this.fxGfx.strokeCircle(sx + p.x, sy + p.y, 16);
+        this.fxGfx.lineStyle(2, col, 0.85); this.fxGfx.strokeCircle(sx + p.x, sy + p.y, 16);
         this.fxGfx.fillStyle(col, 1);
-        if (p.type === "hp") {
-          this.fxGfx.fillRect(sx + p.x - 5, sy + p.y - 2, 10, 4);
-          this.fxGfx.fillRect(sx + p.x - 2, sy + p.y - 5, 4, 10);
-        } else if (p.type === "rapid") {
-          for (let i = 0; i < 3; i++) {
-            this.fxGfx.fillRect(sx + p.x - 4 + i * 4, sy + p.y - 6, 2, 12);
-          }
-        } else {
-          this.fxGfx.fillCircle(sx + p.x, sy + p.y, 5);
-          this.fxGfx.fillStyle(0xffffff, 0.85); this.fxGfx.fillCircle(sx + p.x, sy + p.y, 2.5);
-        }
+        if (p.type === "hp") { this.fxGfx.fillRect(sx + p.x - 5, sy + p.y - 2, 10, 4); this.fxGfx.fillRect(sx + p.x - 2, sy + p.y - 5, 4, 10); }
+        else if (p.type === "rapid") { for (let i = 0; i < 3; i++) this.fxGfx.fillRect(sx + p.x - 4 + i * 4, sy + p.y - 6, 2, 12); }
+        else { this.fxGfx.fillCircle(sx + p.x, sy + p.y, 5); this.fxGfx.fillStyle(0xffffff, 0.85); this.fxGfx.fillCircle(sx + p.x, sy + p.y, 2.5); }
       });
 
-      // Enemy bullets
       (this.enemies as any[]).filter(e => e.type === "enemyBullet").forEach(e => {
         this.enemyGfx.fillStyle(0xf97316, 0.9); this.enemyGfx.fillCircle(sx + e.x, sy + e.y, 5.5);
         this.enemyGfx.fillStyle(0xfef3c7, 0.6); this.enemyGfx.fillCircle(sx + e.x, sy + e.y, 2.5);
       });
 
-      // Mines
       (this.enemies as any[]).filter(e => e.type === "mine").forEach(e => {
         const pulse = 1 + 0.15 * Math.sin(e.t * 8);
         this.enemyGfx.fillStyle(0xef4444, 0.15 * pulse); this.enemyGfx.fillCircle(sx + e.x, sy + e.y, 20 * pulse);
@@ -534,7 +511,6 @@ function buildScene(cb: {
         }
       });
 
-      // Other enemies
       (this.enemies as any[]).filter(e => !["enemyBullet", "mine"].includes(e.type)).forEach(e => {
         const alpha = (e.alpha ?? 1);
         switch (e.type) {
@@ -549,49 +525,38 @@ function buildScene(cb: {
         }
       });
 
-      // Missiles
       (this.missiles as any[]).forEach(m => {
         for (let i = 0; i < m.trail.length - 1; i++) {
           const ta = (i / m.trail.length) * 0.65;
           this.bulletGfx.lineStyle(2.5, 0xf97316, ta);
-          this.bulletGfx.beginPath();
-          this.bulletGfx.moveTo(sx + m.trail[i].x, sy + m.trail[i].y);
-          this.bulletGfx.lineTo(sx + m.trail[i + 1].x, sy + m.trail[i + 1].y);
-          this.bulletGfx.strokePath();
+          this.bulletGfx.beginPath(); this.bulletGfx.moveTo(sx + m.trail[i].x, sy + m.trail[i].y);
+          this.bulletGfx.lineTo(sx + m.trail[i + 1].x, sy + m.trail[i + 1].y); this.bulletGfx.strokePath();
         }
         this.bulletGfx.fillStyle(0xf97316, 0.45); this.bulletGfx.fillCircle(sx + m.x, sy + m.y, 15);
         this.bulletGfx.fillStyle(0xf97316, 1); this.bulletGfx.fillCircle(sx + m.x, sy + m.y, 6.5);
         this.bulletGfx.fillStyle(0xfef3c7, 0.95); this.bulletGfx.fillCircle(sx + m.x, sy + m.y, 3);
       });
 
-      // Bullets — fat laser beams
       (this.bullets as any[]).forEach(b => {
         const ang = Math.atan2(b.vy, b.vx);
         const len = 24, hw = 4.5;
         const ex = b.x + Math.cos(ang) * len, ey = b.y + Math.sin(ang) * len;
         const px = -Math.sin(ang) * hw, py = Math.cos(ang) * hw;
-        // Outer glow
         this.bulletGfx.fillStyle(b.col ?? 0x22d3ee, 0.22);
         this.bulletGfx.fillTriangle(b.x + px * 2.2, b.y + py * 2.2, b.x - px * 2.2, b.y - py * 2.2, ex, ey);
-        // Main beam
         this.bulletGfx.fillStyle(b.col ?? 0x22d3ee, 0.92);
         this.bulletGfx.fillTriangle(b.x + px, b.y + py, b.x - px, b.y - py, ex, ey);
-        // Bright core
         this.bulletGfx.fillStyle(0xffffff, 0.75);
         this.bulletGfx.fillTriangle(b.x + px * 0.4, b.y + py * 0.4, b.x - px * 0.4, b.y - py * 0.4, ex, ey);
-        // Glow tip
-        this.bulletGfx.fillStyle(0xffffff, 0.9);
-        this.bulletGfx.fillCircle(ex, ey, 3.5);
+        this.bulletGfx.fillStyle(0xffffff, 0.9); this.bulletGfx.fillCircle(ex, ey, 3.5);
         this.bulletGfx.fillStyle(b.col ?? 0x22d3ee, 0.4);
         this.bulletGfx.fillCircle((b.x + ex) / 2, (b.y + ey) / 2, 8);
       });
 
-      // Player ship — grows with level
       const shipScale = 1 + this.shipLevel * 0.22;
       const ef = 0.55 + 0.45 * Math.sin(t * 28);
       this.drawShip(this.shipGfx, sx + this.playerX, sy + this.playerY, shipScale, ef, 0x22d3ee, this.shipLevel);
 
-      // Shield bubble
       if (this.playerShield > 0) {
         const sa = (this.playerShield / 60) * 0.65;
         const sr = 32 + this.shipLevel * 8;
@@ -601,7 +566,6 @@ function buildScene(cb: {
         this.shipGfx.fillCircle(sx + this.playerX, sy + this.playerY, sr);
       }
 
-      // Death
       if (this.playerHP <= 0 && !this.dead) {
         this.dead = true;
         this.spawnExplosion(this.playerX, this.playerY, 110); this.shakeMag = 45;
@@ -609,13 +573,8 @@ function buildScene(cb: {
       }
     }
 
-    // ── Bullet spread based on ship level ─────────────────────────────────
     shootBullets(this: any) {
       const spd = 16;
-      // Level 0: single shot straight up
-      // Level 1: 2 angled shots (V shape)
-      // Level 2: 3 shots (center + 2 angled)
-      // Level 3: 5 shots (wide spread + side cannons)
       const patterns: { angle: number; col: number }[][] = [
         [{ angle: -Math.PI / 2, col: 0x22d3ee }],
         [{ angle: -Math.PI / 2 - 0.2, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.2, col: 0x22d3ee }],
@@ -629,7 +588,6 @@ function buildScene(cb: {
       });
     }
 
-    // ── Missile launch ────────────────────────────────────────────────────
     launchMissile(this: any) {
       if (this.missileCd) return;
       this.missileCd = true; this.missileCdTimer = 0;
@@ -637,16 +595,17 @@ function buildScene(cb: {
       cb.onMissileCd(false, 0);
     }
 
-    // ── Spawn helpers ──────────────────────────────────────────────────────
     spawnEnemy(this: any, W: number, H: number) {
       const wave = this.wave;
-      // Enemy type pool by wave
       let pool: string[];
       if (wave >= 12) pool = ["basic", "basic", "fast", "fast", "tank", "tank", "stealth", "splitter", "zigzag", "bomber", "boss"];
       else if (wave >= 8) pool = ["basic", "basic", "fast", "fast", "tank", "stealth", "splitter", "zigzag", "bomber"];
       else if (wave >= 5) pool = ["basic", "basic", "basic", "fast", "fast", "tank", "zigzag", "splitter"];
       else if (wave >= 3) pool = ["basic", "basic", "basic", "fast", "fast", "zigzag"];
       else pool = ["basic", "basic", "basic", "fast"];
+
+      // Force boss wave on multiples of 5
+      if (wave % 5 === 0) pool = ["boss", "boss", "tank", "tank", "fast"];
 
       let type = pool[Math.floor(Math.random() * pool.length)];
       if (type === "boss" && (this.enemies as any[]).filter(e => e.type === "boss").length >= 2) type = "tank";
@@ -663,12 +622,9 @@ function buildScene(cb: {
       };
       const hp = hpMap[type] ?? 25;
       this.enemies.push({
-        x: 30 + Math.random() * (W - 60),
-        y: type === "boss" ? -60 : -32,
-        type, hp, maxHp: hp,
-        speed: spdMap[type] ?? 1.5,
-        phase: Math.random() * Math.PI * 2,
-        t: 0, alpha: 1,
+        x: 30 + Math.random() * (W - 60), y: type === "boss" ? -60 : -32,
+        type, hp, maxHp: hp, speed: spdMap[type] ?? 1.5,
+        phase: Math.random() * Math.PI * 2, t: 0, alpha: 1,
         zigDir: Math.random() > 0.5 ? 1 : -1,
       });
     }
@@ -676,7 +632,6 @@ function buildScene(cb: {
     spawnWave(this: any, W: number, H: number) {
       const count = 4 + Math.min(this.wave * 2, 14);
       for (let i = 0; i < count; i++) setTimeout(() => this.spawnEnemy(W, H), i * 180);
-      // Power-up on wave
       const puType = Math.random() < 0.45 ? "hp" : Math.random() < 0.5 ? "shield" : "rapid";
       this.powerups.push({ x: 50 + Math.random() * (W - 100), y: -24, type: puType, rot: 0 });
     }
@@ -689,13 +644,11 @@ function buildScene(cb: {
       if (e.type === "boss") this.shakeMag = 30;
       else if (e.type === "tank") this.shakeMag = 14;
       cb.playExplosion();
-      // Splitter: spawn 2 fast enemies
       if (e.type === "splitter") {
         for (let k = -1; k <= 1; k += 2) {
           this.enemies.push({ x: e.x + k * 18, y: e.y, type: "fast", hp: 12, maxHp: 12, speed: 3.5 + this.wave * 0.18, phase: Math.random() * Math.PI * 2, t: 0, alpha: 1, zigDir: k });
         }
       }
-      // Power-up drops
       const dropChance = e.type === "boss" ? 0.9 : e.type === "tank" ? 0.4 : e.type === "bomber" ? 0.3 : 0.1;
       if (Math.random() < dropChance) {
         const puType = Math.random() < 0.5 ? "hp" : Math.random() < 0.5 ? "shield" : "rapid";
@@ -707,19 +660,15 @@ function buildScene(cb: {
       if (this.playerShield > 0) {
         const absorbed = Math.min(this.playerShield, dmg);
         this.playerShield = Math.max(0, this.playerShield - absorbed);
-        dmg -= absorbed;
-        cb.onShieldChange(this.playerShield);
+        dmg -= absorbed; cb.onShieldChange(this.playerShield);
       }
       if (dmg > 0) {
         this.playerHP = Math.max(0, this.playerHP - dmg);
-        cb.onHpChange(this.playerHP);
-        this.shakeMag = 14;
-        cb.playHit();
+        cb.onHpChange(this.playerHP); this.shakeMag = 14; cb.playHit();
         this.spawnHitFX(this.playerX, this.playerY, 0xef4444, 12);
       }
     }
 
-    // ── FX ────────────────────────────────────────────────────────────────
     spawnExplosion(this: any, x: number, y: number, r: number) {
       const cols = [0xf97316, 0xfbbf24, 0xef4444, 0xffffff, 0x22d3ee, 0xa78bfa];
       const count = r > 60 ? 55 : r > 35 ? 35 : 20;
@@ -745,38 +694,30 @@ function buildScene(cb: {
       });
     }
 
-    // ── Ship draw — scales with level ─────────────────────────────────────
     drawShip(this: any, g: any, x: number, y: number, scale: number, ef: number, col: number, level: number) {
       const s = 22 * scale;
-      // Engine exhausts (more engines at higher level)
       const engines = level >= 3 ? [-s * 0.55, 0, s * 0.55] : level >= 2 ? [-s * 0.38, s * 0.38] : [0];
       engines.forEach(offX => {
         g.fillStyle(col, 0.12 * ef); g.fillEllipse(x + offX, y + s * 0.7, s * 0.6, s * 0.45);
         g.fillStyle(0xf97316, 0.4 * ef); g.fillEllipse(x + offX, y + s * 0.55, s * 0.28, s * 0.28);
         g.fillStyle(0xfef3c7, 0.7 * ef); g.fillEllipse(x + offX, y + s * 0.45, s * 0.14, s * 0.16);
       });
-      // Wings widen with level
       const ww = 0.85 + level * 0.12;
       g.fillStyle(col, 0.72);
       g.fillTriangle(x, y + s * 0.22, x - s * ww, y + s * 0.58, x - s * 0.28, y - s * 0.08);
       g.fillTriangle(x, y + s * 0.22, x + s * ww, y + s * 0.58, x + s * 0.28, y - s * 0.08);
-      // Body
       g.fillStyle(col, 0.92);
       g.fillTriangle(x, y - s, x - s * 0.3, y + s * 0.48, x + s * 0.3, y + s * 0.48);
-      // Cockpit
       g.fillStyle(0x0f172a, 0.92); g.fillEllipse(x, y - s * 0.2, s * 0.22, s * 0.38);
       g.fillStyle(col, 0.42); g.fillEllipse(x, y - s * 0.26, s * 0.11, s * 0.21);
-      // Gun barrels (more at higher levels)
       g.fillStyle(col, 0.65);
       if (level >= 1) { g.fillRect(x - s * 0.7 - 2.5, y - 2, 5, s * 0.45); g.fillRect(x + s * 0.7 - 2.5, y - 2, 5, s * 0.45); }
       if (level >= 3) { g.fillRect(x - s * 0.92 - 2, y + 4, 4, s * 0.35); g.fillRect(x + s * 0.88 - 2, y + 4, 4, s * 0.35); }
-      // Level glow aura
       if (level > 0) {
         const auraCol = level === 3 ? 0xfbbf24 : level === 2 ? 0xa78bfa : 0x22d3ee;
         g.lineStyle(1.5, auraCol, 0.45 + 0.25 * Math.sin(Date.now() / 200));
         g.strokeCircle(x, y, s * 1.4);
       }
-      // Outline
       g.lineStyle(1.5, col, 0.5);
       g.beginPath();
       g.moveTo(x, y - s); g.lineTo(x - s * 0.3, y + s * 0.48); g.lineTo(x - s * ww, y + s * 0.58);
@@ -784,7 +725,6 @@ function buildScene(cb: {
       g.closePath(); g.strokePath();
     }
 
-    // ── Enemy drawers ─────────────────────────────────────────────────────
     drawBasicEnemy(this: any, g: any, x: number, y: number, col: number, size: number, t: number, hpRatio = 1, alpha = 1) {
       const pulse = 1 + 0.06 * Math.sin(t * 3);
       g.fillStyle(col, 0.14 * pulse * alpha); g.fillCircle(x, y, size * 1.5 * pulse);
@@ -831,8 +771,7 @@ function buildScene(cb: {
       g.fillStyle(0xffffff, shimmer * 0.4 * alpha); g.fillEllipse(x - 6, y - 9, 6, 12);
     }
     drawSplitterEnemy(this: any, g: any, x: number, y: number, t: number, hpRatio = 1) {
-      const col = 0xf59e0b;
-      const pulse = 1 + 0.08 * Math.sin(t * 4);
+      const col = 0xf59e0b, pulse = 1 + 0.08 * Math.sin(t * 4);
       g.fillStyle(col, 0.13 * pulse); g.fillCircle(x, y, 33 * pulse);
       g.fillStyle(col, hpRatio * 0.85);
       g.fillTriangle(x, y - 27, x - 21, y, x + 21, y);
@@ -853,8 +792,7 @@ function buildScene(cb: {
       g.fillStyle(col, ef * 0.8); g.fillEllipse(x, y + 20, 10, 8);
     }
     drawBomberEnemy(this: any, g: any, x: number, y: number, t: number, hpRatio = 1) {
-      const col = 0xf97316;
-      const pulse = 1 + 0.05 * Math.sin(t * 2);
+      const col = 0xf97316, pulse = 1 + 0.05 * Math.sin(t * 2);
       g.fillStyle(col, 0.12 * pulse); g.fillEllipse(x, y, 80, 48);
       g.fillStyle(col, hpRatio * 0.78); g.fillEllipse(x, y, 68, 40);
       g.fillStyle(0x7c2d12, 0.85); g.fillEllipse(x, y, 36, 26);
@@ -893,19 +831,18 @@ function buildScene(cb: {
       g.closePath(); g.fillPath();
     }
 
-    // ── External API ──────────────────────────────────────────────────────
     firePlayerMissile(this: any) { this.launchMissile(); }
     resetGame(this: any) {
-      const W = this.sys.game.config.width as number;
-      const H = this.sys.game.config.height as number;
+      const W = this.scale.width as number;
+      const H = this.scale.height as number;
       this.playerHP = 100; this.playerShield = 0; this.shipLevel = 0; this.kills = 0;
       this.wave = 1; this.score = 0; this.elapsed = 0; this.timerTick = 0; this.waveTimer = 0;
       this.fireCd = 0; this.FIRE_RATE = 175;
       this.missileCd = false; this.missileCdTimer = 0;
       this.dead = false; this._nextSpawn = undefined;
       this.bullets = []; this.missiles = []; this.enemies = []; this.particles = []; this.powerups = [];
-      this.playerX = W / 2; this.playerY = H * 0.82;
-      this.pointerX = W / 2; this.pointerY = H * 0.82;
+      this.playerX = W / 2; this.playerY = H * 0.75;
+      this.pointerX = W / 2; this.pointerY = H * 0.75;
     }
   }
   return SpaceScene;
@@ -934,9 +871,12 @@ export default function SpaceShooterPage() {
   const [lb, setLb] = useState<LBEntry[]>([]);
   const [lbLoad, setLbLoad] = useState(true);
   const [hist, setHist] = useState<HistRecord[]>([]);
+  const [bossWave, setBossWave] = useState<number | null>(null);
+  const [waveAnnounce, setWaveAnnounce] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const gameWrapperRef = useRef<HTMLDivElement>(null);
+  const gameOverRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const gameRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
@@ -955,6 +895,16 @@ export default function SpaceShooterPage() {
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { statusRef.current = status; }, [status]);
 
+  // Gently nudge scroll so result card is visible when game ends
+  useEffect(() => {
+    if (status === "over" && gameOverRef.current) {
+      const t = setTimeout(() => {
+        gameOverRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 500);
+      return () => clearTimeout(t);
+    }
+  }, [status]);
+
   const fetchLbAndHist = useCallback(() => {
     setLbLoad(true);
     Promise.all([
@@ -970,62 +920,87 @@ export default function SpaceShooterPage() {
 
   useEffect(() => { fetchLbAndHist(); }, [fetchLbAndHist]);
 
-  // Fullscreen helpers
-  const toggleFullscreen = useCallback(() => {
-    setIsFullscreen(prev => {
-      const next = !prev;
-      // Also resize Phaser after state update settles
-      setTimeout(() => {
-        if (!containerRef.current || !gameRef.current) return;
-        const size = next
-          ? Math.min(window.innerWidth, window.innerHeight)
-          : containerRef.current.clientWidth;
-        try {
-          gameRef.current.scale.resize(size, size);
-          const canvas = containerRef.current.querySelector("canvas");
-          if (canvas) { canvas.style.width = "100%"; canvas.style.height = "100%"; }
-        } catch { }
-      }, 50);
-      return next;
-    });
+  // ── Proper Fullscreen using native API on the game wrapper ──────────────────
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        const el = gameWrapperRef.current ?? document.documentElement;
+        const req = (el as any).requestFullscreen
+          ?? (el as any).webkitRequestFullscreen
+          ?? (el as any).mozRequestFullScreen;
+        if (req) await req.call(el, { navigationUI: "hide" });
+      } else {
+        const exit = (document as any).exitFullscreen
+          ?? (document as any).webkitExitFullscreen
+          ?? (document as any).mozCancelFullScreen;
+        if (exit) await exit.call(document);
+      }
+    } catch (err) {
+      console.warn("Fullscreen error:", err);
+    }
+  }, []);
+
+  // Resize Phaser — only called after fullscreen transition or container resize
+  const resizePhaser = useCallback(() => {
+    const game = gameRef.current;
+    const container = containerRef.current;
+    if (!game || !container) return;
+
+    const doResize = () => {
+      try {
+        const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+        let w: number, h: number;
+        if (isFull) {
+          // In fullscreen, use the actual screen size
+          w = window.innerWidth  || window.screen.width  || 400;
+          h = window.innerHeight || window.screen.height || 600;
+          w = Math.max(w, window.screen.width  || 0);
+          h = Math.max(h, window.screen.height || 0);
+        } else {
+          const rect = container.getBoundingClientRect();
+          w = Math.round(rect.width)  || container.offsetWidth  || 400;
+          h = Math.round(rect.height) || container.offsetHeight || w;
+        }
+        if (w < 10 || h < 10) return;
+        game.scale.resize(w, h);
+        const canvas = game.canvas as HTMLCanvasElement | null;
+        if (canvas) {
+          canvas.style.cssText = "position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;display:block!important;";
+        }
+      } catch { }
+    };
+
+    // Run immediately AND after next paint (fullscreen CSS transition takes 1 frame)
+    doResize();
+    requestAnimationFrame(doResize);
   }, []);
 
   useEffect(() => {
     const onChange = () => {
-      const isFull = !!document.fullscreenElement;
+      const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
       setIsFullscreen(isFull);
-      // Resize Phaser canvas to fill the fullscreen area
-      setTimeout(() => {
-        if (!containerRef.current || !gameRef.current) return;
-        const size = isFull
-          ? Math.min(window.innerWidth, window.innerHeight)
-          : containerRef.current.clientWidth;
-        try {
-          gameRef.current.scale.resize(size, size);
-          // Force the canvas element itself to fill correctly
-          const canvas = containerRef.current.querySelector("canvas");
-          if (canvas) {
-            canvas.style.width = "100%";
-            canvas.style.height = "100%";
-          }
-        } catch { }
-      }, 150);
+      // Staggered retries: mobile browser chrome takes 300-600ms to fully collapse
+      resizePhaser();
+      [50, 150, 300, 500, 800, 1200].forEach(ms => setTimeout(resizePhaser, ms));
     };
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    window.addEventListener("resize", resizePhaser);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+      window.removeEventListener("resize", resizePhaser);
+    };
+  }, [resizePhaser]);
 
-  // XP: survival time is primary + bonus for kills
+  // XP calculation
   const endGame = useCallback(async () => {
     if (!mutedRef.current) playDieSfx(audioRef.current);
     const sc = scoreRef.current, kl = killsRef.current, wv = waveRef.current, el = elapsedRef.current;
-    // Survival XP: 1 XP per 3 seconds survived + 2 XP per kill (capped at 2000)
-    const survivalXp = Math.floor(el / 3);
-    const killXp = kl * 2;
-    const xp = Math.min(survivalXp + killXp, 2000);
+    const xp = Math.min(Math.floor(el / 3) + kl * 2, 2000);
     setStatus("over"); statusRef.current = "over";
-    // Auto-exit fullscreen when game ends
-    setIsFullscreen(false);
+    // Auto-exit fullscreen on game over
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { } }
     setFinalXP(xp); setFinalScore(sc); setFinalKills(kl);
     setSessionScore(s => s + xp);
     const currentUser = userRef.current;
@@ -1054,16 +1029,23 @@ export default function SpaceShooterPage() {
   useEffect(() => {
     if (typeof window === "undefined" || !containerRef.current) return;
     const el = containerRef.current;
-    const sz = el.clientWidth || 400;
     const SceneClass = buildScene({
       onScore: n => { scoreRef.current += n; setScore(scoreRef.current); },
       onKill: () => { killsRef.current++; setKills(killsRef.current); },
-      onWave: n => { waveRef.current = n; setWave(n); },
+      onWave: n => {
+        waveRef.current = n; setWave(n);
+        setWaveAnnounce(n);
+        setTimeout(() => setWaveAnnounce(null), 2800);
+      },
       onTick: t => { elapsedRef.current = t; setElapsed(t); },
       onMissileCd: (r, p) => { setMissileReady(r); setMissilePct(p); },
       onHpChange: h => setHp(h),
       onShieldChange: s => setShield(s),
       onSizeChange: l => setShipLevel(l),
+      onBossWave: w => {
+        setBossWave(w);
+        setTimeout(() => setBossWave(null), 4000);
+      },
       getStatus: () => statusRef.current,
       triggerDie: () => endGameRef.current?.(),
       playBullet: () => { if (!mutedRef.current) playBulletSfx(audioRef.current); },
@@ -1073,28 +1055,42 @@ export default function SpaceShooterPage() {
     });
     import("phaser").then(({ default: Phaser }) => {
       if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; }
+      const rect = el.getBoundingClientRect();
+      const initW = Math.round(rect.width)  || el.offsetWidth  || 400;
+      const initH = Math.round(rect.height) || el.offsetHeight || initW;
       const game = new Phaser.Game({
-        type: Phaser.AUTO, width: sz, height: sz, backgroundColor: "#020817",
-        parent: el, scene: SceneClass,
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        type: Phaser.AUTO,
+        width: initW,
+        height: initH,
+        backgroundColor: "#020817",
+        parent: el,
+        scene: SceneClass,
+        // NONE = we call game.scale.resize() ourselves; no Phaser auto-scaling fighting us
+        scale: { mode: Phaser.Scale.NONE },
         render: { antialias: true, pixelArt: false },
         input: { mouse: { preventDefaultDown: false } },
       } as any);
       gameRef.current = game;
-      game.events.once("ready", () => { sceneRef.current = game.scene.getScene("SpaceScene") ?? game.scene.scenes[0]; });
+      game.events.once("ready", () => {
+        sceneRef.current = game.scene.getScene("SpaceScene") ?? game.scene.scenes[0];
+        // Pin the canvas to fill its container at all times
+        const c = game.canvas as HTMLCanvasElement;
+        if (c) {
+          c.style.cssText = "position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;display:block!important;";
+        }
+        // Sync immediately in case container grew since init
+        resizePhaser();
+      });
     }).catch(console.error);
     return () => { if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const ro = new ResizeObserver(() => {
-      if (!gameRef.current || !containerRef.current) return;
-      try { gameRef.current.scale.resize(containerRef.current.clientWidth, containerRef.current.clientWidth); } catch { }
-    });
+    const ro = new ResizeObserver(() => resizePhaser());
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [resizePhaser]);
 
   const startGame = useCallback(async () => {
     if (!audioRef.current) audioRef.current = makeAudio();
@@ -1102,7 +1098,7 @@ export default function SpaceShooterPage() {
     sessionIdRef.current = null;
     setScore(0); setKills(0); setWave(1); setElapsed(0);
     setHp(100); setShield(0); setShipLevel(0); setMissileReady(true); setMissilePct(1);
-    setFinalXP(0); setFinalScore(0); setFinalKills(0);
+    setFinalXP(0); setFinalScore(0); setFinalKills(0); setBossWave(null); setWaveAnnounce(null);
     sceneRef.current?.resetGame?.();
     if (userRef.current) {
       try {
@@ -1113,18 +1109,34 @@ export default function SpaceShooterPage() {
     setStatus("playing"); statusRef.current = "playing";
   }, []);
 
+  const togglePause = useCallback(() => {
+    setStatus(prev => {
+      const next = prev === "playing" ? "paused" : "playing";
+      statusRef.current = next;
+      return next;
+    });
+  }, []);
+
   const reset = useCallback(() => {
     sceneRef.current?.resetGame?.();
     setStatus("idle"); statusRef.current = "idle";
     setScore(0); setKills(0); setWave(1); setElapsed(0);
     setHp(100); setShield(0); setShipLevel(0); setMissileReady(true); setMissilePct(1); setFinalXP(0);
+    setBossWave(null); setWaveAnnounce(null);
     scoreRef.current = 0; killsRef.current = 0; waveRef.current = 1; elapsedRef.current = 0;
   }, []);
 
-  // Space / right-click → missile (keyboard fallback)
+  // Keyboard controls
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Escape") { setIsFullscreen(false); return; }
+      if (e.code === "Escape") {
+        if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+      }
+      if (e.code === "KeyP" || e.code === "Pause") {
+        if (statusRef.current === "playing" || statusRef.current === "paused") { e.preventDefault(); togglePause(); }
+        return;
+      }
+      if (e.code === "KeyF") { e.preventDefault(); toggleFullscreen(); return; }
       if ((e.code === "Space" || e.code === "KeyX") && statusRef.current === "playing") {
         e.preventDefault();
         sceneRef.current?.firePlayerMissile?.();
@@ -1133,7 +1145,7 @@ export default function SpaceShooterPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [togglePause, toggleFullscreen]);
 
   const fireMissileBtn = () => {
     if (statusRef.current === "playing") {
@@ -1142,21 +1154,244 @@ export default function SpaceShooterPage() {
     }
   };
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth <= 680 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      setIsMobile(mobile);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const isPlaying = status === "playing";
+  const isPaused = status === "paused";
   const isOver = status === "over";
   const isIdle = status === "idle";
 
+  // ── MOBILE FULLSCREEN LAYOUT ──────────────────────────────────────────────
+  // NOTE: We always render the Phaser container div via containerRef in the desktop layout.
+  // On mobile we overlay a fullscreen UI shell on top of it using position:fixed.
+  if (false && isMobile) { // disabled — using overlay approach below instead
+    const hcM = hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444";
+    const slColorM = ["#94a3b8", "#22d3ee", "#a78bfa", "#fbbf24"][shipLevel] ?? "#94a3b8";
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#020817", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+        {/* Death flash */}
+        <AnimatePresence>
+          {isOver && (
+            <motion.div key="df-m" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.6, 0, 0.3, 0] }} exit={{ opacity: 0 }} transition={{ duration: 1.1 }}
+              style={{ position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none", background: "radial-gradient(ellipse at center,rgba(239,68,68,0.65) 0%,transparent 70%)" }} />
+          )}
+        </AnimatePresence>
+
+        {/* Boss wave overlay */}
+        <AnimatePresence>
+          {bossWave && (
+            <motion.div key="boss-m" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2 }} transition={{ type: "spring", damping: 10, stiffness: 200 }}
+              style={{ position: "absolute", inset: 0, zIndex: 50, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ textAlign: "center", padding: "20px 32px", borderRadius: 16, background: "rgba(4,4,20,0.94)", border: "2px solid rgba(249,115,22,0.8)", boxShadow: "0 0 60px rgba(249,115,22,0.4)" }}>
+                <div style={{ fontSize: 42, lineHeight: 1, marginBottom: 6 }}>👹</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 22, fontWeight: 900, color: "#f97316" }}>BOSS WAVE</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 32, fontWeight: 900, color: "#fff" }}>WAVE {bossWave}</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Wave announce */}
+        <AnimatePresence>
+          {waveAnnounce && !bossWave && (
+            <motion.div key={`wm${waveAnnounce}`} initial={{ opacity: 0, y: -40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ type: "spring", damping: 14 }}
+              style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 40, pointerEvents: "none", padding: "8px 24px", borderRadius: 10, background: "rgba(4,8,24,0.92)", border: "1px solid rgba(34,211,238,0.5)" }}>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.2em" }}>WAVE {waveAnnounce}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Canvas fills entire screen — containerRef is shared; actual canvas element is teleported here via CSS */}
+
+        {/* TOP HUD — stats bar */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, padding: "10px 12px 6px", background: "linear-gradient(to bottom,rgba(2,8,23,0.92) 0%,transparent 100%)", pointerEvents: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            {/* Left: HP bar */}
+            <div style={{ flex: 1, background: "rgba(2,8,23,0.7)", border: `1px solid ${hcM}40`, borderRadius: 8, padding: "4px 8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.1em" }}>HULL</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: hcM }}>{hp}%</span>
+              </div>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${hp}%`, background: `linear-gradient(90deg,${hcM},${hcM}cc)`, borderRadius: 2, transition: "width 0.3s" }} />
+              </div>
+            </div>
+            {/* Center: score/wave/kills */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {[{l:"SCR",v:score.toLocaleString(),c:"#22d3ee"},{l:"W",v:wave,c:"#a78bfa"},{l:"K",v:kills,c:"#f97316"}].map(s=>(
+                <div key={s.l} style={{ textAlign: "center", minWidth: 36 }}>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155", letterSpacing: "0.1em" }}>{s.l}</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Right: time + mute */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155" }}>TIME</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f59e0b" }}>{fmt(elapsed)}</div>
+              </div>
+              <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 6px", color: muted ? "#475569" : "#22d3ee", fontSize: 14, cursor: "pointer", pointerEvents: "auto" }}>
+                {muted ? "🔇" : "🔊"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* IDLE overlay */}
+        <AnimatePresence>
+          {isIdle && (
+            <motion.div key="idle-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, zIndex: 15, padding: 24 }}>
+              <motion.div animate={{ scale: [1, 1.1, 1], filter: ["drop-shadow(0 0 8px #22d3ee)", "drop-shadow(0 0 28px #22d3ee)", "drop-shadow(0 0 8px #22d3ee)"] }} transition={{ duration: 2.5, repeat: Infinity }} style={{ fontSize: 52 }}>🚀</motion.div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 28, fontWeight: 900, color: "#f8fafc", letterSpacing: "0.08em", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}>STAR SIEGE</div>
+                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", letterSpacing: "0.2em", fontWeight: 600, marginTop: 4 }}>SURVIVE · GROW · DESTROY</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 320 }}>
+                {[["SWIPE", "MOVE", "#22d3ee"],["DOUBLE TAP", "MISSILE", "#f97316"],["PAUSE BTN", "PAUSE", "#f59e0b"],["KILL ENEMIES", "LEVEL UP", "#a78bfa"]].map(([k,v,c])=>(
+                  <div key={k} style={{ padding: "8px 10px", borderRadius: 8, background: `${c}12`, border: `1px solid ${c}35` }}>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: c, letterSpacing: "0.1em", marginBottom: 2 }}>{k}</div>
+                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, color: "#64748b" }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <motion.button onClick={startGame} whileTap={{ scale: 0.96 }}
+                style={{ width: "100%", maxWidth: 320, padding: "18px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(34,211,238,0.85),rgba(99,102,241,0.7))", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 16, fontWeight: 900, letterSpacing: "0.15em", color: "#020617", boxShadow: "0 0 32px rgba(34,211,238,0.35)" }}>
+                🚀 LAUNCH MISSION
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* PAUSED overlay */}
+        <AnimatePresence>
+          {isPaused && (
+            <motion.div key="pause-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, zIndex: 15 }}>
+              <div style={{ fontSize: 56, filter: "drop-shadow(0 0 20px rgba(245,158,11,0.7))" }}>⏸</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 28, fontWeight: 900, color: "#f59e0b" }}>PAUSED</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* GAME OVER overlay */}
+        <AnimatePresence>
+          {isOver && (
+            <motion.div key="over-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, zIndex: 15, padding: 24 }}>
+              <motion.div initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 8 }} style={{ fontSize: 52, filter: "drop-shadow(0 0 20px rgba(239,68,68,0.8))" }}>💥</motion.div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 22, fontWeight: 900, color: "#ef4444" }}>SHIP DESTROYED</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, width: "100%", maxWidth: 320 }}>
+                {[["SCORE",finalScore.toLocaleString(),"#22d3ee"],["KILLS",finalKills,"#f97316"],["XP",`+${finalXP}`,"#f59e0b"]].map(([l,v,c])=>(
+                  <div key={String(l)} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 10, background: `${c}11`, border: `1px solid ${c}33` }}>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#475569", marginBottom: 4 }}>{l}</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 18, fontWeight: 900, color: String(c) }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%", maxWidth: 320 }}>
+                <motion.button onClick={startGame} whileTap={{ scale: 0.96 }}
+                  style={{ padding: "16px 0", borderRadius: 14, background: "linear-gradient(135deg,rgba(34,211,238,0.85),rgba(99,102,241,0.7))", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: "#020617" }}>
+                  🔄 RETRY
+                </motion.button>
+                <motion.button onClick={reset} whileTap={{ scale: 0.96 }}
+                  style={{ padding: "16px 0", borderRadius: 14, background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 700, color: "#475569" }}>
+                  MENU
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* BOTTOM HUD — missile + pause buttons */}
+        {(isPlaying || isPaused) && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, padding: "8px 12px 14px", background: "linear-gradient(to top,rgba(2,8,23,0.92) 0%,transparent 100%)", display: "flex", gap: 10, alignItems: "center" }}>
+            {/* Shield indicator */}
+            <div style={{ flex: "0 0 56px", background: "rgba(2,8,23,0.8)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 10, padding: "6px 0", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155", marginBottom: 2 }}>SHIELD</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 14, fontWeight: 900, color: "#22d3ee" }}>{shield}</div>
+            </div>
+            {/* Missile button */}
+            <motion.button onClick={fireMissileBtn} whileTap={{ scale: 0.93 }}
+              disabled={!isPlaying || !missileReady}
+              style={{ flex: 1, padding: "14px 0", borderRadius: 14, background: missileReady && isPlaying ? "linear-gradient(135deg,rgba(249,115,22,0.35),rgba(249,115,22,0.12))" : "rgba(15,23,42,0.5)", border: `2px solid ${missileReady && isPlaying ? "rgba(249,115,22,0.8)" : "rgba(255,255,255,0.06)"}`, cursor: isPlaying && missileReady ? "pointer" : "not-allowed", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, boxShadow: missileReady && isPlaying ? "0 0 24px rgba(249,115,22,0.3)" : "none", position: "relative", overflow: "hidden" }}>
+              {!missileReady && isPlaying && (
+                <div style={{ position: "absolute", bottom: 0, left: 0, width: `${missilePct * 100}%`, height: 3, background: "#f97316", boxShadow: "0 0 8px #f97316", transition: "width 0.1s linear" }} />
+              )}
+              <span style={{ fontSize: 24 }}>🚀</span>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: missileReady && isPlaying ? "#f97316" : "#334155" }}>
+                {missileReady ? "MISSILE" : "RELOADING"}
+              </span>
+              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569" }}>DOUBLE-TAP</span>
+            </motion.button>
+            {/* Pause button */}
+            <motion.button onClick={togglePause} whileTap={{ scale: 0.93 }}
+              style={{ flex: "0 0 64px", padding: "14px 0", borderRadius: 14, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(15,23,42,0.7)", border: `2px solid ${isPaused ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <span style={{ fontSize: 22 }}>{isPaused ? "▶️" : "⏸️"}</span>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#334155" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+            </motion.button>
+          </div>
+        )}
+
+        <style>{`
+          .ss-canvas-container { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; aspect-ratio: unset !important; }
+          .ss-canvas-container canvas { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; }
+          @keyframes ssPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        `}</style>
+      </div>
+    );
+  }
+  // ── END MOBILE LAYOUT (disabled conditional above) ─────────────────────────────
+
   const hpColor = hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444";
+  const hcM = hpColor; // alias for mobile HUD
   const shipLevelLabel = ["SCOUT", "FIGHTER", "CRUISER", "DREADNOUGHT"][shipLevel] ?? "SCOUT";
   const shipLevelColor = ["#94a3b8", "#22d3ee", "#a78bfa", "#fbbf24"][shipLevel] ?? "#94a3b8";
-
   return (
-    <div style={{ width: "100%", minHeight: "100vh", paddingBottom: 48, boxSizing: "border-box" }}>
+    <div style={{ width: "100%", minHeight: "100vh", paddingBottom: 48, boxSizing: "border-box", padding: "0 0 48px 0" }}>
 
+      {/* Death flash */}
       <AnimatePresence>
         {isOver && (
           <motion.div key="df" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.6, 0, 0.3, 0] }} exit={{ opacity: 0 }} transition={{ duration: 1.1 }}
             style={{ position: "fixed", inset: 0, zIndex: 10, pointerEvents: "none", background: "radial-gradient(ellipse at center,rgba(239,68,68,0.65) 0%,transparent 70%)" }} />
+        )}
+      </AnimatePresence>
+
+      {/* Boss wave overlay */}
+      <AnimatePresence>
+        {bossWave && (
+          <motion.div key="boss" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2, y: -30 }} transition={{ type: "spring", damping: 10, stiffness: 200 }}
+            style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ textAlign: "center", padding: "24px 40px", borderRadius: 20, background: "rgba(4,4,20,0.92)", border: "2px solid rgba(249,115,22,0.8)", boxShadow: "0 0 60px rgba(249,115,22,0.4), inset 0 0 30px rgba(249,115,22,0.08)" }}>
+              <motion.div animate={{ scale: [1, 1.12, 1], filter: ["drop-shadow(0 0 10px #f97316)", "drop-shadow(0 0 30px #f97316)", "drop-shadow(0 0 10px #f97316)"] }} transition={{ duration: 0.8, repeat: Infinity }}
+                style={{ fontSize: 52, lineHeight: 1, marginBottom: 8 }}>👹</motion.div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,5vw,30px)", fontWeight: 900, color: "#f97316", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(249,115,22,0.8)" }}>BOSS WAVE</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(24px,6vw,40px)", fontWeight: 900, color: "#fff", marginTop: 4 }}>WAVE {bossWave}</div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, color: "#f59e0b", marginTop: 8, fontWeight: 600, letterSpacing: "0.2em" }}>⚠ BOSS INCOMING — BRACE YOURSELF ⚠</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Wave announce banner */}
+      <AnimatePresence>
+        {waveAnnounce && !bossWave && (
+          <motion.div key={`w${waveAnnounce}`} initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }} transition={{ type: "spring", damping: 14 }}
+            style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 40, pointerEvents: "none", padding: "10px 28px", borderRadius: 12, background: "rgba(4,8,24,0.92)", border: "1px solid rgba(34,211,238,0.5)", boxShadow: "0 0 24px rgba(34,211,238,0.2)" }}>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.2em" }}>WAVE {waveAnnounce}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -1172,9 +1407,7 @@ export default function SpaceShooterPage() {
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,46px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
               STAR <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>SIEGE</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
-              SURVIVE · GROW · DESTROY
-            </p>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>SURVIVE · GROW · DESTROY</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setMuted(m => !m)}
@@ -1198,7 +1431,7 @@ export default function SpaceShooterPage() {
           { label: "SCORE", val: score.toLocaleString(), col: "#22d3ee" },
           { label: "KILLS", val: kills, col: "#f97316" },
           { label: "WAVE", val: wave, col: "#a78bfa" },
-          { label: "TIME", val: (isPlaying || isOver) ? fmt(elapsed) : "--:--", col: "#f59e0b" },
+          { label: "TIME", val: (isPlaying || isPaused || isOver) ? fmt(elapsed) : "--:--", col: "#f59e0b" },
         ].map(s => (
           <div key={s.label} style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
@@ -1212,11 +1445,10 @@ export default function SpaceShooterPage() {
 
       {/* HP + SHIELD + SHIP LEVEL BARS */}
       <AnimatePresence>
-        {(isPlaying || isOver) && (
+        {(isPlaying || isPaused || isOver) && (
           <motion.div key="bars" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ marginBottom: 10, maxWidth: 560, margin: "0 auto 10px" }}>
+            style={{ marginBottom: 10, maxWidth: 680, margin: "0 auto 10px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-              {/* HP */}
               <div style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -1230,7 +1462,6 @@ export default function SpaceShooterPage() {
                     style={{ height: "100%", background: `linear-gradient(90deg,${hpColor},${hpColor}cc)`, borderRadius: 3, boxShadow: `0 0 8px ${hpColor}80` }} />
                 </div>
               </div>
-              {/* Shield */}
               <div style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -1245,7 +1476,6 @@ export default function SpaceShooterPage() {
                 </div>
               </div>
             </div>
-            {/* Ship Level bar */}
             <div style={{ background: "rgba(15,23,42,0.8)", border: `1px solid ${shipLevelColor}30`, borderRadius: 10, padding: "8px 12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1271,199 +1501,245 @@ export default function SpaceShooterPage() {
       </AnimatePresence>
 
       {/* MAIN */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 560, margin: "0 auto" }}>
+      <div className="ss-main-col" style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 680, margin: "0 auto" }}>
+
+        {/* MOBILE STATUS STRIP — shown only on mobile instead of full banner */}
+        <div className="ss-mobile-status" style={{ display: "none" }}>
+          <motion.div key={status} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 12px", borderRadius: 10, background: isOver ? "rgba(239,68,68,0.12)" : isPaused ? "rgba(245,158,11,0.12)" : isPlaying ? "rgba(34,211,238,0.08)" : "rgba(15,23,42,0.6)", border: `1px solid ${isOver ? "rgba(239,68,68,0.4)" : isPaused ? "rgba(245,158,11,0.4)" : isPlaying ? "rgba(34,211,238,0.2)" : "rgba(255,255,255,0.06)"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#475569", boxShadow: `0 0 6px ${isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#475569"}`, flexShrink: 0 }} />
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#94a3b8" }}>
+                {isOver ? "SHIP DESTROYED" : isPaused ? "PAUSED" : isPlaying ? `WAVE ${wave} · ${shipLevelLabel}` : "READY FOR LAUNCH"}
+              </span>
+            </div>
+            {(isPlaying || isPaused) && (
+              <button onClick={togglePause} style={{ padding: "4px 10px", borderRadius: 6, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(34,211,238,0.1)", border: `1px solid ${isPaused ? "rgba(245,158,11,0.5)" : "rgba(34,211,238,0.3)"}`, color: isPaused ? "#f59e0b" : "#22d3ee", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                {isPaused ? "▶ RESUME" : "⏸ PAUSE"}
+              </button>
+            )}
+          </motion.div>
+        </div>
 
         {/* STATUS BANNER */}
-        <motion.div key={status} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          style={{ background: isOver ? "rgba(4,8,36,0.95)" : "rgba(15,23,42,0.85)", backdropFilter: "blur(16px)", border: `1px solid ${isOver ? "rgba(239,68,68,0.5)" : isPlaying ? "rgba(34,211,238,0.2)" : "rgba(34,211,238,0.15)"}`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 8, position: "relative", overflow: "hidden" }}>
+        <motion.div key={status} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="ss-status-banner"
+          style={{ background: isOver ? "rgba(4,8,36,0.95)" : isPaused ? "rgba(4,12,36,0.95)" : "rgba(15,23,42,0.85)", backdropFilter: "blur(16px)", border: `1px solid ${isOver ? "rgba(239,68,68,0.5)" : isPaused ? "rgba(245,158,11,0.5)" : isPlaying ? "rgba(34,211,238,0.2)" : "rgba(34,211,238,0.15)"}`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 8, position: "relative", overflow: "hidden" }}>
           {isOver && <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 0.5, ease: "linear" }} style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.12),transparent)", pointerEvents: "none" }} />}
-          <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: isOver ? "#ef4444" : isPlaying ? "#22d3ee" : "#475569", boxShadow: `0 0 8px ${isOver ? "#ef4444" : isPlaying ? "#22d3ee" : "#475569"}`, animation: isPlaying ? "ssPulse 1.5s infinite" : "none" }} />
+          {isPaused && <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(245,158,11,0.07),transparent)", pointerEvents: "none" }} />}
+          <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#475569", boxShadow: `0 0 8px ${isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#475569"}`, animation: isPlaying ? "ssPulse 1.5s infinite" : "none" }} />
           <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: isOver ? "#ef4444" : isPlaying ? "#22d3ee" : "#94a3b8" }}>
-              {isOver ? "SHIP DESTROYED" : isPlaying ? `WAVE ${wave} · ${shipLevelLabel}` : "READY FOR LAUNCH"}
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#94a3b8" }}>
+              {isOver ? "SHIP DESTROYED" : isPaused ? "⏸ MISSION PAUSED" : isPlaying ? `WAVE ${wave} · ${shipLevelLabel}` : "READY FOR LAUNCH"}
             </div>
             <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600, marginTop: 1 }}>
               {isOver
                 ? `Score: ${finalScore.toLocaleString()} · +${finalXP} XP · ${fmt(elapsed)} survived${saving ? " · saving…" : ""}`
-                : isPlaying
-                  ? `${kills} kills · ${fmt(elapsed)} · right-click or SPACE = missile`
-                  : "Mouse to move · Right-click / SPACE / Double-tap = missile"}
+                : isPaused ? "Press P or tap Resume to continue · F = Fullscreen"
+                  : isPlaying
+                    ? `${kills} kills · ${fmt(elapsed)} · P = pause · right-click / SPACE = missile`
+                    : "Mouse to move · Right-click / SPACE / Double-tap = missile · P = pause"}
             </div>
           </div>
+          {/* Pause / Resume button in status bar */}
+          {(isPlaying || isPaused) && (
+            <button onClick={togglePause}
+              style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 8, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(34,211,238,0.1)", border: `1px solid ${isPaused ? "rgba(245,158,11,0.6)" : "rgba(34,211,238,0.3)"}`, color: isPaused ? "#f59e0b" : "#22d3ee", fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              {isPaused ? <><Play style={{ width: 10, height: 10 }} /> RESUME</> : <><Pause style={{ width: 10, height: 10 }} /> PAUSE</>}
+            </button>
+          )}
         </motion.div>
 
-        {/* CANVAS */}
-        <div ref={gameWrapperRef} style={{ background: "rgba(2,8,23,0.98)", border: "none", borderRadius: isFullscreen ? 0 : 20, padding: isFullscreen ? 0 : 6, boxShadow: isFullscreen ? "none" : isPlaying ? "0 0 0 2px rgba(34,211,238,0.25),0 0 40px rgba(34,211,238,0.12),inset 0 0 20px rgba(0,0,0,0.6)" : isOver ? "0 0 0 2px rgba(239,68,68,0.25),0 0 28px rgba(239,68,68,0.18)" : "0 0 0 1px rgba(34,211,238,0.08),0 6px 32px rgba(0,0,0,0.8)", transition: "border-color 0.4s,box-shadow 0.4s", position: isFullscreen ? "fixed" : "relative", inset: isFullscreen ? 0 : undefined, display: "flex", alignItems: "center", justifyContent: "center", width: isFullscreen ? "100vw" : undefined, height: isFullscreen ? "100vh" : undefined, zIndex: isFullscreen ? 9999 : undefined, overflow: "hidden" }}>
-          {/* Fullscreen border frame */}
+        {/* ── GAME CANVAS WRAPPER ── */}
+        {/* This div is what gets fullscreened */}
+        <div
+          ref={gameWrapperRef}
+          className="ss-game-wrapper"
+          style={{
+            background: "#020817",
+            borderRadius: 18,
+            overflow: "hidden",
+            position: "relative",
+            boxShadow: isPlaying ? "0 0 0 2px rgba(34,211,238,0.25),0 0 40px rgba(34,211,238,0.12)" : isOver ? "0 0 0 2px rgba(239,68,68,0.25),0 0 28px rgba(239,68,68,0.18)" : "0 0 0 1px rgba(34,211,238,0.08),0 6px 32px rgba(0,0,0,0.8)",
+            transition: "box-shadow 0.4s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Fullscreen border corners */}
           {isFullscreen && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 15 }}>
-              {/* Main border */}
-              <div style={{ position: "absolute", inset: 0, border: "2px solid rgba(34,211,238,0.55)", borderRadius: 16, boxShadow: "0 0 0 1px rgba(34,211,238,0.15), inset 0 0 0 1px rgba(34,211,238,0.15), 0 0 40px rgba(34,211,238,0.08)" }} />
-              {/* Corner brackets — TL */}
-              <div style={{ position: "absolute", top: 12, left: 12, width: 32, height: 32, borderTop: "3px solid #22d3ee", borderLeft: "3px solid #22d3ee", borderRadius: "4px 0 0 0", animation: "ssCornerPulse 2s infinite" }} />
-              {/* Corner brackets — TR */}
-              <div style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderTop: "3px solid #22d3ee", borderRight: "3px solid #22d3ee", borderRadius: "0 4px 0 0", animation: "ssCornerPulse 2s infinite 0.5s" }} />
-              {/* Corner brackets — BL */}
-              <div style={{ position: "absolute", bottom: 12, left: 12, width: 32, height: 32, borderBottom: "3px solid #22d3ee", borderLeft: "3px solid #22d3ee", borderRadius: "0 0 0 4px", animation: "ssCornerPulse 2s infinite 1s" }} />
-              {/* Corner brackets — BR */}
-              <div style={{ position: "absolute", bottom: 12, right: 12, width: 32, height: 32, borderBottom: "3px solid #22d3ee", borderRight: "3px solid #22d3ee", borderRadius: "0 0 4px 0", animation: "ssCornerPulse 2s infinite 1.5s" }} />
-              {/* Top label */}
-              <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "rgba(34,211,238,0.7)", letterSpacing: "0.3em", textTransform: "uppercase", background: "rgba(2,8,23,0.7)", padding: "3px 12px", borderRadius: 4, border: "1px solid rgba(34,211,238,0.2)" }}>STAR SIEGE</div>
-              {/* Bottom label */}
-              <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 600, color: "rgba(34,211,238,0.4)", letterSpacing: "0.2em", whiteSpace: "nowrap" }}>PLAYABLE ZONE</div>
+              <div style={{ position: "absolute", inset: 0, border: "2px solid rgba(34,211,238,0.45)", borderRadius: 0 }} />
+              {[["top:12px;left:12px;border-top:3px solid #22d3ee;border-left:3px solid #22d3ee", "0s"],
+                ["top:12px;right:12px;border-top:3px solid #22d3ee;border-right:3px solid #22d3ee", "0.5s"],
+                ["bottom:12px;left:12px;border-bottom:3px solid #22d3ee;border-left:3px solid #22d3ee", "1s"],
+                ["bottom:12px;right:12px;border-bottom:3px solid #22d3ee;border-right:3px solid #22d3ee", "1.5s"]].map(([s, delay], i) => (
+                <div key={i} style={{ position: "absolute", width: 30, height: 30, ...Object.fromEntries(s.split(";").map(p => { const [k, v] = p.split(":"); return [k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v.trim()]; })), animation: `ssCornerPulse 2s infinite ${delay}` } as any} />
+              ))}
+              <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "rgba(34,211,238,0.7)", letterSpacing: "0.3em", background: "rgba(2,8,23,0.7)", padding: "3px 12px", borderRadius: 4, border: "1px solid rgba(34,211,238,0.2)" }}>STAR SIEGE</div>
             </div>
           )}
 
-          {/* Fullscreen toggle button */}
-          <button onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            style={{ position: "absolute", top: 14, right: 14, zIndex: 20, background: "rgba(15,23,42,0.85)", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#22d3ee", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "background 0.2s" }}
+          {/* Fullscreen / exit button */}
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen (Esc / F)" : "Fullscreen (F)"}
+            style={{ position: "absolute", top: 12, right: 12, zIndex: 20, background: "rgba(15,23,42,0.85)", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#22d3ee", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "background 0.2s" }}
             onMouseEnter={e => (e.currentTarget.style.background = "rgba(34,211,238,0.15)")}
             onMouseLeave={e => (e.currentTarget.style.background = "rgba(15,23,42,0.85)")}>
             {isFullscreen ? <Minimize style={{ width: 14, height: 14 }} /> : <Maximize style={{ width: 14, height: 14 }} />}
           </button>
 
-          <div ref={containerRef} style={{ width: isFullscreen ? "min(100vw,100vh)" : "100%", maxWidth: isFullscreen ? "100vh" : undefined, height: isFullscreen ? "min(100vw,100vh)" : undefined, position: "relative", borderRadius: 0, overflow: isFullscreen ? "visible" : "hidden", cursor: "crosshair", aspectRatio: "1 / 1", outline: "none", boxShadow: "none" }}>
+          {/* Pause button inside canvas on mobile */}
+          {(isPlaying || isPaused) && (
+            <button
+              onClick={togglePause}
+              style={{ position: "absolute", top: 12, left: 12, zIndex: 20, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(15,23,42,0.85)", border: `1px solid ${isPaused ? "rgba(245,158,11,0.6)" : "rgba(34,211,238,0.3)"}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", color: isPaused ? "#f59e0b" : "#22d3ee", display: "flex", alignItems: "center", gap: 4, backdropFilter: "blur(8px)" }}>
+              {isPaused ? <Play style={{ width: 12, height: 12 }} /> : <Pause style={{ width: 12, height: 12 }} />}
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700 }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+            </button>
+          )}
 
-            {/* ── SCI-FI BORDER FRAME ── */}
-            {(() => {
-              const fc = isOver ? "#ef4444" : isPlaying ? "#22d3ee" : "#334155";
-              const fa = isOver ? 0.9 : isPlaying ? 1 : 0.5;
-              const cL = 38; // corner arm length
-              const cT = 3;  // corner arm thickness
-              const edgeO = 0.22; // edge line opacity
-              return (
-                <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 12 }}>
+          {/* The actual Phaser canvas container — ALWAYS square in normal mode, ALWAYS fills screen in fullscreen */}
+          <div
+            ref={containerRef}
+            className="ss-canvas-container"
+          />
 
-                  {/* Full-perimeter edge lines */}
-                  {/* Top */}
-                  <div style={{ position: "absolute", top: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
-                  {/* Bottom */}
-                  <div style={{ position: "absolute", bottom: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
-                  {/* Left */}
-                  <div style={{ position: "absolute", left: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
-                  {/* Right */}
-                  <div style={{ position: "absolute", right: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
-
-
-
-                  {/* Mid-edge tick marks — top & bottom */}
-                  {[-0.25, 0, 0.25].map(offset => (
-                    <div key={`t${offset}`}>
-                      <div style={{ position: "absolute", top: 0, left: `calc(50% + ${offset*100}% - 1px)`, width: 2, height: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
-                      <div style={{ position: "absolute", bottom: 0, left: `calc(50% + ${offset*100}% - 1px)`, width: 2, height: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
-                    </div>
-                  ))}
-                  {/* Mid-edge tick marks — left & right */}
-                  {[-0.25, 0, 0.25].map(offset => (
-                    <div key={`s${offset}`}>
-                      <div style={{ position: "absolute", left: 0, top: `calc(50% + ${offset*100}% - 1px)`, height: 2, width: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
-                      <div style={{ position: "absolute", right: 0, top: `calc(50% + ${offset*100}% - 1px)`, height: 2, width: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
-                    </div>
-                  ))}
-
-                  {/* Animated scan line — only while playing */}
-                  {isPlaying && (
-                    <motion.div
-                      animate={{ top: ["2%", "98%", "2%"] }}
-                      transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                      style={{ position: "absolute", left: cT, right: cT, height: 2, background: `linear-gradient(90deg, transparent, ${fc}44, ${fc}99, ${fc}44, transparent)`, boxShadow: `0 0 12px ${fc}66`, pointerEvents: "none" }}
-                    />
-                  )}
-
-                  {/* Status label — top-left */}
-                  <div style={{ position: "absolute", top: 6, left: cL+8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.22em", color: fc, opacity: fa*0.85, textTransform: "uppercase", textShadow: `0 0 8px ${fc}` }}>
-                    {isOver ? "DESTROYED" : isPlaying ? "ACTIVE" : "STANDBY"}
+          {/* Sci-fi border frame */}
+          {(() => {
+            const fc = isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#334155";
+            const fa = isOver ? 0.9 : isPlaying || isPaused ? 1 : 0.5;
+            const cL = 38, cT = 3, edgeO = 0.22;
+            const hex = (n: number) => Math.round(n * 255).toString(16).padStart(2, "0");
+            return (
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 12 }}>
+                <div style={{ position: "absolute", top: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg,transparent,${fc}${hex(edgeO)},${fc}${hex(edgeO)},transparent)` }} />
+                <div style={{ position: "absolute", bottom: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg,transparent,${fc}${hex(edgeO)},${fc}${hex(edgeO)},transparent)` }} />
+                <div style={{ position: "absolute", left: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg,transparent,${fc}${hex(edgeO)},${fc}${hex(edgeO)},transparent)` }} />
+                <div style={{ position: "absolute", right: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg,transparent,${fc}${hex(edgeO)},${fc}${hex(edgeO)},transparent)` }} />
+                {/* Corner brackets */}
+                {[
+                  { top: 0, left: 0, borderTop: `${cT}px solid ${fc}`, borderLeft: `${cT}px solid ${fc}` },
+                  { top: 0, right: 0, borderTop: `${cT}px solid ${fc}`, borderRight: `${cT}px solid ${fc}` },
+                  { bottom: 0, left: 0, borderBottom: `${cT}px solid ${fc}`, borderLeft: `${cT}px solid ${fc}` },
+                  { bottom: 0, right: 0, borderBottom: `${cT}px solid ${fc}`, borderRight: `${cT}px solid ${fc}` },
+                ].map((s, i) => (
+                  <div key={i} style={{ position: "absolute", width: cL, height: cL, opacity: fa, ...s }} />
+                ))}
+                {/* Mid ticks */}
+                {[-0.25, 0, 0.25].map(offset => (
+                  <div key={`t${offset}`}>
+                    <div style={{ position: "absolute", top: 0, left: `calc(50% + ${offset * 100}% - 1px)`, width: 2, height: offset === 0 ? 10 : 6, background: fc, opacity: fa * (offset === 0 ? 0.9 : 0.5) }} />
+                    <div style={{ position: "absolute", bottom: 0, left: `calc(50% + ${offset * 100}% - 1px)`, width: 2, height: offset === 0 ? 10 : 6, background: fc, opacity: fa * (offset === 0 ? 0.9 : 0.5) }} />
+                    <div style={{ position: "absolute", left: 0, top: `calc(50% + ${offset * 100}% - 1px)`, height: 2, width: offset === 0 ? 10 : 6, background: fc, opacity: fa * (offset === 0 ? 0.9 : 0.5) }} />
+                    <div style={{ position: "absolute", right: 0, top: `calc(50% + ${offset * 100}% - 1px)`, height: 2, width: offset === 0 ? 10 : 6, background: fc, opacity: fa * (offset === 0 ? 0.9 : 0.5) }} />
                   </div>
-
-                  {/* Coordinate readout — bottom-right */}
-                  <div style={{ position: "absolute", bottom: 6, right: cL+8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.18em", color: fc, opacity: fa*0.65, textAlign: "right" }}>
-                    {isPlaying ? `W${String(wave).padStart(2,"0")} · K${String(kills).padStart(3,"0")}` : "SYS::READY"}
-                  </div>
-
+                ))}
+                {/* Scan line while playing */}
+                {isPlaying && (
+                  <motion.div animate={{ top: ["2%", "98%", "2%"] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                    style={{ position: "absolute", left: cT, right: cT, height: 2, background: `linear-gradient(90deg,transparent,${fc}44,${fc}99,${fc}44,transparent)`, boxShadow: `0 0 12px ${fc}66`, pointerEvents: "none" }} />
+                )}
+                <div style={{ position: "absolute", top: 6, left: cL + 8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.22em", color: fc, opacity: fa * 0.85, textTransform: "uppercase", textShadow: `0 0 8px ${fc}` }}>
+                  {isOver ? "DESTROYED" : isPaused ? "PAUSED" : isPlaying ? "ACTIVE" : "STANDBY"}
                 </div>
-              );
-            })()}
+                <div style={{ position: "absolute", bottom: 6, right: cL + 8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.18em", color: fc, opacity: fa * 0.65, textAlign: "right" }}>
+                  {isPlaying || isPaused ? `W${String(wave).padStart(2, "0")} · K${String(kills).padStart(3, "0")}` : "SYS::READY"}
+                </div>
+              </div>
+            );
+          })()}
 
-            {/* IDLE overlay */}
-            <AnimatePresence>
-              {isIdle && (
-                <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                  style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, pointerEvents: "none", zIndex: 5 }}>
-                  <motion.div animate={{ scale: [1, 1.1, 1], filter: ["drop-shadow(0 0 8px #22d3ee)", "drop-shadow(0 0 28px #22d3ee)", "drop-shadow(0 0 8px #22d3ee)"] }} transition={{ duration: 2.5, repeat: Infinity }} style={{ fontSize: "clamp(32px,10vw,58px)" }}>🚀</motion.div>
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,4vw,20px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}>STAR SIEGE</p>
-                    <p style={{ margin: "4px 0 0", fontFamily: "'Rajdhani',sans-serif", fontSize: "clamp(9px,2.5vw,11px)", color: "#475569", letterSpacing: "0.2em", fontWeight: 600 }}>SURVIVE · GROW YOUR SHIP · DESTROY THE SWARM</p>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                    {[["MOUSE / SWIPE", "MOVE SHIP", "#22d3ee"], ["RIGHT-CLICK / SPACE", "MISSILE STRIKE", "#f97316"], ["DOUBLE TAP", "MISSILE (MOBILE)", "#f97316"], ["SURVIVE + KILL", "EARN MORE XP", "#f59e0b"]].map(([k, v, c]) => (
-                      <div key={k} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <div style={{ padding: "2px 8px", borderRadius: 5, background: `${c}12`, border: `1px solid ${c}35`, fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: c }}>{k}</div>
-                        <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: "#475569" }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* GAME OVER overlay */}
-            <AnimatePresence>
-              {isOver && (
-                <motion.div key="over" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: "none", zIndex: 5 }}>
-                  <motion.div initial={{ scale: 0.3, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", damping: 8, stiffness: 180 }}
-                    style={{ fontSize: "clamp(28px,9vw,52px)", filter: "drop-shadow(0 0 20px rgba(239,68,68,0.8))" }}>💥</motion.div>
-                  <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                    style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,4vw,22px)", fontWeight: 900, color: "#ef4444" }}>SHIP DESTROYED</motion.p>
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ display: "flex", gap: 14 }}>
-                    {[["SCORE", finalScore.toLocaleString(), "#22d3ee"], ["KILLS", finalKills, "#f97316"], ["XP", `+${finalXP}`, "#f59e0b"]].map(([l, v, c]) => (
-                      <div key={String(l)} style={{ textAlign: "center" }}>
-                        <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#475569", fontWeight: 700, letterSpacing: "0.2em" }}>{l}</p>
-                        <p style={{ margin: "3px 0 0", fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,4vw,20px)", fontWeight: 900, color: String(c), textShadow: `0 0 10px ${c}` }}>{v}</p>
-                      </div>
-                    ))}
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* IN-GAME HUD — HP + Kills, live inside the canvas */}
-            <AnimatePresence>
-              {isPlaying && (
-                <motion.div key="hud" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ position: "absolute", bottom: 10, left: 10, right: 10, zIndex: 10, pointerEvents: "none", display: "flex", gap: 6 }}>
-                  {/* HP bar */}
-                  <div style={{ flex: 1, background: "rgba(2,8,23,0.82)", border: `1px solid ${hp > 60 ? "rgba(34,211,238,0.45)" : hp > 30 ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.6)"}`, borderRadius: 8, padding: "5px 8px", backdropFilter: "blur(8px)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(5px,1.8vw,8px)", fontWeight: 700, color: "#334155", letterSpacing: "0.12em" }}>HULL</span>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(6px,2vw,9px)", fontWeight: 900, color: hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444" }}>{hp}%</span>
+          {/* IDLE overlay */}
+          <AnimatePresence>
+            {isIdle && (
+              <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: isMobile ? "auto" : "none", zIndex: 5 }}>
+                <motion.div animate={{ scale: [1, 1.1, 1], filter: ["drop-shadow(0 0 8px #22d3ee)", "drop-shadow(0 0 28px #22d3ee)", "drop-shadow(0 0 8px #22d3ee)"] }} transition={{ duration: 2.5, repeat: Infinity }} style={{ fontSize: "clamp(24px,6vw,44px)" }}>🚀</motion.div>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,4vw,20px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}>STAR SIEGE</p>
+                  <p style={{ margin: "4px 0 0", fontFamily: "'Rajdhani',sans-serif", fontSize: "clamp(9px,2.5vw,11px)", color: "#475569", letterSpacing: "0.2em", fontWeight: 600 }}>SURVIVE · GROW YOUR SHIP · DESTROY THE SWARM</p>
+                </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  {[["MOUSE / SWIPE", "MOVE SHIP", "#22d3ee"], ["RIGHT-CLICK / SPACE", "MISSILE STRIKE", "#f97316"], ["DOUBLE TAP", "MISSILE (MOBILE)", "#f97316"], ["P KEY", "PAUSE / RESUME", "#f59e0b"], ["F KEY", "FULLSCREEN", "#a78bfa"]].map(([k, v, c]) => (
+                    <div key={k} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <div style={{ padding: "1px 6px", borderRadius: 4, background: `${c}12`, border: `1px solid ${c}35`, fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: c }}>{k}</div>
+                      <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569" }}>{v}</span>
                     </div>
-                    <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${hp}%`, background: hp > 60 ? "linear-gradient(90deg,#22d3ee,#6366f1)" : hp > 30 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "linear-gradient(90deg,#ef4444,#dc2626)", borderRadius: 2, boxShadow: `0 0 6px ${hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444"}80`, transition: "width 0.3s ease" }} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* PAUSED overlay */}
+          <AnimatePresence>
+            {isPaused && (
+              <motion.div key="paused" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, pointerEvents: "none", zIndex: 5 }}>
+                <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }} transition={{ duration: 1.6, repeat: Infinity }}
+                  style={{ fontSize: "clamp(36px,12vw,64px)", filter: "drop-shadow(0 0 20px rgba(245,158,11,0.7))" }}>⏸</motion.div>
+                <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,5vw,26px)", fontWeight: 900, color: "#f59e0b", textShadow: "0 0 20px rgba(245,158,11,0.6)" }}>PAUSED</p>
+                <p style={{ margin: 0, fontFamily: "'Rajdhani',sans-serif", fontSize: "clamp(10px,3vw,13px)", color: "#64748b", letterSpacing: "0.15em" }}>PRESS P · TAP RESUME TO CONTINUE</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* GAME OVER overlay */}
+          <AnimatePresence>
+            {isOver && (
+              <motion.div key="over" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: "none", zIndex: 5 }}>
+                <motion.div initial={{ scale: 0.3, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", damping: 8, stiffness: 180 }}
+                  style={{ fontSize: "clamp(28px,9vw,52px)", filter: "drop-shadow(0 0 20px rgba(239,68,68,0.8))" }}>💥</motion.div>
+                <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                  style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,4vw,22px)", fontWeight: 900, color: "#ef4444" }}>SHIP DESTROYED</motion.p>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ display: "flex", gap: 14 }}>
+                  {[["SCORE", finalScore.toLocaleString(), "#22d3ee"], ["KILLS", finalKills, "#f97316"], ["XP", `+${finalXP}`, "#f59e0b"]].map(([l, v, c]) => (
+                    <div key={String(l)} style={{ textAlign: "center" }}>
+                      <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#475569", fontWeight: 700, letterSpacing: "0.2em" }}>{l}</p>
+                      <p style={{ margin: "3px 0 0", fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,4vw,20px)", fontWeight: 900, color: String(c), textShadow: `0 0 10px ${c}` }}>{v}</p>
                     </div>
-                  </div>
-                  {/* Shield */}
-                  <div style={{ width: 54, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>SHIELD</div>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#22d3ee" }}>{shield}</div>
-                  </div>
-                  {/* Kills */}
-                  <div style={{ width: 52, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(249,115,22,0.35)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>KILLS</div>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#f97316" }}>{kills}</div>
-                  </div>
+                  ))}
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* IN-GAME HUD */}
+          <AnimatePresence>
+            {isPlaying && (
+              <motion.div key="hud" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="ss-hud-bar"
+                style={{ position: "absolute", bottom: 10, left: 10, right: 10, zIndex: 10, pointerEvents: "none", display: "flex", gap: 6 }}>
+                <div style={{ flex: 1, background: "rgba(2,8,23,0.82)", border: `1px solid ${hp > 60 ? "rgba(34,211,238,0.45)" : hp > 30 ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.6)"}`, borderRadius: 8, padding: "5px 8px", backdropFilter: "blur(8px)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(5px,1.8vw,8px)", fontWeight: 700, color: "#334155", letterSpacing: "0.12em" }}>HULL</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(6px,2vw,9px)", fontWeight: 900, color: hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444" }}>{hp}%</span>
+                  </div>
+                  <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${hp}%`, background: hp > 60 ? "linear-gradient(90deg,#22d3ee,#6366f1)" : hp > 30 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "linear-gradient(90deg,#ef4444,#dc2626)", borderRadius: 2, boxShadow: `0 0 6px ${hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444"}80`, transition: "width 0.3s ease" }} />
+                  </div>
+                </div>
+                <div style={{ width: 54, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>SHIELD</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#22d3ee" }}>{shield}</div>
+                </div>
+                <div style={{ width: 52, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(249,115,22,0.35)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>KILLS</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#f97316" }}>{kills}</div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* MISSILE BUTTON with cooldown ring */}
+        {/* MISSILE BUTTON */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "center" }}>
           <motion.button onClick={fireMissileBtn} whileHover={isPlaying ? { scale: 1.05 } : {}} whileTap={isPlaying ? { scale: 0.93 } : {}}
             disabled={!isPlaying || !missileReady}
-            style={{ flex: 1, maxWidth: 220, padding: "14px 0", borderRadius: 14, background: missileReady && isPlaying ? "linear-gradient(135deg,rgba(249,115,22,0.28),rgba(249,115,22,0.1))" : "rgba(15,23,42,0.35)", border: `2px solid ${missileReady && isPlaying ? "rgba(249,115,22,0.75)" : "rgba(255,255,255,0.05)"}`, cursor: isPlaying && missileReady ? "pointer" : "not-allowed", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, boxShadow: missileReady && isPlaying ? "0 0 22px rgba(249,115,22,0.28)" : "none", transition: "all 0.3s", position: "relative", overflow: "hidden" }}>
-            {/* Cooldown fill bar */}
+            style={{ flex: 1, maxWidth: 260, padding: "14px 0", borderRadius: 14, background: missileReady && isPlaying ? "linear-gradient(135deg,rgba(249,115,22,0.28),rgba(249,115,22,0.1))" : "rgba(15,23,42,0.35)", border: `2px solid ${missileReady && isPlaying ? "rgba(249,115,22,0.75)" : "rgba(255,255,255,0.05)"}`, cursor: isPlaying && missileReady ? "pointer" : "not-allowed", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, boxShadow: missileReady && isPlaying ? "0 0 22px rgba(249,115,22,0.28)" : "none", transition: "all 0.3s", position: "relative", overflow: "hidden" }}>
             {!missileReady && isPlaying && (
               <motion.div animate={{ width: `${missilePct * 100}%` }} style={{ position: "absolute", bottom: 0, left: 0, height: 3, background: "#f97316", boxShadow: "0 0 8px #f97316", transition: "width 0.1s linear" }} />
             )}
@@ -1474,9 +1750,17 @@ export default function SpaceShooterPage() {
             <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569" }}>RIGHT-CLICK · SPACE · DOUBLE-TAP</span>
           </motion.button>
 
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          {/* Pause button on mobile (extra large tap target) */}
+          <motion.button onClick={togglePause} whileTap={{ scale: 0.93 }}
+            disabled={!isPlaying && !isPaused}
+            style={{ width: 72, padding: "14px 0", borderRadius: 14, background: isPaused ? "rgba(245,158,11,0.18)" : "rgba(15,23,42,0.5)", border: `2px solid ${isPaused ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.08)"}`, cursor: isPlaying || isPaused ? "pointer" : "not-allowed", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, transition: "all 0.3s" }}>
+            <span style={{ fontSize: 20 }}>{isPaused ? "▶️" : "⏸️"}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#334155", letterSpacing: "0.1em" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+          </motion.button>
+
+          <div className="ss-auto-ind" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <Target style={{ width: 14, height: 14, color: "#334155" }} />
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#1e293b", letterSpacing: "0.1em" }}>AUTO-FIRE</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#1e293b", letterSpacing: "0.1em" }}>AUTO</span>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: isPlaying ? "#22d3ee" : "#1e293b", boxShadow: isPlaying ? "0 0 8px #22d3ee" : "none", animation: isPlaying ? "ssPulse 0.8s infinite" : "none" }} />
           </div>
         </div>
@@ -1484,7 +1768,7 @@ export default function SpaceShooterPage() {
         {/* XP Result card */}
         <AnimatePresence>
           {isOver && (
-            <motion.div key="xp" initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: "spring", damping: 14, stiffness: 220 }}
+            <motion.div key="xp" ref={gameOverRef} initial={{ opacity: 0, scale: 0.9, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: "spring", damping: 14, stiffness: 220 }}
               style={{ background: "rgba(4,8,24,0.96)", backdropFilter: "blur(16px)", border: "2px solid rgba(249,115,22,0.4)", borderRadius: 18, padding: "18px 16px", boxShadow: "0 0 36px rgba(249,115,22,0.12)", position: "relative", overflow: "hidden" }}>
               <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1, ease: "linear" }}
                 style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(249,115,22,0.07),transparent)", pointerEvents: "none" }} />
@@ -1541,7 +1825,7 @@ export default function SpaceShooterPage() {
       </div>
 
       {/* LEADERBOARD */}
-      <div style={{ marginTop: 28 }}>
+      <div className="ss-section" style={{ marginTop: 28, maxWidth: 680, margin: "28px auto 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#f59e0b,#ef4444)", borderRadius: 1 }} />
           <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.3em", textTransform: "uppercase" }}>TOP PILOTS</span>
@@ -1593,7 +1877,7 @@ export default function SpaceShooterPage() {
       {/* MISSION LOG */}
       <AnimatePresence>
         {hist.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 28 }}>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="ss-section" style={{ marginTop: 28, maxWidth: 680, margin: "28px auto 0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#22d3ee,#6366f1)", borderRadius: 1 }} />
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#22d3ee", letterSpacing: "0.3em", textTransform: "uppercase" }}>MISSION LOG</span>
@@ -1619,19 +1903,80 @@ export default function SpaceShooterPage() {
       </AnimatePresence>
 
       <style>{`
-        @keyframes ssPulse    { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
-        @keyframes ssSkel     { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes ssPulse       { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
+        @keyframes ssSkel        { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes ssCornerPulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #22d3ee)} 50%{opacity:0.65;filter:drop-shadow(0 0 2px #22d3ee)} }
-        :fullscreen { background: #020817; }
-        @media(max-width:600px){
-          .ss-lb-head   { grid-template-columns: 36px 1fr 80px !important; }
-          .ss-lb-head > *:nth-child(4) { display: none !important; }
-          .ss-hist-head { grid-template-columns: 1fr 1fr 60px !important; }
-          .ss-hist-row > *:nth-child(4), .ss-hist-row > *:nth-child(5) { display: none !important; }
+
+        /* ── Canvas container: fills its wrapper, Phaser canvas fills the container ── */
+        .ss-canvas-container {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1 / 1;   /* desktop default: square */
+          min-height: 200px;
+          overflow: hidden;
+          cursor: crosshair;
+          outline: none;
         }
-        @media(max-width:480px){
-          .ss-missile-btn { padding: 10px 0 !important; }
-          .ss-missile-btn span:last-child { display: none !important; }
+        .ss-canvas-container canvas {
+          display: block !important;
+          position: absolute !important;
+          top: 0 !important; left: 0 !important;
+          width: 100% !important; height: 100% !important;
+        }
+
+        /* Mobile: portrait canvas ratio */
+        @media (max-width: 680px) {
+          .ss-canvas-container { aspect-ratio: 3 / 4 !important; min-height: unset !important; }
+        }
+
+        /* ── FULLSCREEN: wrapper + container both fill every pixel of the screen ── */
+        .ss-game-wrapper:fullscreen,
+        .ss-game-wrapper:-webkit-full-screen,
+        .ss-game-wrapper:-moz-full-screen {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          max-width: 100vw !important; max-height: 100vh !important;
+          margin: 0 !important; padding: 0 !important;
+          border-radius: 0 !important;
+          background: #020817 !important;
+          overflow: hidden !important;
+          display: block !important;
+        }
+        /* Inside fullscreen: canvas container must fill the full wrapper, no aspect-ratio */
+        .ss-game-wrapper:fullscreen .ss-canvas-container,
+        .ss-game-wrapper:-webkit-full-screen .ss-canvas-container,
+        .ss-game-wrapper:-moz-full-screen .ss-canvas-container {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important; height: 100% !important;
+          aspect-ratio: unset !important;    /* KILL the aspect-ratio — fill the screen */
+          min-height: unset !important;
+        }
+
+        /* ── MOBILE: natural scrollable page layout ── */
+        @media (max-width: 680px) {
+          /* Show mobile strip, hide desktop banner */
+          .ss-mobile-status { display: block !important; }
+          .ss-status-banner { display: none !important; }
+          /* Game wrapper: stays in natural flow */
+          .ss-game-wrapper { border-radius: 12px !important; }
+          /* Leaderboard: drop XP column */
+          .ss-lb-head { grid-template-columns: 36px 1fr 90px !important; gap: 6px !important; padding: 9px 12px !important; }
+          .ss-lb-head > *:nth-child(4) { display: none !important; }
+          /* History: score + kills + wave only */
+          .ss-hist-head { grid-template-columns: 1fr 60px 50px !important; gap: 6px !important; padding: 9px 12px !important; }
+          .ss-hist-row > *:nth-child(4), .ss-hist-row > *:nth-child(5) { display: none !important; }
+          /* In-canvas HUD bar */
+          .ss-hud-bar { bottom: 6px !important; left: 6px !important; right: 6px !important; gap: 4px !important; }
+          /* Auto-fire indicator: hide */
+          .ss-auto-ind { display: none !important; }
+          /* Back link: tighter */
+          .ss-back-link { margin-bottom: 8px !important; }
+          /* Main col gap */
+          .ss-main-col { gap: 8px !important; }
+          /* Section margins */
+          .ss-section { margin-top: 20px !important; }
         }
       `}</style>
     </div>

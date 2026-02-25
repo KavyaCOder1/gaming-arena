@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAuthStore } from "@/store/auth-store";
-import { Gamepad2, Timer, Star, User, Ghost, Brain, Search, Info, X, Zap } from "lucide-react";
+import { Gamepad2, Timer, Star, User, Ghost, Brain, Search, Info, X, Zap, Layers } from "lucide-react";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [pacHist,   setPacHist]   = useState<any[]>([]);
   const [snakeHist, setSnakeHist] = useState<any[]>([]);
   const [ssHist,    setSsHist]    = useState<any[]>([]);
+  const [cdHist,    setCdHist]    = useState<any[]>([]);
   const [level,   setLevel]   = useState<UserLevelData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,8 +79,9 @@ export default function DashboardPage() {
           setWsHist(   statsJson.recentGames?.wordSearch  ?? []);
           setMemHist(  statsJson.recentGames?.memory      ?? []);
           setPacHist(  statsJson.recentGames?.pacman      ?? []);
-          setSnakeHist(statsJson.recentGames?.snake       ?? []);
-          setSsHist(   statsJson.recentGames?.spaceShooter ?? []);
+          setSnakeHist(statsJson.recentGames?.snake        ?? []);
+          setSsHist(   statsJson.recentGames?.spaceShooter  ?? []);
+          setCdHist(   statsJson.recentGames?.connectDots   ?? []);
         }
         if (levelJson.success) setLevel(levelJson.data);
       } catch (e) { console.error(e); }
@@ -406,6 +408,36 @@ export default function DashboardPage() {
                       { label: "Wave",  value: <ValueCell color="#22d3ee">{g.wave ?? 1}</ValueCell> },
                       { label: "Kills", value: <ValueCell color="#ef4444">{g.kills ?? 0}</ValueCell> },
                       { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned ?? 0}</ValueCell> },
+                    ]} />
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── CONNECT THE DOTS ── */}
+        <div style={{ ...card, overflow: "hidden" }}>
+          <GameCardHeader title="CONNECT THE DOTS" icon={<Layers style={{ width: 15, height: 15, color: "#22d3ee" }} />} href="/games/connect-dots" />
+          {loading ? <SkeletonRows /> : cdHist.length === 0 ? <EmptyState /> : (
+            <div>
+              <GridHeader cols="1fr 65px 65px 65px 65px" labels={["DIFF","PAIRS","MOVES","XP","TIME"]} />
+              {cdHist.map((g, i) => {
+                const last = i === cdHist.length - 1;
+                return (
+                  <React.Fragment key={g.id}>
+                    <GameRow last={last} cols="1fr 65px 65px 65px 65px">
+                      <DiffTag diff={g.difficulty} />
+                      <ValueCell color="#22d3ee">{g.dotsCount ?? "—"}</ValueCell>
+                      <ValueCell color="#a78bfa">{g.moves}</ValueCell>
+                      <ValueCell color="#10b981">+{g.xpEarned}</ValueCell>
+                      <TimeCell>{fmt(g.duration)}</TimeCell>
+                    </GameRow>
+                    <MobileGameRow last={last} cells={[
+                      { label: "Diff",  value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Pairs", value: <ValueCell color="#22d3ee">{g.dotsCount ?? "—"}</ValueCell> },
+                      { label: "Moves", value: <ValueCell color="#a78bfa">{g.moves}</ValueCell> },
+                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );

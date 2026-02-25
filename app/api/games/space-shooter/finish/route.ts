@@ -46,6 +46,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid survival time" }, { status: 400 });
   }
 
+  // ── Server-side score plausibility check ──────────────────────────────────
+  // Max points per kill: boss=600. Max kills per second given fire-rate 175ms
+  // and enemy HP: physically impossible to kill more than ~2/sec sustained.
+  // Wave advances every ~7s minimum. We allow generous 3× headroom for skill.
+  const maxKillsForTime  = Math.ceil(survivalTime * 2.5);          // ~2.5 kills/sec max
+  const maxWaveForTime   = Math.ceil(survivalTime / 7) + 1;        // wave every 7s min
+  const maxScoreForKills = kills * 600 + wave * 200;               // all bosses + wave bonus
+  const plausibleScore   = maxScoreForKills * 3;                   // 3× headroom
+
+  if (kills   > maxKillsForTime * 1.5) {
+    return NextResponse.json({ error: "Kill count not plausible for session duration" }, { status: 400 });
+  }
+  if (wave    > maxWaveForTime   * 1.5) {
+    return NextResponse.json({ error: "Wave count not plausible for session duration" }, { status: 400 });
+  }
+  if (score   > plausibleScore) {
+    return NextResponse.json({ error: "Score not plausible for kills/waves achieved" }, { status: 400 });
+  }
+
   // Server-side XP: kills * 2 + wave * 5, capped
   // Minimum 30s to prevent instant-exit farming
   const xpBase = survivalTime < 30 ? 0 : Math.floor(kills * 2 + wave * 5);

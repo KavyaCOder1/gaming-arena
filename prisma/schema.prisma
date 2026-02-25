@@ -18,17 +18,19 @@ model User {
   level        UserLevel?
   tttGames     TicTacToeGame[]
   wsGames      WordSearchGame[]
-  pacmanGames    PacmanGame[]
-  pacmanSessions PacmanSession[]
+  pacmanGames      PacmanGame[]
+  pacmanSessions   PacmanSession[]
   leaderboard  Leaderboard[]
   tttSessions  TicTacToeSession[]
   wsSessions   WordSearchSession[]
-  memoryGames    MemoryGame[]
-  memorySessions MemorySession[]
-  snakeSessions         SnakeSession[]         @relation("SnakeSessions")
-  snakeGames            SnakeGame[]            @relation("SnakeGames")
-  spaceShooterSessions  SpaceShooterSession[]  @relation("SpaceShooterSessions")
-  spaceShooterGames     SpaceShooterGame[]     @relation("SpaceShooterGames")
+  memoryGames      MemoryGame[]
+  memorySessions   MemorySession[]
+  snakeSessions         SnakeSession[]          @relation("SnakeSessions")
+  snakeGames            SnakeGame[]             @relation("SnakeGames")
+  spaceShooterSessions  SpaceShooterSession[]   @relation("SpaceShooterSessions")
+  spaceShooterGames     SpaceShooterGame[]      @relation("SpaceShooterGames")
+  connectDotsSessions   ConnectDotsSession[]    @relation("ConnectDotsSessions")
+  connectDotsGames      ConnectDotsGame[]       @relation("ConnectDotsGames")
 }
 
 // ─── Level / XP ───────────────────────────────────────────────────────────────
@@ -238,6 +240,44 @@ model SnakeGame {
   @@index([createdAt])
 }
 
+// ─── Connect The Dots (session + game) ───────────────────────────────────────
+
+model ConnectDotsSession {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation("ConnectDotsSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  difficulty       GameDifficulty
+  dotsCount       Int
+  timeLimitSeconds Int
+
+  startedAt        DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ConnectDotsGame {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation("ConnectDotsGames", fields: [userId], references: [id], onDelete: Cascade)
+
+  difficulty       GameDifficulty
+  dotsCount        Int
+  timeLimitSeconds Int
+  completed        Boolean
+  moves            Int
+  duration         Int
+  xpEarned         Int
+
+  createdAt        DateTime       @default(now())
+
+  @@index([userId])
+  @@index([xpEarned])
+  @@index([createdAt])
+}
+
 // ─── Enums ────────────────────────────────────────────────────────────────────
 model SpaceShooterSession {
   id        String   @id @default(cuid())
@@ -271,6 +311,7 @@ enum GameType {
   PACMAN
   SNAKE
   SPACE_SHOOTER
+  CONNECT_DOTS
 }
 
 enum GameDifficulty {

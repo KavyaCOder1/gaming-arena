@@ -136,20 +136,69 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data });
     }
 
+    if (gameType === "CONNECT_DOTS") {
+      const rows = await db.connectDotsGame.groupBy({
+        by: ["userId"],
+        _sum: { xpEarned: true },
+        _count: { id: true },
+        orderBy: { _sum: { xpEarned: "desc" } },
+        take: 20,
+      });
+
+      const userIds = rows.map((r) => r.userId);
+      const users   = await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, username: true },
+      });
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+
+      const data = rows
+        .filter((r) => userMap[r.userId])
+        .map((r) => ({
+          user:    userMap[r.userId],
+          totalXp: r._sum.xpEarned ?? 0,
+          matches: r._count.id,
+        }));
+
+      return NextResponse.json({ success: true, data });
+    }
+
     if (gameType === "SPACE_SHOOTER") {
-      // Best score per user from leaderboard table (same as PACMAN pattern)
-      const rows = await db.leaderboard.findMany({
-        where:   { gameType: "SPACE_SHOOTER", difficulty: null },
+      // Aggregate per user: pick their highest highScore across any difficulty row,
+      // then also pull total matches + total XP from SpaceShooterGame records.
+      const lbRows = await db.leaderboard.findMany({
+        where:   { gameType: "SPACE_SHOOTER" },
         include: { user: { select: { id: true, username: true } } },
         orderBy: { highScore: "desc" },
-        take:    20,
       });
-      const data = rows.map(r => ({
-        user:      r.user,
-        highScore: r.highScore,
-        totalXp:   r.highScore,
-        matches:   undefined,
-      }));
+
+      // Deduplicate: keep best row per user
+      const bestByUser = new Map<string, typeof lbRows[0]>();
+      for (const row of lbRows) {
+        const existing = bestByUser.get(row.userId);
+        if (!existing || row.highScore > existing.highScore) {
+          bestByUser.set(row.userId, row);
+        }
+      }
+
+      // Pull total XP + match counts from game records
+      const gameRows = await db.spaceShooterGame.groupBy({
+        by: ["userId"],
+        _sum:   { xpEarned: true },
+        _count: { id: true },
+      });
+      const gameMap = new Map(gameRows.map(r => [r.userId, r]));
+
+      const data = Array.from(bestByUser.values())
+        .sort((a, b) => b.highScore - a.highScore)
+        .slice(0, 20)
+        .map(r => ({
+          user:      r.user,
+          highScore: r.highScore,
+          totalXp:   gameMap.get(r.userId)?._sum.xpEarned ?? r.highScore,
+          matches:   gameMap.get(r.userId)?._count.id ?? 0,
+        }));
+
       return NextResponse.json({ success: true, data });
     }
 

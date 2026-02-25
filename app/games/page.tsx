@@ -2,17 +2,18 @@
 
 import { motion } from "framer-motion";
 import { GameCard } from "@/components/game/GameCard";
-import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2, Worm, Rocket } from "lucide-react";
+import { Search, Grid, LayoutGrid, Ghost, Zap, Flame, Trophy, Play, Gamepad2, Worm, Rocket, Grid3X3 } from "lucide-react";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 
 const games = [
-    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",         image: "/wordsearch.webp",  icon: Search,    href: "/games/word-search",   color: "blue"   },
-    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",          image: "/tictactoe.webp",  icon: Grid,      href: "/games/tic-tac-toe",  color: "green"  },
-    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",           image: "/memorygame.png",  icon: LayoutGrid,href: "/games/memory",       color: "purple" },
-    { title: "Pacman",      description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                        image: "/pacman_img.webp", icon: Ghost,     href: "/games/pacman",       color: "yellow" },
-    { title: "Snake Arena", description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                   image: "/snake.webp",      icon: Worm,      href: "/games/snake",        color: "green"  },
-    { title: "Star Siege",  description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",      image: "/starsiege.webp",  icon: Rocket,    href: "/games/space-shooter",color: "yellow" },
+    { title: "Word Search",      description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",               image: "/wordsearch.webp",    icon: Search,   href: "/games/word-search",    color: "blue"   },
+    { title: "Tic Tac Toe",      description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",              image: "/tictactoe.webp",    icon: Grid,     href: "/games/tic-tac-toe",   color: "green"  },
+    { title: "Memory Game",      description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",               image: "/memorygame.png",    icon: LayoutGrid,href: "/games/memory",        color: "purple" },
+    { title: "Connect The Dots", description: "Connect all matching color dots without breaking the flow. Easy, Medium, and Hard puzzle grids.",        image: "/connect-dots.webp", icon: Grid3X3,  href: "/games/connect-dots",  color: "purple", imagePosition: "center 40%" },
+    { title: "Pacman",           description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                            image: "/pacman_img.webp",   icon: Ghost,    href: "/games/pacman",        color: "yellow", imagePosition: "center 20%" },
+    { title: "Snake Arena",      description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                       image: "/snake.webp",        icon: Worm,     href: "/games/snake",         color: "green"  },
+    { title: "Star Siege",       description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",          image: "/starsiege.webp",    icon: Rocket,   href: "/games/space-shooter", color: "yellow" },
 ];
 
 const filterBtns = ["All Zones", "Strategic", "Arcade", "Puzzle"];
@@ -82,7 +83,7 @@ export default function GamesPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.07, type: "spring", damping: 22, stiffness: 180 }}
-                        style={{ position: "relative" }}
+                        style={{ position: "relative", height: "100%" }}
                         onMouseEnter={e => { const btn = e.currentTarget.querySelector(".play-btn") as HTMLElement; if (btn) btn.style.opacity = "1"; }}
                         onMouseLeave={e => { const btn = e.currentTarget.querySelector(".play-btn") as HTMLElement; if (btn) btn.style.opacity = "0"; }}
                     >

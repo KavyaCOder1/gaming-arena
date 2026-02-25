@@ -22,8 +22,8 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
         <Trophy style={{ width: 36, height: 36, color: "#1e293b" }} />
-        <p style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase" }}>No Records Yet</p>
-        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "#1e293b", fontWeight: 500 }}>Be the first to claim the throne!</p>
+        <p style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase" }}>No Records Yet</p>
+        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, color: "#475569", fontWeight: 500 }}>Be the first to claim the throne!</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             {["Rank", "Player", "Total XP", matchesLabel].map(h => (
-              <th key={h} style={{ padding: "10px 18px", textAlign: h === "Total XP" || h === matchesLabel ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
+              <th key={h} style={{ padding: "10px 18px", textAlign: h === "Total XP" || h === matchesLabel ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -60,7 +60,7 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
                   <div style={{ width: 38, height: 38, borderRadius: 11, background: isTop3 ? `${color}12` : "rgba(255,255,255,0.025)", border: `1px solid ${isTop3 ? border : "rgba(255,255,255,0.05)"}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isTop3 ? `0 0 14px ${color}28` : "none" }}>
                     {Icon
                       ? <Icon style={{ width: 16, height: 16, color, filter: `drop-shadow(0 0 4px ${color}80)` }} />
-                      : <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#334155" }}>{String(pos).padStart(2, "0")}</span>
+                      : <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: "#64748b" }}>{String(pos).padStart(2, "0")}</span>
                     }
                   </div>
                 </td>
@@ -94,7 +94,7 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
                     <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 18, fontWeight: 900, color: isTop3 ? color : "#22d3ee", filter: isTop3 ? `drop-shadow(0 0 8px ${color}60)` : "none", lineHeight: 1 }}>
                       {xp.toLocaleString()}
                     </span>
-                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>XP</span>
+                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>XP</span>
                   </div>
                 </td>
 
@@ -111,7 +111,7 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
       </table>
 
       <div style={{ padding: "12px 18px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#1e293b", letterSpacing: "0.3em", textTransform: "uppercase" }}>End of Rankings</span>
+        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.3em", textTransform: "uppercase" }}>End of Rankings</span>
         <div style={{ display: "flex", gap: 5 }}>
           {["rgba(99,102,241,0.5)", "rgba(34,211,238,0.35)", "rgba(99,102,241,0.2)"].map((bg, i) => (
             <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: bg, animation: `lbDot 1.5s infinite ${i * 0.5}s` }} />
