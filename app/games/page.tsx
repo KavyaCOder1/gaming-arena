@@ -29,11 +29,7 @@ export default function GamesPage() {
 
                 <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 24 }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)", marginBottom: 16 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.cyan, boxShadow: `0 0 8px ${C.cyan}`, animation: "gPulse 2s infinite", display: "inline-block" }} />
-                            <Flame style={{ width: 13, height: 13, color: C.indigo }} />
-                            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: C.indigo, letterSpacing: "0.2em", textTransform: "uppercase" }}>Season 1 Live</span>
-                        </div>
+                      
                         <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(28px,6vw,58px)", fontWeight: 900, color: C.text, textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.03em", lineHeight: 0.92, marginBottom: 16 }}>
                             COMBAT<br /><span style={{ color: C.cyan, textShadow: "0 0 30px rgba(34,211,238,0.4)" }}>SECTOR</span>
                         </h1>

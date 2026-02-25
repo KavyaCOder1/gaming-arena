@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Crown, Medal, RefreshCw,
   Zap, Grid3X3, ChevronUp, ChevronDown,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Maximize, Minimize,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
@@ -83,6 +83,7 @@ function buildScene(cb: {
   getDiff: () => Difficulty;
   getStatus: () => GameStatus;
   triggerDie: () => void;
+  getIsFullscreen: () => boolean;
 }) {
   function drawHex(g: any, cx: number, cy: number, r: number, rot = 0) {
     const pts: [number, number][] = [];
@@ -123,8 +124,8 @@ function buildScene(cb: {
     cs = 0;
 
     create(this: any) {
-      const W: number = this.sys.game.config.width;
-      const H: number = this.sys.game.config.height;
+      const W: number = this.sys.game.scale.gameSize?.width || this.sys.game.config.width;
+      const H: number = this.sys.game.scale.gameSize?.height || this.sys.game.config.height;
       this.cs = W / GRID;
       this.bgGfx = this.add.graphics().setDepth(0);
       this.snkGfx = this.add.graphics().setDepth(2);
@@ -144,8 +145,12 @@ function buildScene(cb: {
     }
 
     update(this: any, _time: number, delta: number) {
-      const W = this.sys.game.config.width as number;
-      const H = this.sys.game.config.height as number;
+      // Use Phaser's scale manager for logical dimensions (not canvas.width which is physical pixels)
+      const W = (this.sys.game.scale.gameSize?.width as number) || (this.sys.game.config.width as number);
+      const H = (this.sys.game.scale.gameSize?.height as number) || (this.sys.game.config.height as number);
+      // Always recalculate cs from live logical size
+      if (W > 0) this.cs = W / GRID;
+
       const cs = this.cs as number;
       const status = cb.getStatus();
       const dcfg = DIFF_CONFIG[cb.getDiff()];
@@ -153,25 +158,68 @@ function buildScene(cb: {
 
       this.bgGfx.clear(); this.snkGfx.clear(); this.foodGfx.clear(); this.fxGfx.clear();
 
+      // Guard: if cs is 0 the canvas isn't sized yet — skip frame
+      if (!cs || cs <= 0) return;
+
       // ── Background ──
-      this.bgGfx.fillStyle(0x020817, 1); this.bgGfx.fillRect(0, 0, W, H);
+      // Deep space gradient base
+      this.bgGfx.fillStyle(0x020c1e, 1); this.bgGfx.fillRect(0, 0, W, H);
+      // Subtle radial vignette — lighter centre, darker edges
+      const cx_ = W / 2, cy_ = H / 2;
+      const steps = 6;
+      for (let s = steps; s >= 0; s--) {
+        const r_ = (W * 0.72) * (s / steps);
+        const a_ = 0.06 * (1 - s / steps);
+        this.bgGfx.fillStyle(0x0d1f3c, a_);
+        this.bgGfx.fillCircle(cx_, cy_, r_);
+      }
+      // Animated glow orbs
       (this.glowOrbs as any[]).forEach(o => {
         o.x += o.vx; o.y += o.vy;
         if (o.x < -o.r) o.x = W + o.r; if (o.x > W + o.r) o.x = -o.r;
         if (o.y < -o.r) o.y = H + o.r; if (o.y > H + o.r) o.y = -o.r;
-        this.bgGfx.fillStyle(o.col, o.a); this.bgGfx.fillCircle(o.x, o.y, o.r);
+        this.bgGfx.fillStyle(o.col, o.a * 1.6); this.bgGfx.fillCircle(o.x, o.y, o.r);
       });
+      // Full grid lines — visible but subtle
+      for (let i = 0; i <= GRID; i++) {
+        const px = i * cs, py = i * cs;
+        const edgeAlpha = (i === 0 || i === GRID) ? 0 : 0.07;
+        this.bgGfx.lineStyle(0.5, 0x1e40af, edgeAlpha);
+        this.bgGfx.beginPath(); this.bgGfx.moveTo(px, 0); this.bgGfx.lineTo(px, H); this.bgGfx.strokePath();
+        this.bgGfx.beginPath(); this.bgGfx.moveTo(0, py); this.bgGfx.lineTo(W, py); this.bgGfx.strokePath();
+      }
+      // Animated accent lines
       (this.gridLines as any[]).forEach(l => {
         l.phase += l.spd;
-        const a = 0.018 + 0.028 * Math.abs(Math.sin(l.phase));
+        const a = 0.04 + 0.06 * Math.abs(Math.sin(l.phase));
         const p = l.pos * cs;
-        this.bgGfx.lineStyle(0.7, l.col, a); this.bgGfx.beginPath();
+        this.bgGfx.lineStyle(0.8, l.col, a); this.bgGfx.beginPath();
         if (l.horiz) { this.bgGfx.moveTo(0, p); this.bgGfx.lineTo(W, p); }
         else { this.bgGfx.moveTo(p, 0); this.bgGfx.lineTo(p, H); }
         this.bgGfx.strokePath();
       });
+      // Grid intersection dots
       for (let gx = 0; gx < GRID; gx++) for (let gy = 0; gy < GRID; gy++) {
-        this.bgGfx.fillStyle(0x1e293b, 0.5); this.bgGfx.fillCircle(gx * cs + cs / 2, gy * cs + cs / 2, 0.7);
+        this.bgGfx.fillStyle(0x1e3a5f, 0.9); this.bgGfx.fillCircle(gx * cs + cs / 2, gy * cs + cs / 2, 0.9);
+      }
+      // Border: drawn by Phaser only in fullscreen (CSS border handles normal mode)
+      const tnow_ = Date.now() / 1000;
+      const mk = cs * 1.2;
+      const cornerAlpha = 0.7 + 0.2 * Math.sin(tnow_ * 1.8);
+      const corners = [[0,0],[W,0],[0,H],[W,H]] as [number,number][];
+      if (cb.getIsFullscreen()) {
+        // Full glowing border
+        const borderAlpha = 0.55 + 0.2 * Math.sin(tnow_ * 1.8);
+        this.bgGfx.lineStyle(2.5, col, borderAlpha);
+        this.bgGfx.strokeRect(2, 2, W - 4, H - 4);
+      }
+      // Corner accent marks only in fullscreen (CSS border handles normal mode)
+      if (cb.getIsFullscreen()) {
+        corners.forEach(([cx2, cy2]) => {
+          const sx = cx2 === 0 ? 1 : -1, sy = cy2 === 0 ? 1 : -1;
+          this.bgGfx.lineStyle(3, col, cornerAlpha);
+          this.bgGfx.beginPath(); this.bgGfx.moveTo(cx2 + sx * 1, cy2 + sy * mk); this.bgGfx.lineTo(cx2 + sx * 1, cy2 + sy * 1); this.bgGfx.lineTo(cx2 + sx * mk, cy2 + sy * 1); this.bgGfx.strokePath();
+        });
       }
 
       if (status === "idle") {
@@ -428,9 +476,14 @@ export default function SnakePage() {
   const [lbLoad, setLbLoad] = useState(true);
   const [hist, setHist] = useState<HistRecord[]>([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [hasTouchScreen, setHasTouchScreen] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const gameWrapperRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const gameRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -449,11 +502,40 @@ export default function SnakePage() {
   useEffect(() => { mutedRef.current = muted; }, [muted]);
   useEffect(() => { userRef.current = user; }, [user]);
 
+  // Fullscreen helpers
+  const toggleFullscreen = useCallback(() => {
+    const el = gameWrapperRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => { });
+    } else {
+      document.exitFullscreen?.();
+    }
+  }, []);
+
+  const isFullscreenRef = useRef(false);
+  useEffect(() => {
+    const onChange = () => {
+      const fs = !!document.fullscreenElement;
+      setIsFullscreen(fs);
+      isFullscreenRef.current = fs;
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640 || "ontouchstart" in window);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    // Only show touch controls on actual touchscreen hardware (coarse pointer).
+    // Deliberately exclude "ontouchstart" check — desktop Chrome can have that
+    // even without a real touchscreen, which was causing the d-pad to appear.
+    setHasTouchScreen(window.matchMedia("(pointer: coarse)").matches);
   }, []);
 
   const fetchLbAndHist = useCallback(() => {
@@ -515,7 +597,6 @@ export default function SnakePage() {
   useEffect(() => {
     if (typeof window === "undefined" || !containerRef.current) return;
     const el = containerRef.current;
-    const sz = el.clientWidth || 400;
     const SceneClass = buildScene({
       onScore: n => { scoreRef.current += n; setScore(scoreRef.current); },
       onCores: () => { coresRef.current++; setCores(coresRef.current); },
@@ -525,29 +606,47 @@ export default function SnakePage() {
       getDiff: () => diffRef.current,
       getStatus: () => statusRef.current,
       triggerDie: () => endGameRef.current?.(),
+      getIsFullscreen: () => isFullscreenRef.current,
     });
-    import("phaser").then(({ default: Phaser }) => {
+    // Use rAF so getBoundingClientRect is reliable after first paint
+    const rafId = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const sz = Math.round(rect.width) || 500;
+      import("phaser").then(({ default: Phaser }) => {
+        if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; }
+        const game = new Phaser.Game({
+          type: Phaser.AUTO, width: sz, height: sz,
+          backgroundColor: "#020817",
+          parent: el, scene: SceneClass,
+          scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+          render: { antialias: true, pixelArt: false, roundPixels: false },
+        } as any);
+        gameRef.current = game;
+        game.events.once("ready", () => {
+          sceneRef.current = game.scene.getScene("SnakeScene") ?? game.scene.scenes[0];
+          // Resize to actual container width after Phaser boots
+          requestAnimationFrame(() => {
+            if (containerRef.current && gameRef.current) {
+              const w = containerRef.current.getBoundingClientRect().width;
+              if (w > 0) { try { gameRef.current.scale.resize(w, w); } catch {} }
+            }
+          });
+        });
+      }).catch(console.error);
+    });
+    return () => {
+      cancelAnimationFrame(rafId);
       if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; }
-      const game = new Phaser.Game({
-        type: Phaser.AUTO, width: sz, height: sz,
-        backgroundColor: "#020817",
-        parent: el, scene: SceneClass,
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-        render: { antialias: true, pixelArt: false, roundPixels: false },
-      } as any);
-      gameRef.current = game;
-      game.events.once("ready", () => {
-        sceneRef.current = game.scene.getScene("SnakeScene") ?? game.scene.scenes[0];
-      });
-    }).catch(console.error);
-    return () => { if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; } };
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const ro = new ResizeObserver(() => {
       if (!gameRef.current || !containerRef.current) return;
-      try { gameRef.current.scale.resize(containerRef.current.clientWidth, containerRef.current.clientWidth); } catch { }
+      const w = Math.round(containerRef.current.getBoundingClientRect().width);
+      if (w > 0) try { gameRef.current.scale.resize(w, w); } catch { }
     });
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -572,7 +671,22 @@ export default function SnakePage() {
         }
       } catch (e) { console.warn("[snake] start failed", e); }
     }
-    setStatus("playing"); statusRef.current = "playing";
+    // 5-second countdown before game starts
+    setStatus("idle"); statusRef.current = "idle";
+    setCountdown(5);
+    let count = 5;
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      count -= 1;
+      if (count <= 0) {
+        clearInterval(countdownRef.current!);
+        countdownRef.current = null;
+        setCountdown(null);
+        setStatus("playing"); statusRef.current = "playing";
+      } else {
+        setCountdown(count);
+      }
+    }, 1000);
   }, []);
 
   const togglePause = useCallback(() => {
@@ -580,6 +694,8 @@ export default function SnakePage() {
   }, []);
 
   const reset = useCallback(() => {
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setCountdown(null);
     scoreRef.current = 0; coresRef.current = 0; elapsedRef.current = 0;
     sceneRef.current?.resetSnake?.();
     setStatus("idle"); statusRef.current = "idle";
@@ -625,7 +741,7 @@ export default function SnakePage() {
   const isPlaying = status === "playing";
   const isPaused = status === "paused";
   const isOver = status === "over";
-  const isIdle = status === "idle";
+  const isIdle = status === "idle" && countdown === null;
 
   return (
     // ── Full-width container matching memory/tic-tac-toe layout ──
@@ -757,44 +873,72 @@ export default function SnakePage() {
         </motion.div>
 
         {/* ── PHASER CANVAS BORDER BOX — difficulty color only on border/glow, NOT title ── */}
-        <div style={{
+        <div ref={gameWrapperRef} style={{
           background: "rgba(2,8,23,0.98)",
-          border: `3px solid ${isPlaying ? cfg.color : isOver ? "#ef4444" : isPaused ? "#f59e0b" : "rgba(34,211,238,0.25)"}`,
-          borderRadius: 20,
-          padding: 6,
-          boxShadow: isPlaying
-            ? `0 0 0 2px ${cfg.color}55, 0 0 36px ${cfg.glow}, inset 0 0 20px rgba(0,0,0,0.6)`
+          border: isFullscreen ? "none" : `2px solid ${isPlaying ? cfg.color : isOver ? "#ef4444" : isPaused ? "#f59e0b" : "rgba(34,211,238,0.2)"}`,
+          borderRadius: isFullscreen ? 0 : 16,
+          padding: isFullscreen ? 0 : 4,
+          boxShadow: isFullscreen ? "none" : isPlaying
+            ? `0 0 28px ${cfg.glow}, inset 0 0 20px rgba(0,0,0,0.6)`
             : isOver
-              ? `0 0 0 2px #ef444455, 0 0 28px rgba(239,68,68,0.3)`
-              : `0 0 0 1px rgba(34,211,238,0.1), 0 6px 32px rgba(0,0,0,0.8)`,
+              ? `0 0 20px rgba(239,68,68,0.25)`
+              : `0 6px 32px rgba(0,0,0,0.8)`,
           transition: "border-color 0.4s, box-shadow 0.4s",
           position: "relative",
+          display: isFullscreen ? "flex" : "block",
+          alignItems: isFullscreen ? "center" : undefined,
+          justifyContent: isFullscreen ? "center" : undefined,
+          width: isFullscreen ? "100vw" : undefined,
+          height: isFullscreen ? "100vh" : undefined,
         }}>
-          {/* Corner markers */}
-          {(["tl", "tr", "bl", "br"] as const).map(pos => (
-            <div key={pos} style={{
-              position: "absolute",
-              top: pos[0] === "t" ? 10 : "auto", bottom: pos[0] === "b" ? 10 : "auto",
-              left: pos[1] === "l" ? 10 : "auto", right: pos[1] === "r" ? 10 : "auto",
-              width: 20, height: 20,
-              borderTop: pos[0] === "t" ? `3px solid ${cfg.color}` : undefined,
-              borderBottom: pos[0] === "b" ? `3px solid ${cfg.color}` : undefined,
-              borderLeft: pos[1] === "l" ? `3px solid ${cfg.color}` : undefined,
-              borderRight: pos[1] === "r" ? `3px solid ${cfg.color}` : undefined,
-              opacity: 0.9, pointerEvents: "none", zIndex: 4,
-            }} />
-          ))}
+          {/* Fullscreen toggle button */}
+          <button onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            style={{ position: "absolute", top: 14, right: 14, zIndex: 20, background: "rgba(15,23,42,0.85)", border: `1px solid ${cfg.border}`, borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "background 0.2s" }}
+            onMouseEnter={e => (e.currentTarget.style.background = cfg.bg)}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(15,23,42,0.85)")}>
+            {isFullscreen ? <Minimize style={{ width: 14, height: 14 }} /> : <Maximize style={{ width: 14, height: 14 }} />}
+          </button>
+          {/* Corner markers removed — Phaser draws them directly on canvas */}
 
           {/* canvas mount */}
           <div
             ref={containerRef}
-            style={{ width: "100%", position: "relative", borderRadius: 12, overflow: "hidden", cursor: "crosshair", aspectRatio: "1 / 1" }}
+            style={{ width: isFullscreen ? "min(100vw,100vh)" : "100%", maxWidth: isFullscreen ? "100vh" : undefined, position: "relative", cursor: "crosshair", aspectRatio: "1 / 1" }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
+            {/* COUNTDOWN overlay */}
+            <AnimatePresence>
+              {countdown !== null && (
+                <motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, pointerEvents: "none", zIndex: 6, background: "rgba(2,8,23,0.35)" }}>
+                  <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2vw,9px)", fontWeight: 700, color: cfg.color, letterSpacing: "0.35em", textTransform: "uppercase", opacity: 0.75 }}>GET READY</p>
+                  <motion.div
+                    key={countdown}
+                    initial={{ scale: 1.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 0.92 }}
+                    exit={{ scale: 0.7, opacity: 0 }}
+                    transition={{ type: "spring", damping: 12, stiffness: 220 }}
+                    style={{
+                      fontFamily: "'Orbitron',sans-serif",
+                      fontSize: "clamp(36px,10vw,64px)",
+                      fontWeight: 900,
+                      color: cfg.color,
+                      lineHeight: 1,
+                      filter: `drop-shadow(0 0 12px ${cfg.color})`,
+                      opacity: 0.88,
+                    }}>
+                    {countdown}
+                  </motion.div>
+                  <motion.div animate={{ scaleX: [1, 0] }} transition={{ duration: 1, ease: "linear" }}
+                    style={{ width: "clamp(48px,10vw,72px)", height: 2, borderRadius: 2, background: cfg.color, transformOrigin: "left", opacity: 0.55 }} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* IDLE overlay */}
             <AnimatePresence>
-              {isIdle && (
+              {isIdle && countdown === null && (
                 <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                   style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, pointerEvents: "none", zIndex: 5 }}>
                   <motion.div animate={{ scale: [1, 1.1, 1], filter: ["drop-shadow(0 0 8px #22d3ee)", "drop-shadow(0 0 28px #22d3ee)", "drop-shadow(0 0 8px #22d3ee)"] }} transition={{ duration: 2.5, repeat: Infinity }} style={{ fontSize: "clamp(32px,10vw,60px)" }}>🐍</motion.div>
@@ -851,30 +995,56 @@ export default function SnakePage() {
               )}
             </AnimatePresence>
           </div>
+          {/* ── FULLSCREEN D-PAD OVERLAY (touch/mobile only) ── */}
+          {isFullscreen && (isMobile || hasTouchScreen) && (
+            <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 30, pointerEvents: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "72px 72px 72px", gridTemplateRows: "72px 72px 72px", gap: 8 }}>
+                <div />
+                <button onClick={() => mobileDir(0, -1)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
+                  <ChevronUp style={{ width: 32, height: 32 }} />
+                </button>
+                <div />
+                <button onClick={() => mobileDir(-1, 0)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
+                  <ChevronLeft style={{ width: 32, height: 32 }} />
+                </button>
+                <button onClick={(isPlaying || isPaused) ? togglePause : undefined} style={{ borderRadius: 16, background: isPaused ? "rgba(34,211,238,0.2)" : "rgba(2,8,23,0.82)", border: isPaused ? `2px solid rgba(34,211,238,0.6)` : `2px solid ${cfg.border}`, color: isPaused ? "#22d3ee" : cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, touchAction: "manipulation", backdropFilter: "blur(8px)" }}>
+                  {isPaused ? "▶" : "⏸"}
+                </button>
+                <button onClick={() => mobileDir(1, 0)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
+                  <ChevronRight style={{ width: 32, height: 32 }} />
+                </button>
+                <div />
+                <button onClick={() => mobileDir(0, 1)} style={{ borderRadius: 16, background: `rgba(2,8,23,0.82)`, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", backdropFilter: "blur(8px)", boxShadow: `0 0 14px ${cfg.glow}` }}>
+                  <ChevronDown style={{ width: 32, height: 32 }} />
+                </button>
+                <div />
+              </div>
+            </div>
+          )}
         </div>{/* end canvas border box */}
 
-        {/* ── CONTROLS — outside the border box, same as before ── */}
+        {/* ── CONTROLS — outside the border box ── */}
         {isMobile ? (
-          <div style={{ marginTop: 4 }}>
-            <p style={{ textAlign: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.12em", marginBottom: 8 }}>SWIPE ON GAME OR USE D-PAD</p>
-            <div style={{ display: "grid", gridTemplateColumns: "48px 48px 48px", gridTemplateRows: "48px 48px 48px", gap: 6, width: 150, margin: "0 auto" }}>
+          <div style={{ marginTop: 8 }}>
+            <p style={{ textAlign: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.12em", marginBottom: 10 }}>SWIPE ON GAME OR USE D-PAD</p>
+            <div style={{ display: "grid", gridTemplateColumns: "64px 64px 64px", gridTemplateRows: "64px 64px 64px", gap: 8, width: 208, margin: "0 auto" }}>
               <div />
-              <button onClick={() => mobileDir(0, -1)} style={{ borderRadius: 10, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}>
-                <ChevronUp style={{ width: 20, height: 20 }} />
+              <button onClick={() => mobileDir(0, -1)} style={{ borderRadius: 14, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", boxShadow: `0 0 12px ${cfg.glow}` }}>
+                <ChevronUp style={{ width: 28, height: 28 }} />
               </button>
               <div />
-              <button onClick={() => mobileDir(-1, 0)} style={{ borderRadius: 10, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}>
-                <ChevronLeft style={{ width: 20, height: 20 }} />
+              <button onClick={() => mobileDir(-1, 0)} style={{ borderRadius: 14, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", boxShadow: `0 0 12px ${cfg.glow}` }}>
+                <ChevronLeft style={{ width: 28, height: 28 }} />
               </button>
-              <button onClick={(isPlaying || isPaused) ? togglePause : undefined} style={{ borderRadius: 10, background: isPaused ? "rgba(34,211,238,0.15)" : "rgba(15,23,42,0.7)", border: isPaused ? `2px solid rgba(34,211,238,0.5)` : "1px solid rgba(255,255,255,0.08)", color: isPaused ? "#22d3ee" : "#334155", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, touchAction: "manipulation" }}>
+              <button onClick={(isPlaying || isPaused) ? togglePause : undefined} style={{ borderRadius: 14, background: isPaused ? "rgba(34,211,238,0.15)" : "rgba(15,23,42,0.7)", border: isPaused ? `2px solid rgba(34,211,238,0.5)` : `1px solid ${cfg.border}`, color: isPaused ? "#22d3ee" : cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, touchAction: "manipulation" }}>
                 {isPaused ? "▶" : "⏸"}
               </button>
-              <button onClick={() => mobileDir(1, 0)} style={{ borderRadius: 10, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}>
-                <ChevronRight style={{ width: 20, height: 20 }} />
+              <button onClick={() => mobileDir(1, 0)} style={{ borderRadius: 14, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", boxShadow: `0 0 12px ${cfg.glow}` }}>
+                <ChevronRight style={{ width: 28, height: 28 }} />
               </button>
               <div />
-              <button onClick={() => mobileDir(0, 1)} style={{ borderRadius: 10, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }}>
-                <ChevronDown style={{ width: 20, height: 20 }} />
+              <button onClick={() => mobileDir(0, 1)} style={{ borderRadius: 14, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", boxShadow: `0 0 12px ${cfg.glow}` }}>
+                <ChevronDown style={{ width: 28, height: 28 }} />
               </button>
               <div />
             </div>
@@ -1080,6 +1250,7 @@ export default function SnakePage() {
       <style>{`
         @keyframes snkPulse { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
         @keyframes snkSkel  { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        :fullscreen { background: #020817; }
         @media(max-width:540px){
           .snk-lb-head   { grid-template-columns: 36px 1fr 90px !important; }
           .snk-lb-head > *:nth-child(4) { display: none !important; }

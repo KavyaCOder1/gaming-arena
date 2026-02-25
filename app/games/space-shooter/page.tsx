@@ -972,17 +972,45 @@ export default function SpaceShooterPage() {
 
   // Fullscreen helpers
   const toggleFullscreen = useCallback(() => {
-    const el = gameWrapperRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => { });
-    } else {
-      document.exitFullscreen?.();
-    }
+    setIsFullscreen(prev => {
+      const next = !prev;
+      // Also resize Phaser after state update settles
+      setTimeout(() => {
+        if (!containerRef.current || !gameRef.current) return;
+        const size = next
+          ? Math.min(window.innerWidth, window.innerHeight)
+          : containerRef.current.clientWidth;
+        try {
+          gameRef.current.scale.resize(size, size);
+          const canvas = containerRef.current.querySelector("canvas");
+          if (canvas) { canvas.style.width = "100%"; canvas.style.height = "100%"; }
+        } catch { }
+      }, 50);
+      return next;
+    });
   }, []);
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () => {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
+      // Resize Phaser canvas to fill the fullscreen area
+      setTimeout(() => {
+        if (!containerRef.current || !gameRef.current) return;
+        const size = isFull
+          ? Math.min(window.innerWidth, window.innerHeight)
+          : containerRef.current.clientWidth;
+        try {
+          gameRef.current.scale.resize(size, size);
+          // Force the canvas element itself to fill correctly
+          const canvas = containerRef.current.querySelector("canvas");
+          if (canvas) {
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+          }
+        } catch { }
+      }, 150);
+    };
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
@@ -997,7 +1025,7 @@ export default function SpaceShooterPage() {
     const xp = Math.min(survivalXp + killXp, 2000);
     setStatus("over"); statusRef.current = "over";
     // Auto-exit fullscreen when game ends
-    if (document.fullscreenElement) { document.exitFullscreen?.().catch(() => { }); }
+    setIsFullscreen(false);
     setFinalXP(xp); setFinalScore(sc); setFinalKills(kl);
     setSessionScore(s => s + xp);
     const currentUser = userRef.current;
@@ -1096,6 +1124,7 @@ export default function SpaceShooterPage() {
   // Space / right-click → missile (keyboard fallback)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") { setIsFullscreen(false); return; }
       if ((e.code === "Space" || e.code === "KeyX") && statusRef.current === "playing") {
         e.preventDefault();
         sceneRef.current?.firePlayerMissile?.();
@@ -1264,7 +1293,27 @@ export default function SpaceShooterPage() {
         </motion.div>
 
         {/* CANVAS */}
-        <div ref={gameWrapperRef} style={{ background: "rgba(2,8,23,0.98)", border: `3px solid ${isPlaying ? "rgba(34,211,238,0.6)" : isOver ? "rgba(239,68,68,0.5)" : "rgba(34,211,238,0.2)"}`, borderRadius: isFullscreen ? 0 : 20, padding: isFullscreen ? 0 : 6, boxShadow: isPlaying ? "0 0 0 2px rgba(34,211,238,0.25),0 0 40px rgba(34,211,238,0.12),inset 0 0 20px rgba(0,0,0,0.6)" : isOver ? "0 0 0 2px rgba(239,68,68,0.25),0 0 28px rgba(239,68,68,0.18)" : "0 0 0 1px rgba(34,211,238,0.08),0 6px 32px rgba(0,0,0,0.8)", transition: "border-color 0.4s,box-shadow 0.4s", position: "relative", display: isFullscreen ? "flex" : "block", alignItems: isFullscreen ? "center" : undefined, justifyContent: isFullscreen ? "center" : undefined, width: isFullscreen ? "100vw" : undefined, height: isFullscreen ? "100vh" : undefined }}>
+        <div ref={gameWrapperRef} style={{ background: "rgba(2,8,23,0.98)", border: "none", borderRadius: isFullscreen ? 0 : 20, padding: isFullscreen ? 0 : 6, boxShadow: isFullscreen ? "none" : isPlaying ? "0 0 0 2px rgba(34,211,238,0.25),0 0 40px rgba(34,211,238,0.12),inset 0 0 20px rgba(0,0,0,0.6)" : isOver ? "0 0 0 2px rgba(239,68,68,0.25),0 0 28px rgba(239,68,68,0.18)" : "0 0 0 1px rgba(34,211,238,0.08),0 6px 32px rgba(0,0,0,0.8)", transition: "border-color 0.4s,box-shadow 0.4s", position: isFullscreen ? "fixed" : "relative", inset: isFullscreen ? 0 : undefined, display: "flex", alignItems: "center", justifyContent: "center", width: isFullscreen ? "100vw" : undefined, height: isFullscreen ? "100vh" : undefined, zIndex: isFullscreen ? 9999 : undefined, overflow: "hidden" }}>
+          {/* Fullscreen border frame */}
+          {isFullscreen && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 15 }}>
+              {/* Main border */}
+              <div style={{ position: "absolute", inset: 0, border: "2px solid rgba(34,211,238,0.55)", borderRadius: 16, boxShadow: "0 0 0 1px rgba(34,211,238,0.15), inset 0 0 0 1px rgba(34,211,238,0.15), 0 0 40px rgba(34,211,238,0.08)" }} />
+              {/* Corner brackets — TL */}
+              <div style={{ position: "absolute", top: 12, left: 12, width: 32, height: 32, borderTop: "3px solid #22d3ee", borderLeft: "3px solid #22d3ee", borderRadius: "4px 0 0 0", animation: "ssCornerPulse 2s infinite" }} />
+              {/* Corner brackets — TR */}
+              <div style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderTop: "3px solid #22d3ee", borderRight: "3px solid #22d3ee", borderRadius: "0 4px 0 0", animation: "ssCornerPulse 2s infinite 0.5s" }} />
+              {/* Corner brackets — BL */}
+              <div style={{ position: "absolute", bottom: 12, left: 12, width: 32, height: 32, borderBottom: "3px solid #22d3ee", borderLeft: "3px solid #22d3ee", borderRadius: "0 0 0 4px", animation: "ssCornerPulse 2s infinite 1s" }} />
+              {/* Corner brackets — BR */}
+              <div style={{ position: "absolute", bottom: 12, right: 12, width: 32, height: 32, borderBottom: "3px solid #22d3ee", borderRight: "3px solid #22d3ee", borderRadius: "0 0 4px 0", animation: "ssCornerPulse 2s infinite 1.5s" }} />
+              {/* Top label */}
+              <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "rgba(34,211,238,0.7)", letterSpacing: "0.3em", textTransform: "uppercase", background: "rgba(2,8,23,0.7)", padding: "3px 12px", borderRadius: 4, border: "1px solid rgba(34,211,238,0.2)" }}>STAR SIEGE</div>
+              {/* Bottom label */}
+              <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 600, color: "rgba(34,211,238,0.4)", letterSpacing: "0.2em", whiteSpace: "nowrap" }}>PLAYABLE ZONE</div>
+            </div>
+          )}
+
           {/* Fullscreen toggle button */}
           <button onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
             style={{ position: "absolute", top: 14, right: 14, zIndex: 20, background: "rgba(15,23,42,0.85)", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#22d3ee", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", transition: "background 0.2s" }}
@@ -1273,11 +1322,67 @@ export default function SpaceShooterPage() {
             {isFullscreen ? <Minimize style={{ width: 14, height: 14 }} /> : <Maximize style={{ width: 14, height: 14 }} />}
           </button>
 
-          {(["tl", "tr", "bl", "br"] as const).map(pos => (
-            <div key={pos} style={{ position: "absolute", top: pos[0] === "t" ? 10 : "auto", bottom: pos[0] === "b" ? 10 : "auto", left: pos[1] === "l" ? 10 : "auto", right: pos[1] === "r" ? 10 : "auto", width: 20, height: 20, borderTop: pos[0] === "t" ? "3px solid rgba(34,211,238,0.55)" : undefined, borderBottom: pos[0] === "b" ? "3px solid rgba(34,211,238,0.55)" : undefined, borderLeft: pos[1] === "l" ? "3px solid rgba(34,211,238,0.55)" : undefined, borderRight: pos[1] === "r" ? "3px solid rgba(34,211,238,0.55)" : undefined, opacity: 0.9, pointerEvents: "none", zIndex: 4 }} />
-          ))}
+          <div ref={containerRef} style={{ width: isFullscreen ? "min(100vw,100vh)" : "100%", maxWidth: isFullscreen ? "100vh" : undefined, height: isFullscreen ? "min(100vw,100vh)" : undefined, position: "relative", borderRadius: 0, overflow: isFullscreen ? "visible" : "hidden", cursor: "crosshair", aspectRatio: "1 / 1", outline: "none", boxShadow: "none" }}>
 
-          <div ref={containerRef} style={{ width: isFullscreen ? "min(100vw,100vh)" : "100%", maxWidth: isFullscreen ? "100vh" : undefined, position: "relative", borderRadius: 12, overflow: "hidden", cursor: "crosshair", aspectRatio: "1 / 1" }}>
+            {/* ── SCI-FI BORDER FRAME ── */}
+            {(() => {
+              const fc = isOver ? "#ef4444" : isPlaying ? "#22d3ee" : "#334155";
+              const fa = isOver ? 0.9 : isPlaying ? 1 : 0.5;
+              const cL = 38; // corner arm length
+              const cT = 3;  // corner arm thickness
+              const edgeO = 0.22; // edge line opacity
+              return (
+                <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 12 }}>
+
+                  {/* Full-perimeter edge lines */}
+                  {/* Top */}
+                  <div style={{ position: "absolute", top: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
+                  {/* Bottom */}
+                  <div style={{ position: "absolute", bottom: 0, left: cL, right: cL, height: cT, background: `linear-gradient(90deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
+                  {/* Left */}
+                  <div style={{ position: "absolute", left: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
+                  {/* Right */}
+                  <div style={{ position: "absolute", right: 0, top: cL, bottom: cL, width: cT, background: `linear-gradient(180deg, transparent, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, ${fc}${Math.round(edgeO*255).toString(16).padStart(2,"0")}, transparent)` }} />
+
+
+
+                  {/* Mid-edge tick marks — top & bottom */}
+                  {[-0.25, 0, 0.25].map(offset => (
+                    <div key={`t${offset}`}>
+                      <div style={{ position: "absolute", top: 0, left: `calc(50% + ${offset*100}% - 1px)`, width: 2, height: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
+                      <div style={{ position: "absolute", bottom: 0, left: `calc(50% + ${offset*100}% - 1px)`, width: 2, height: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
+                    </div>
+                  ))}
+                  {/* Mid-edge tick marks — left & right */}
+                  {[-0.25, 0, 0.25].map(offset => (
+                    <div key={`s${offset}`}>
+                      <div style={{ position: "absolute", left: 0, top: `calc(50% + ${offset*100}% - 1px)`, height: 2, width: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
+                      <div style={{ position: "absolute", right: 0, top: `calc(50% + ${offset*100}% - 1px)`, height: 2, width: offset===0 ? 10 : 6, background: fc, opacity: fa * (offset===0 ? 0.9 : 0.5), boxShadow: offset===0 ? `0 0 6px ${fc}` : undefined }} />
+                    </div>
+                  ))}
+
+                  {/* Animated scan line — only while playing */}
+                  {isPlaying && (
+                    <motion.div
+                      animate={{ top: ["2%", "98%", "2%"] }}
+                      transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                      style={{ position: "absolute", left: cT, right: cT, height: 2, background: `linear-gradient(90deg, transparent, ${fc}44, ${fc}99, ${fc}44, transparent)`, boxShadow: `0 0 12px ${fc}66`, pointerEvents: "none" }}
+                    />
+                  )}
+
+                  {/* Status label — top-left */}
+                  <div style={{ position: "absolute", top: 6, left: cL+8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.22em", color: fc, opacity: fa*0.85, textTransform: "uppercase", textShadow: `0 0 8px ${fc}` }}>
+                    {isOver ? "DESTROYED" : isPlaying ? "ACTIVE" : "STANDBY"}
+                  </div>
+
+                  {/* Coordinate readout — bottom-right */}
+                  <div style={{ position: "absolute", bottom: 6, right: cL+8, fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, letterSpacing: "0.18em", color: fc, opacity: fa*0.65, textAlign: "right" }}>
+                    {isPlaying ? `W${String(wave).padStart(2,"0")} · K${String(kills).padStart(3,"0")}` : "SYS::READY"}
+                  </div>
+
+                </div>
+              );
+            })()}
 
             {/* IDLE overlay */}
             <AnimatePresence>
@@ -1514,8 +1619,9 @@ export default function SpaceShooterPage() {
       </AnimatePresence>
 
       <style>{`
-        @keyframes ssPulse { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
-        @keyframes ssSkel  { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes ssPulse    { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 3px #22d3ee} }
+        @keyframes ssSkel     { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes ssCornerPulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 6px #22d3ee)} 50%{opacity:0.65;filter:drop-shadow(0 0 2px #22d3ee)} }
         :fullscreen { background: #020817; }
         @media(max-width:600px){
           .ss-lb-head   { grid-template-columns: 36px 1fr 80px !important; }

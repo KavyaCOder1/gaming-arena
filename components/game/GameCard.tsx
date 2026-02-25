@@ -14,91 +14,98 @@ interface GameCardProps {
     delay?: number;
 }
 
-const COLOR_MAP: Record<string, { accent: string; glow: string; border: string }> = {
-    blue: { accent: "#22d3ee", glow: "rgba(34,211,238,0.35)", border: "rgba(34,211,238,0.4)" },
-    green: { accent: "#10b981", glow: "rgba(16,185,129,0.35)", border: "rgba(16,185,129,0.4)" },
-    purple: { accent: "#a78bfa", glow: "rgba(167,139,250,0.35)", border: "rgba(167,139,250,0.4)" },
-    yellow: { accent: "#f59e0b", glow: "rgba(245,158,11,0.35)", border: "rgba(245,158,11,0.4)" },
+const COLOR_MAP: Record<string, { accent: string; glow: string; border: string; bg: string }> = {
+    blue:   { accent: "#22d3ee", glow: "rgba(34,211,238,0.35)",  border: "rgba(34,211,238,0.4)",  bg: "rgba(34,211,238,0.08)"  },
+    green:  { accent: "#10b981", glow: "rgba(16,185,129,0.35)",  border: "rgba(16,185,129,0.4)",  bg: "rgba(16,185,129,0.08)"  },
+    purple: { accent: "#a78bfa", glow: "rgba(167,139,250,0.35)", border: "rgba(167,139,250,0.4)", bg: "rgba(167,139,250,0.08)" },
+    yellow: { accent: "#f59e0b", glow: "rgba(245,158,11,0.35)",  border: "rgba(245,158,11,0.4)",  bg: "rgba(245,158,11,0.08)"  },
 };
 
 export function GameCard({ title, description, href, icon: Icon, image, color = "blue", delay = 0 }: GameCardProps) {
     const c = COLOR_MAP[color] ?? COLOR_MAP.blue;
 
     return (
-        <Link href={href} style={{ display: "block", height: "100%", textDecoration: "none" }}>
+        <Link href={href} style={{ display: "block", textDecoration: "none" }}>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay }}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -4, boxShadow: `0 12px 40px ${c.glow}` }}
                 style={{
                     position: "relative",
-                    height: "clamp(280px, 90vw, 420px)",
-                    aspectRatio: "auto",
                     overflow: "hidden",
                     display: "flex",
                     flexDirection: "column",
-                    borderRadius: "clamp(12px, 4vw, 20px)",
-                    background: "rgba(10,15,35,0.75)",
+                    borderRadius: 18,
+                    background: "rgba(10,15,35,0.9)",
                     backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                    border: `1px solid ${c.border}`,
+                    boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 0 0 ${c.glow}`,
                     cursor: "pointer",
+                    transition: "box-shadow 0.3s",
                 }}
             >
-                {/* Image */}
-                <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+                {/* Top accent line */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.accent}, transparent)`, zIndex: 2 }} />
+
+                {/* ── POSTER IMAGE — fixed ratio crop showing top of image ── */}
+                <div style={{ width: "100%", position: "relative", overflow: "hidden", borderRadius: "18px 18px 0 0", aspectRatio: "4/3" }}>
                     <img
                         src={image}
                         alt={title}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 1 }}
+                        style={{
+                            position: "absolute",
+                            top: 0, left: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "center center",
+                        }}
                     />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(12,18,35,0.95) 0%, rgba(12,18,35,0.80) 30%, rgba(12,18,35,0.30) 65%, transparent 100%)" }} />
+                    {/* Bottom fade to blend into content area */}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: "linear-gradient(to bottom, transparent, rgba(10,15,35,0.95))" }} />
+                    {/* Active badge */}
+                    <div style={{ position: "absolute", top: 12, right: 12, display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "rgba(10,15,35,0.75)", border: `1px solid ${c.border}`, backdropFilter: "blur(8px)" }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.accent, boxShadow: `0 0 6px ${c.accent}`, display: "inline-block", animation: "gcPulse 2s infinite" }} />
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: c.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>ACTIVE</span>
+                    </div>
                 </div>
 
-                {/* Top accent line */}
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, ${c.accent}60, transparent)`, zIndex: 2 }} />
+                {/* ── CONTENT AREA ── */}
+                <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
 
-                {/* Content */}
-                <div style={{ position: "relative", zIndex: 10, padding: "clamp(16px, 4vw, 28px) clamp(16px, 4vw, 24px)", marginTop: "auto", display: "flex", flexDirection: "column", gap: "clamp(10px, 2vw, 16px)" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "clamp(8px, 2vw, 12px)" }}>
-                        <div style={{ padding: "clamp(8px, 2vw, 12px)", borderRadius: "clamp(10px, 2vw, 14px)", background: "rgba(255,255,255,0.05)", border: `1px solid ${c.border}`, boxShadow: `0 0 16px ${c.glow}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Icon style={{ width: "clamp(20px, 5vw, 28px)", height: "clamp(20px, 5vw, 28px)", color: c.accent, filter: `drop-shadow(0 0 6px ${c.accent})` }} />
+                    {/* Title row with icon */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ padding: 9, borderRadius: 11, background: c.bg, border: `1px solid ${c.border}`, boxShadow: `0 0 14px ${c.glow}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon style={{ width: 20, height: 20, color: c.accent, filter: `drop-shadow(0 0 5px ${c.accent})` }} />
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "clamp(4px, 1vw, 5px)", padding: "clamp(4px, 1vw, 4px) clamp(8px, 2vw, 10px)", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                            <span style={{ width: "clamp(4px, 1vw, 5px)", height: "clamp(4px, 1vw, 5px)", borderRadius: "50%", background: c.accent, boxShadow: `0 0 6px ${c.accent}`, display: "inline-block", animation: "gcPulse 2s infinite" }} />
-                            <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(6px, 2vw, 8px)", fontWeight: 700, color: c.accent, letterSpacing: "0.15em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Active</span>
-                        </div>
+                        <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(14px,3.5vw,20px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.01em", lineHeight: 1.1, margin: 0 }}>
+                            {title}
+                        </h3>
                     </div>
 
-                    <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(16px, 4vw, 28px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
-                        {title}
-                    </h3>
-
-                    <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "clamp(9px, 2.5vw, 11px)", fontWeight: 500, color: "#cbd5e1", letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.4, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
+                    {/* Description */}
+                    <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "clamp(10px,2.5vw,12px)", fontWeight: 500, color: "#94a3b8", letterSpacing: "0.05em", lineHeight: 1.5, margin: 0 }}>
                         {description}
                     </p>
 
-                    <div style={{ height: "clamp(40px, 10vw, 48px)", borderRadius: "clamp(8px, 2vw, 12px)", border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(20,28,48,0.9)", cursor: "pointer", transition: "all 0.3s ease" }}
+                    {/* Play Now button */}
+                    <div
+                        style={{ height: 44, borderRadius: 11, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", background: c.bg, cursor: "pointer", transition: "all 0.25s", marginTop: "auto", position: "relative", overflow: "hidden" }}
                         onMouseEnter={e => {
-                            (e.currentTarget as HTMLElement).style.background = "rgba(12,18,35,0.95)";
+                            (e.currentTarget as HTMLElement).style.background = c.glow.replace("0.35", "0.18");
                             (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${c.glow}`;
-                            const span = (e.currentTarget as HTMLElement).querySelector("span") as HTMLElement;
-                            if (span) span.style.color = c.accent;
                         }}
                         onMouseLeave={e => {
-                            (e.currentTarget as HTMLElement).style.background = "rgba(20,28,48,0.9)";
+                            (e.currentTarget as HTMLElement).style.background = c.bg;
                             (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                            const span = (e.currentTarget as HTMLElement).querySelector("span") as HTMLElement;
-                            if (span) span.style.color = c.accent;
                         }}
                     >
-                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(8px, 2.5vw, 10px)", fontWeight: 700, color: c.accent, letterSpacing: "0.3em", textTransform: "uppercase", transition: "color 0.3s" }}>PLAY NOW</span>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: c.accent, letterSpacing: "0.3em", textTransform: "uppercase" }}>PLAY NOW</span>
                     </div>
                 </div>
 
-                <style>{`@keyframes gcPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }`}</style>
+                <style>{`@keyframes gcPulse { 0%,100%{opacity:1;box-shadow:0 0 6px currentColor} 50%{opacity:0.35;box-shadow:none} }`}</style>
             </motion.div>
         </Link>
     );
