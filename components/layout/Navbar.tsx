@@ -14,14 +14,15 @@ interface NavbarProps {
 }
 
 export function Navbar({ onGamesClick, onLeaderboardClick }: NavbarProps = {}) {
-    const { user, logout, openAuthModal } = useAuthStore();
+    const { user, clearUser, openAuthModal } = useAuthStore();
     const pathname = usePathname();
     const router = useRouter();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleLogout = async () => {
-        await logout();
-        router.push("/");
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+        clearUser();
+        router.replace("/");
         setIsMenuOpen(false);
     };
 

@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import { AuthUser } from "@/types";
+
+export interface AuthUser {
+    id: string;
+    username: string;
+}
 
 interface AuthState {
     user: AuthUser | null;
@@ -7,47 +11,38 @@ interface AuthState {
     isLoading: boolean;
     isAuthModalOpen: boolean;
     authModalView: "login" | "register";
-    login: (user: AuthUser) => void;
-    logout: () => void;
-    checkAuth: () => Promise<void>;
+    // Set user after successful login/register
+    setUser: (user: AuthUser) => void;
+    // Clear user on logout
+    clearUser: () => void;
+    // Check session cookie on app boot — called ONCE
+    init: () => Promise<void>;
     openAuthModal: (view?: "login" | "register") => void;
     closeAuthModal: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isAuthenticated: false,
     isLoading: true,
     isAuthModalOpen: false,
     authModalView: "login",
 
-    // Called right after a successful login/register API response
-    // Sets state immediately from the data the API already returned
-    login: (user) => set({
+    setUser: (user) => set({
         user,
         isAuthenticated: true,
         isLoading: false,
         isAuthModalOpen: false,
     }),
 
-    logout: async () => {
-        try {
-            await fetch("/api/auth/logout", { method: "POST" });
-        } catch (e) {
-            console.error("Logout failed", e);
-        }
-        set({ user: null, isAuthenticated: false, isLoading: false });
-    },
+    clearUser: () => set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+    }),
 
-    // Only used on initial page load by AuthProvider — verifies the cookie session
-    checkAuth: async () => {
-        // If already authenticated, skip the network call
-        if (get().isAuthenticated) {
-            set({ isLoading: false });
-            return;
-        }
+    init: async () => {
         try {
-            set({ isLoading: true });
             const res = await fetch("/api/auth/me");
             if (res.ok) {
                 const data = await res.json();

@@ -4,6 +4,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { LogOut, Calendar, Clock, Trophy, Zap, GamepadIcon, Lock, ChevronRight, CheckCircle2, Wallet } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { motion, Variants } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b", slate: "#475569" };
@@ -73,7 +74,8 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user, clearUser } = useAuthStore();
+  const router = useRouter();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -180,7 +182,11 @@ export default function ProfilePage() {
 
           {/* Logout */}
           <motion.button
-            onClick={() => logout()}
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+              clearUser();
+              router.replace("/");
+            }}
             whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 22px", borderRadius: 14, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", cursor: "pointer" }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)"; }}

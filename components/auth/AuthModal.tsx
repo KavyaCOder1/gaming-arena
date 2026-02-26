@@ -46,7 +46,7 @@ const GAMES = [
 
 /* ─── component ─────────────────────────────────────────────────────── */
 export function AuthModal() {
-    const { isAuthModalOpen, authModalView, closeAuthModal, openAuthModal, login } = useAuthStore();
+    const { isAuthModalOpen, authModalView, closeAuthModal, openAuthModal, setUser } = useAuthStore();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState("");
@@ -90,7 +90,7 @@ export function AuthModal() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Authentication failed");
-            login(data.user);
+            setUser(data.user);
             closeAuthModal();
         } catch (err: any) {
             setError(err.message);
