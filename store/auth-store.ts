@@ -14,37 +14,52 @@ interface AuthState {
     closeAuthModal: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     isAuthenticated: false,
     isLoading: true,
     isAuthModalOpen: false,
     authModalView: "login",
-    login: (user) => set({ user, isAuthenticated: true, isAuthModalOpen: false }),
+
+    // Called right after a successful login/register API response
+    // Sets state immediately from the data the API already returned
+    login: (user) => set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        isAuthModalOpen: false,
+    }),
+
     logout: async () => {
         try {
             await fetch("/api/auth/logout", { method: "POST" });
         } catch (e) {
             console.error("Logout failed", e);
         }
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, isLoading: false });
     },
+
+    // Only used on initial page load by AuthProvider — verifies the cookie session
     checkAuth: async () => {
+        // If already authenticated, skip the network call
+        if (get().isAuthenticated) {
+            set({ isLoading: false });
+            return;
+        }
         try {
             set({ isLoading: true });
             const res = await fetch("/api/auth/me");
             if (res.ok) {
                 const data = await res.json();
-                set({ user: data.user, isAuthenticated: true });
+                set({ user: data.user, isAuthenticated: true, isLoading: false });
             } else {
-                set({ user: null, isAuthenticated: false });
+                set({ user: null, isAuthenticated: false, isLoading: false });
             }
-        } catch (error) {
-            set({ user: null, isAuthenticated: false });
-        } finally {
-            set({ isLoading: false });
+        } catch {
+            set({ user: null, isAuthenticated: false, isLoading: false });
         }
     },
+
     openAuthModal: (view = "login") => set({ isAuthModalOpen: true, authModalView: view }),
     closeAuthModal: () => set({ isAuthModalOpen: false }),
 }));

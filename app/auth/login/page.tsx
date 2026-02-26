@@ -26,8 +26,9 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Login failed");
+            // Set auth state immediately from the API response — no need to re-fetch /me
             login(data.user);
-            router.push("/dashboard");
+            router.replace("/dashboard");
         } catch (err: any) {
             setError(err.message);
         } finally {
