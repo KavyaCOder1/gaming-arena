@@ -2,49 +2,71 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const secretKey = process.env.JWT_SECRET || "super-secret-key-change-this";
-const key = new TextEncoder().encode(secretKey);
+// ── Lazy key getter — reads env at call-time, never at module load ──────────
+function getKey(): Uint8Array {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is not set");
+    }
+    return new TextEncoder().encode(secret);
+}
 
-export async function encrypt(payload: any) {
-    return await new SignJWT(payload)
+// ── Session payload shape ───────────────────────────────────────────────────
+export interface SessionPayload {
+    user: { id: string; username: string };
+}
+
+// ── Encrypt: create a signed JWT (7-day expiry set via jose, not in payload) ─
+export async function encrypt(payload: SessionPayload): Promise<string> {
+    return await new SignJWT({ user: payload.user })
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("7d")
-        .sign(key);
+        .sign(getKey());
 }
 
-export async function decrypt(input: string): Promise<any> {
-    const { payload } = await jwtVerify(input, key, {
+// ── Decrypt: verify and return the typed payload ────────────────────────────
+export async function decrypt(token: string): Promise<SessionPayload> {
+    const { payload } = await jwtVerify(token, getKey(), {
         algorithms: ["HS256"],
     });
-    return payload;
+    return payload as unknown as SessionPayload;
 }
 
-export async function getSession() {
+// ── getSession: read cookie and decrypt ─────────────────────────────────────
+export async function getSession(): Promise<SessionPayload | null> {
     const cookieStore = await cookies();
     const session = cookieStore.get("session");
-    if (!session) return null;
+    if (!session?.value) return null;
     try {
         return await decrypt(session.value);
-    } catch (error) {
+    } catch {
         return null;
     }
 }
 
-export async function updateSession(request: NextRequest) {
-    const session = request.cookies.get("session")?.value;
-    if (!session) return;
+// ── updateSession: slide the expiry window on each request ──────────────────
+export async function updateSession(request: NextRequest): Promise<NextResponse | undefined> {
+    const token = request.cookies.get("session")?.value;
+    if (!token) return undefined;
 
-    // Refresh expiration on each request if needed
-    const parsed = await decrypt(session);
-    parsed.expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    let session: SessionPayload;
+    try {
+        session = await decrypt(token);
+    } catch {
+        return undefined; // invalid / expired token — let the request continue without refreshing
+    }
+
+    // Re-issue a fresh token with only the user data (no stale exp/iat from old payload)
+    const newToken = await encrypt({ user: session.user });
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const res = NextResponse.next();
-    res.cookies.set({
-        name: "session",
-        value: await encrypt(parsed),
+    res.cookies.set("session", newToken, {
         httpOnly: true,
-        expires: parsed.expires,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        expires,
     });
     return res;
 }

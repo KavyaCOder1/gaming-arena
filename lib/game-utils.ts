@@ -26,7 +26,7 @@ export const RANKS: Record<UserRank, {
   ROOKIE: {
     label: "ROOKIE",
     minXp: 0,
-    maxXp: 1000,
+    maxXp: 1999,
     color: "#94a3b8",
     glowColor: "rgba(148,163,184,0.3)",
     icon: "deployed_code",
@@ -35,8 +35,8 @@ export const RANKS: Record<UserRank, {
   },
   VETERAN: {
     label: "VETERAN",
-    minXp: 1001,
-    maxXp: 5000,
+    minXp: 2000,
+    maxXp: 5999,
     color: "#13b6ec",
     glowColor: "rgba(19,182,236,0.5)",
     icon: "shield",
@@ -45,8 +45,8 @@ export const RANKS: Record<UserRank, {
   },
   ELITE: {
     label: "ELITE",
-    minXp: 5001,
-    maxXp: 15000,
+    minXp: 6000,
+    maxXp: 9999,
     color: "#ff00ff",
     glowColor: "rgba(255,0,255,0.5)",
     icon: "pentagon",
@@ -55,7 +55,7 @@ export const RANKS: Record<UserRank, {
   },
   LEGEND: {
     label: "LEGEND",
-    minXp: 15001,
+    minXp: 10000,
     maxXp: null,
     color: "#fbbf24",
     glowColor: "rgba(251,191,36,0.6)",
@@ -66,24 +66,24 @@ export const RANKS: Record<UserRank, {
 };
 
 export function calcRank(xp: number): UserRank {
-  if (xp >= 15001) return "LEGEND";
-  if (xp >= 5001) return "ELITE";
-  if (xp >= 1001) return "VETERAN";
+  if (xp >= 10000) return "LEGEND";
+  if (xp >= 6000) return "ELITE";
+  if (xp >= 2000) return "VETERAN";
   return "ROOKIE";
 }
 
 export function xpForNextRank(xp: number): number {
-  if (xp >= 15001) return 0;   // maxed out
-  if (xp >= 5001) return 15001 - xp;
-  if (xp >= 1001) return 5001 - xp;
-  return 1001 - xp;
+  if (xp >= 10000) return 0;   // maxed out
+  if (xp >= 6000) return 10000 - xp;
+  if (xp >= 2000) return 6000 - xp;
+  return 2000 - xp;
 }
 
 export function xpProgressInRank(xp: number): { current: number; total: number; pct: number } {
-  if (xp >= 15001) return { current: xp - 15001, total: 0, pct: 100 };
-  if (xp >= 5001) return { current: xp - 5001, total: 9999, pct: Math.round(((xp - 5001) / 9999) * 100) };
-  if (xp >= 1001) return { current: xp - 1001, total: 3999, pct: Math.round(((xp - 1001) / 3999) * 100) };
-  return { current: xp, total: 1000, pct: Math.round((xp / 1000) * 100) };
+  if (xp >= 10000) return { current: xp - 10000, total: 0, pct: 100 };
+  if (xp >= 6000)  return { current: xp - 6000,  total: 4000, pct: Math.round(((xp - 6000)  / 4000) * 100) };
+  if (xp >= 2000)  return { current: xp - 2000,  total: 4000, pct: Math.round(((xp - 2000)  / 4000) * 100) };
+  return                  { current: xp,          total: 2000, pct: Math.round((xp           / 2000) * 100) };
 }
 
 // ─── XP rewards per game ──────────────────────────────────────────────────────

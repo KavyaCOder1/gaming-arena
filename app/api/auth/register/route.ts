@@ -38,17 +38,14 @@ export async function POST(request: Request) {
       return newUser;
     });
 
+    const token = await encrypt({ user: { id: user.id, username: user.username } });
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    const session = await encrypt({
-      user: { id: user.id, username: user.username },
-      expires,
-    });
 
     const response = NextResponse.json(
       { success: true, user: { id: user.id, username: user.username } },
       { status: 201 }
     );
-    response.cookies.set("session", session, {
+    response.cookies.set("session", token, {
       expires,
       httpOnly: true,
       sameSite: "strict",
