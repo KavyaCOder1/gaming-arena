@@ -64,8 +64,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse 
     const res = NextResponse.next();
     res.cookies.set("session", newToken, {
         httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        secure: false,
         expires,
     });
     return res;

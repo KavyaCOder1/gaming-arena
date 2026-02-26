@@ -48,8 +48,8 @@ export async function POST(request: Request) {
     response.cookies.set("session", token, {
       expires,
       httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      secure: false,
     });
     return response;
   } catch (error: any) {
