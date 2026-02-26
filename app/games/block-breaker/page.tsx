@@ -129,44 +129,72 @@ function grid(rows: number, cols: number, fn: (r: number, c: number) => number):
 // ─────────────────────────────────────────────────────────────────────────────
 const PATTERNS_T1: PatternFn[] = [
   // Solid 3-row rectangle
-  (rows, cols) => grid(3, cols, () => 1),
+  (_r, cols) => grid(3, cols, () => 1),
 
-  // 3 rows — alternating full / gap / full (train track)
-  (rows, cols) => grid(3, cols, (r, c) => (r === 1 && c % 2 === 1) ? __ : 1),
+  // Train track — middle row has gaps every other col
+  (_r, cols) => grid(3, cols, (r, c) => (r === 1 && c % 2 === 1) ? __ : 1),
 
   // Staircase descending left→right
-  (rows, cols) => grid(4, cols, (r, c) => c >= r ? 1 : __),
+  (_r, cols) => grid(4, cols, (r, c) => c >= r ? 1 : __),
 
-  // Staircase ascending
-  (rows, cols) => grid(4, cols, (r, c) => c <= (cols - 1 - r) ? 1 : __),
+  // Staircase ascending right→left
+  (_r, cols) => grid(4, cols, (r, c) => c <= (cols - 1 - r) ? 1 : __),
 
-  // V-shape (open top)
-  (rows, cols) => grid(4, cols, (r, c) => {
+  // V-shape — walls grow inward from bottom (FIXED)
+  (_r, cols) => grid(4, cols, (r, c) => {
     const dist = Math.abs(c - (cols - 1) / 2);
-    return dist >= rows - 1 - r ? 1 : __;
+    return dist >= (r + 1) ? 1 : __;
   }),
 
-  // Columns of 3, alternating heights
-  (rows, cols) => grid(4, cols, (r, c) => {
-    const height = c % 2 === 0 ? 3 : 2;
-    return r >= (4 - height) ? 1 : __;
+  // Comb — tall columns with gaps between
+  (_r, cols) => grid(4, cols, (r, c) => {
+    if (c % 2 === 1) return r === 3 ? 1 : __; // short teeth only on bottom
+    return 1; // full columns on even cols
   }),
 
-  // Double arch (two bumps)
-  (rows, cols) => grid(3, cols, (r, c) => {
-    const half = Math.floor(cols / 2);
-    const d = Math.min(Math.abs(c - (half / 2 - 0.5)), Math.abs(c - (cols - half / 2 - 0.5)));
-    return d + r < 4 ? 1 : __;
+  // Double arch (two bumps) — fixed
+  (_r, cols) => grid(4, cols, (r, c) => {
+    const q = Math.floor(cols / 2);
+    const left  = Math.abs(c - (q / 2 - 0.5));
+    const right = Math.abs(c - (cols - q / 2 - 0.5));
+    const d = Math.min(left, right);
+    return d + r < 3.5 ? 1 : __;
   }),
+
+  // Cross plus — horizontal bar + vertical bar
+  (_r, cols) => grid(3, cols, (r, c) => {
+    const midR = 1, midC = Math.floor(cols / 2);
+    return (r === midR || c === midC || c === midC - 1) ? 1 : __;
+  }),
+
+  // Scattered dots — pseudo-random by position
+  (_r, cols) => grid(3, cols, (r, c) => {
+    return (r * 5 + c * 3) % 7 < 5 ? 1 : __;
+  }),
+
+  // Diagonal slash top-right to bottom-left + mirror
+  (_r, cols) => grid(4, cols, (r, c) => {
+    const onSlash    = Math.abs(c - (cols - 1 - r)) <= 0.6;
+    const onMirror   = Math.abs(c - r) <= 0.6;
+    return (onSlash || onMirror) ? 1 : __;
+  }),
+
+  // Zigzag ribbon — snaking single-row-wide band
+  (_r, cols) => grid(4, cols, (r, c) => {
+    const phase = r % 2 === 0;
+    const lo = phase ? 0 : Math.floor(cols / 2);
+    const hi = phase ? Math.floor(cols / 2) : cols;
+    return c >= lo && c < hi ? 1 : __;
+  }),
+
+  // Checkerboard lite
+  (_r, cols) => grid(3, cols, (r, c) => (r + c) % 2 === 0 ? 1 : __),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIER 2  (L2-L3)  ── introduce 2-hp tiles on strong positions
 // ─────────────────────────────────────────────────────────────────────────────
 const PATTERNS_T2: PatternFn[] = [
-  // Solid rows — bottom row is 2-hp
-  (rows, cols, maxHp) => grid(rows, cols, (r) => r === rows - 1 ? ch(2, maxHp) : 1),
-
   // Pyramid — peak cells are 2-hp
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const mid = (cols - 1) / 2;
@@ -175,7 +203,7 @@ const PATTERNS_T2: PatternFn[] = [
     return Math.abs(c - mid) <= 1 && r <= 1 ? ch(2, maxHp) : 1;
   }),
 
-  // Diamond outline with 2-hp outer ring
+  // Diamond outline — 2-hp outer ring, 1-hp fill
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const mid = (cols - 1) / 2;
     const spread = r < rows / 2 ? r : rows - 1 - r;
@@ -183,7 +211,7 @@ const PATTERNS_T2: PatternFn[] = [
     return Math.abs(c - mid) >= spread - 0.5 ? ch(2, maxHp) : 1;
   }),
 
-  // Cross / plus sign — center spine is 2-hp
+  // Cross / plus — center spine is 2-hp, arms are 1-hp
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const midC = Math.floor(cols / 2);
     const midR = Math.floor(rows / 2);
@@ -193,35 +221,74 @@ const PATTERNS_T2: PatternFn[] = [
     return (onH && onV) ? ch(2, maxHp) : 1;
   }),
 
-  // Fortress walls — side columns 2-hp, rest 1-hp
+  // Fortress — crenelated top, 2-hp walls, filled interior
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const isWall = c === 0 || c === cols - 1;
     const isBattlement = r === 0 && c % 2 === 0;
-    return isWall || isBattlement ? ch(2, maxHp) : r < rows - 1 ? 1 : ch(2, maxHp);
+    const isBase = r >= rows - 1;
+    if (isBattlement) return 1;
+    if (isWall || isBase) return ch(2, maxHp);
+    return 1;
   }),
 
-  // Zigzag rows — odd rows offset, 2-hp on row peaks
-  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    if (r % 2 === 1 && c === 0) return __;
-    if (r % 2 === 1 && c === cols - 1) return __;
-    return r === 0 ? ch(2, maxHp) : 1;
-  }),
-
-  // Hourglass — narrow middle, thick top+bottom
+  // Hourglass — narrow waist, thick top+bottom, 2-hp ends
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const mid = (cols - 1) / 2;
-    const minW = 1; // min half-width at centre
-    const maxW = (cols - 1) / 2;
-    const t = Math.abs(r - (rows - 1) / 2) / ((rows - 1) / 2); // 0 at centre, 1 at edges
-    const hw = minW + (maxW - minW) * t;
+    const t = Math.abs(r - (rows - 1) / 2) / ((rows - 1) / 2);
+    const hw = 1 + ((cols - 1) / 2 - 1) * t;
     if (Math.abs(c - mid) > hw + 0.5) return __;
     return (r === 0 || r === rows - 1) ? ch(2, maxHp) : 1;
   }),
 
-  // Scattered 2-hp defenders — random-looking but seeded by col+row
+  // Arrow pointing up — 2-hp tip
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const tipRows = 2;
+    if (r < tipRows) {
+      return Math.abs(c - mid) <= r ? ch(2, maxHp) : __;
+    }
+    return 1; // solid base
+  }),
+
+  // Two islands separated by a vertical gap
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const gap = Math.floor(cols / 2);
+    if (c === gap - 1 || c === gap) return __;
+    const isEdge = c === 0 || c === cols - 1;
+    return isEdge ? ch(2, maxHp) : 1;
+  }),
+
+  // Wave — sine-based row cutoff
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const wave = Math.round(1.5 * Math.sin((c / (cols - 1)) * Math.PI * 2));
+    const threshold = Math.floor(rows / 2) + wave;
+    if (r < threshold) return __;
+    return r === threshold ? ch(2, maxHp) : 1;
+  }),
+
+  // Scattered 2-hp defenders — seeded positions
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const strong = (r * 3 + c * 7) % 11 < 3;
     return strong ? ch(2, maxHp) : 1;
+  }),
+
+  // Diagonal band — NW to SE stripe, 2-hp on stripe
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const pos = c - Math.round(r * (cols - 1) / (rows - 1));
+    if (Math.abs(pos) <= 1) return ch(2, maxHp);
+    return Math.abs(pos) <= 3 ? 1 : __;
+  }),
+
+  // Ring of blocks — hollow square perimeter only
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const onEdge = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+    return onEdge ? ch(2, maxHp) : __;
+  }),
+
+  // Zipper — alternating row offsets creating interlocking effect
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const offset = r % 2;
+    return (c + offset) % 3 !== 2 ? 1 : __;
   }),
 ];
 
@@ -229,7 +296,7 @@ const PATTERNS_T2: PatternFn[] = [
 // TIER 3  (L4-L5)  ── 3-hp boss tiles appear, more complex shapes
 // ─────────────────────────────────────────────────────────────────────────────
 const PATTERNS_T3: PatternFn[] = [
-  // Castle — thick base (3hp), medium walls (2hp), thin battlements (1hp)
+  // Castle — crenelated top, thick walls, solid base
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const isWall = c <= 1 || c >= cols - 2;
     const isBattlement = r === 0 && c % 2 === 0 && !isWall;
@@ -250,55 +317,96 @@ const PATTERNS_T3: PatternFn[] = [
     return ch(1, maxHp);
   }),
 
-  // X-cross — diagonals are 3hp, rest is sparse 1hp
+  // X-cross diagonals (3-hp) + sparse scatter (1-hp)
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const d1 = Math.abs(c - r * (cols - 1) / (rows - 1));
     const d2 = Math.abs(c - ((cols - 1) - r * (cols - 1) / (rows - 1)));
-    if (d1 < 0.8) return ch(3, maxHp);
-    if (d2 < 0.8) return ch(3, maxHp);
+    if (d1 < 0.8 || d2 < 0.8) return ch(3, maxHp);
     return (r + c) % 3 === 0 ? ch(1, maxHp) : __;
   }),
 
-  // Snake — a thick serpentine band winding down
+  // Serpentine — true winding band (FIXED: body now drawn)
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const segment = Math.floor(r / 2);
-    const goRight = segment % 2 === 0;
-    const head = goRight ? c >= cols - 2 : c <= 1;
-    const body = goRight
-      ? c <= (rows - 1 - r) * (cols / rows) + 1
-      : c >= cols - 1 - (rows - 1 - r) * (cols / rows) - 1;
-    if (r % 2 === 1 && head) return ch(3, maxHp);
-    return 1;
+    const seg = Math.floor(r / 2);
+    const goRight = seg % 2 === 0;
+    // Turn rows: connectors on every even row
+    if (r % 2 === 0) {
+      const connector = goRight ? c === cols - 1 : c === 0;
+      return connector ? ch(3, maxHp) : ch(1, maxHp);
+    }
+    // Horizontal rows: fill the correct half
+    const inBand = goRight ? c >= Math.floor(cols / 2) : c < Math.floor(cols / 2);
+    return inBand ? ch(2, maxHp) : __;
   }),
 
-  // Checker with 3-hp on (0,0) colour squares
+  // Checkerboard — 3-hp dark squares, 1-hp light squares
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     return (r + c) % 2 === 0 ? ch(3, maxHp) : ch(1, maxHp);
   }),
 
-  // Frame inside frame — 3 rings of decreasing hp
+  // Frame inside frame — 3 nested borders, decreasing hp inward
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const outer = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
     const inner = r === 1 || r === rows - 2 || c === 1 || c === cols - 2;
-    const core = !outer && !inner;
     if (outer) return ch(3, maxHp);
     if (inner) return ch(2, maxHp);
-    return core && rows > 4 ? ch(1, maxHp) : ch(2, maxHp);
+    return rows > 4 ? ch(1, maxHp) : ch(2, maxHp);
   }),
 
-  // Columns of escalating hp left→right
-  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const hp = 1 + Math.floor(c / (cols / 3));
-    return ch(hp, maxHp);
-  }),
-
-  // Inverted triangle of 3-hp core, surrounded by 1-hp
+  // Inverted triangle — 3-hp dense core, 1-hp outer shell
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const mid = (cols - 1) / 2;
     const spread = rows - 1 - r;
-    const inCore = Math.abs(c - mid) <= spread * 0.45;
     if (Math.abs(c - mid) > spread + 0.5) return __;
-    return inCore ? ch(3, maxHp) : ch(1, maxHp);
+    return Math.abs(c - mid) <= spread * 0.45 ? ch(3, maxHp) : ch(1, maxHp);
+  }),
+
+  // Three pillars — three vertical columns of 3-hp surrounded by 1-hp base
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const pillarCols = [1, Math.floor(cols / 2), cols - 2];
+    const isPillar = pillarCols.some(pc => Math.abs(c - pc) <= 0.6);
+    if (isPillar && r <= rows - 2) return ch(3, maxHp);
+    if (r === rows - 1) return ch(2, maxHp); // base plate
+    return __;
+  }),
+
+  // Scattered craters — holes punched in a solid field
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    // Crater centres at fixed seeded positions
+    const craterCentres = [[1,2],[1,5],[2,1],[2,6],[3,3],[4,2],[4,5]];
+    const inCrater = craterCentres.some(([cr, cc]) => Math.abs(r - cr) <= 0.6 && Math.abs(c - cc) <= 0.6);
+    if (inCrater) return __;
+    const nearCrater = craterCentres.some(([cr, cc]) => Math.abs(r - cr) + Math.abs(c - cc) <= 1.5);
+    return nearCrater ? ch(1, maxHp) : ch(2, maxHp);
+  }),
+
+  // Lightning bolt — jagged diagonal stripe, 3-hp on bolt, 1-hp flanks
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    // Bolt zigzags: upper half goes right, lower half goes left
+    const boltC = r < rows / 2
+      ? Math.round((r / (rows / 2)) * (cols / 2))
+      : Math.round((cols / 2) + ((r - rows / 2) / (rows / 2)) * (cols / 2));
+    const dist = Math.abs(c - boltC);
+    if (dist === 0) return ch(3, maxHp);
+    if (dist <= 1) return ch(2, maxHp);
+    if (dist <= 2) return ch(1, maxHp);
+    return __;
+  }),
+
+  // Domino pairs — 2-wide blocks with gaps between, 3-hp on left of pair
+  (rows, cols, maxHp) => grid(rows, cols, (_r, c) => {
+    const pairPos = c % 3;
+    if (pairPos === 2) return __; // gap between pairs
+    return pairPos === 0 ? ch(3, maxHp) : ch(1, maxHp);
+  }),
+
+  // Stadium — wide at middle rows, narrow at top and bottom
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const rowFill = 1 + Math.round(Math.sin((r / (rows - 1)) * Math.PI) * (cols / 2 - 1));
+    if (Math.abs(c - mid) > rowFill) return __;
+    const isEdge = Math.abs(c - mid) >= rowFill - 0.5;
+    return isEdge ? ch(3, maxHp) : ch(1, maxHp);
   }),
 ];
 
@@ -306,10 +414,10 @@ const PATTERNS_T3: PatternFn[] = [
 // TIER 4  (L6-L7)  ── 4-hp tiles, dense and punishing layouts
 // ─────────────────────────────────────────────────────────────────────────────
 const PATTERNS_T4: PatternFn[] = [
-  // Full dense fill — hp rises from top to bottom
+  // Gradient wall — hp rises from top to bottom
   (rows, cols, maxHp) => grid(rows, cols, (r) => ch(1 + Math.round(r / (rows - 1) * (maxHp - 1)), maxHp)),
 
-  // Bullseye — 4-hp core, rings decreasing outward
+  // Bullseye — max-hp core, rings decreasing outward
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const dr = (r - (rows - 1) / 2) / ((rows - 1) / 2);
     const dc = (c - (cols - 1) / 2) / ((cols - 1) / 2);
@@ -317,14 +425,7 @@ const PATTERNS_T4: PatternFn[] = [
     return ch(maxHp - Math.floor(dist * (maxHp - 1)), maxHp);
   }),
 
-  // Maze-like: solid except corridors every 3rd col
-  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    if (c % 3 === 2 && r % 2 === 0) return __;
-    const dist = Math.min(r, rows - 1 - r);
-    return ch(1 + Math.floor(dist / 2), maxHp);
-  }),
-
-  // Arch cathedral — tall arched opening in centre
+  // Arch cathedral — tall opening in centre, solid flanks
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const mid = (cols - 1) / 2;
     const archH = Math.round(rows * 0.6);
@@ -335,35 +436,91 @@ const PATTERNS_T4: PatternFn[] = [
     return ch(1 + Math.floor(distToEdge / 2), maxHp);
   }),
 
-  // Shockwave rings from top-left
+  // Shockwave rings from top-left corner
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const dist = Math.round(Math.sqrt(r * r + c * c));
     const ring = dist % (maxHp + 1);
     return ch(ring === 0 ? maxHp : ring, maxHp);
   }),
 
-  // Diagonal stripes of alternating hp
+  // Twin towers — max-hp columns, bridge connecting them
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const stripe = Math.floor((r + c) / 2) % maxHp;
-    return ch(stripe + 1, maxHp);
-  }),
-
-  // Twin towers — two tall solid columns, cross-bridge in middle
-  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const leftTower = c <= 1;
+    const leftTower  = c <= 1;
     const rightTower = c >= cols - 2;
-    const bridge = r === Math.floor(rows / 2) && !leftTower && !rightTower;
-    const turret = r === 0 && (c === 1 || c === cols - 2);
+    const bridge  = r === Math.floor(rows / 2) && !leftTower && !rightTower;
+    const turret  = r === 0 && (c === 1 || c === cols - 2);
     if (leftTower || rightTower) return ch(maxHp, maxHp);
     if (bridge || turret) return ch(Math.max(1, maxHp - 1), maxHp);
     return __;
   }),
 
-  // Honeycomb approximation — offset rows, 2-3-4 hp per depth
+  // Honeycomb — true offset hex pattern
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const offset = r % 2 === 1 ? 0 : 0; // visual only via colour
+    const offset = r % 2 === 1 ? 1 : 0;
+    const hexCol = (c + offset) % 3;
+    if (hexCol === 2) return __; // gap between cells
     const depth = rows - 1 - r;
     return ch(1 + Math.floor(depth / 2), maxHp);
+  }),
+
+  // Diagonal stripes — alternating hp bands
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const stripe = Math.floor((r + c) / 2) % maxHp;
+    return ch(stripe + 1, maxHp);
+  }),
+
+  // Pac-man mouth — semicircle with open wedge on right
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const cx = (rows - 1) / 2, cy = (cols - 1) / 2;
+    const dr = r - cx, dc = c - cy;
+    const dist = Math.sqrt(dr * dr + dc * dc);
+    const maxR = Math.min(rows, cols) / 2;
+    if (dist > maxR + 0.5) return __;
+    // Open wedge: right side, ±30° from horizontal
+    const angle = Math.atan2(dr, dc); // atan2(row,col)
+    if (Math.abs(angle) < Math.PI / 6 && c > cy) return __;
+    const ring = Math.floor((dist / maxR) * (maxHp - 1));
+    return ch(maxHp - ring, maxHp);
+  }),
+
+  // Staggered bricks — alternating row offsets, hp by depth
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const offset = r % 2 === 1 ? 1 : 0;
+    if ((c + offset) % 4 === 3) return __; // mortar gap
+    const depth = rows - 1 - r;
+    return ch(1 + Math.floor((depth / (rows - 1)) * (maxHp - 1)), maxHp);
+  }),
+
+  // Skull face — eye sockets + jaw gap, rest solid
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const eyeRow = Math.floor(rows * 0.45);
+    const leftEye  = c >= 1 && c <= 2 && r >= eyeRow - 1 && r <= eyeRow;
+    const rightEye = c >= cols - 3 && c <= cols - 2 && r >= eyeRow - 1 && r <= eyeRow;
+    const jawGap   = r === rows - 1 && c >= 2 && c <= cols - 3 && c % 2 === 0;
+    if (leftEye || rightEye || jawGap) return __;
+    const distToEdge = Math.min(r, c, rows - 1 - r, cols - 1 - c);
+    return ch(1 + Math.floor(distToEdge / 2), maxHp);
+  }),
+
+  // Maze corridors — vertical corridors every 3 cols, horizontal every 2 rows
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const vGap = c % 3 === 2 && r % 4 !== 3; // vertical corridors with bridges
+    const hGap = r % 3 === 2 && c % 4 !== 0; // horizontal corridors with bridges
+    if (vGap || hGap) return __;
+    const dist = Math.min(r, rows - 1 - r, c, cols - 1 - c);
+    return ch(1 + Math.floor(dist / 2), maxHp);
+  }),
+
+  // Pinwheel — 4 diagonal arms rotating from centre
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const dr = r - (rows - 1) / 2, dc = c - (cols - 1) / 2;
+    const angle = Math.atan2(dr, dc) + Math.PI; // 0..2π
+    const arm = Math.floor((angle / (Math.PI * 2)) * 4); // 0..3
+    const dist = Math.sqrt(dr * dr + dc * dc);
+    const onArm = dist < Math.min(rows, cols) / 2 + 0.5 &&
+      Math.abs((angle / (Math.PI * 2)) * 4 - arm - 0.5) < 0.25;
+    if (onArm) return ch(maxHp, maxHp);
+    return dist < 1.2 ? ch(maxHp, maxHp) : (dist < Math.min(rows, cols) / 2 ? ch(1, maxHp) : __);
   }),
 ];
 
@@ -371,30 +528,32 @@ const PATTERNS_T4: PatternFn[] = [
 // TIER 5  (L8-L10)  ── 5-hp tanks, maximum density, brutal layouts
 // ─────────────────────────────────────────────────────────────────────────────
 const PATTERNS_T5: PatternFn[] = [
-  // Full brick wall — gradient bottom=5, top=2
+  // Full brick wall — gradient bottom=max, top=2
   (rows, cols, maxHp) => grid(rows, cols, (r) => ch(maxHp - Math.floor(r / rows * (maxHp - 2)), maxHp)),
 
-  // Skull — eye-sockets hollow, thick forehead
+  // Skull — large eye sockets, jaw gaps, dense forehead
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const eyeRow = Math.floor(rows * 0.5);
-    const leftEye = c >= 1 && c <= 2 && r === eyeRow;
-    const rightEye = c >= cols - 3 && c <= cols - 2 && r === eyeRow;
-    if (leftEye || rightEye) return __;
-    const dist = Math.min(r, cols - 1 - c, c);
-    return ch(1 + Math.floor(dist / 2), maxHp);
+    const eyeRow = Math.floor(rows * 0.45);
+    const leftEye  = c >= 1 && c <= 2 && r >= eyeRow - 1 && r <= eyeRow;
+    const rightEye = c >= cols - 3 && c <= cols - 2 && r >= eyeRow - 1 && r <= eyeRow;
+    const jawGap   = r >= rows - 2 && c >= 2 && c <= cols - 3 && (c - 2) % 2 === 0;
+    if (leftEye || rightEye || jawGap) return __;
+    const depth = Math.min(r, rows - 1 - r, c, cols - 1 - c);
+    return ch(1 + Math.floor(depth / 1.5), maxHp);
   }),
 
-  // Dragon scales — overlapping arcs, hp by depth
+  // Dragon scales — true overlapping arc pattern
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const scaleW = Math.ceil(cols / 3);
     const scaleRow = Math.floor(r / 2);
-    const offset = (scaleRow % 2) * Math.floor(cols / 4);
-    const localC = (c + offset) % cols;
-    const scalePos = localC % Math.ceil(cols / 3);
-    const hp = maxHp - Math.floor(scalePos / (cols / 3) * (maxHp - 1));
+    const colOffset = (scaleRow % 2) * Math.floor(scaleW / 2);
+    const localC = (c + colOffset) % scaleW;
+    // Distance from left edge of scale — left=max, right=1
+    const hp = maxHp - Math.floor((localC / (scaleW - 1)) * (maxHp - 1));
     return ch(hp, maxHp);
   }),
 
-  // Spiral tightening toward centre
+  // Spiral — hp decreases from outer ring to centre
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const dr = Math.min(r, rows - 1 - r);
     const dc = Math.min(c, cols - 1 - c);
@@ -402,71 +561,116 @@ const PATTERNS_T5: PatternFn[] = [
     return ch(maxHp - ring, maxHp);
   }),
 
-  // Asteroid field — dense with scattered voids
+  // Asteroid field — dense with seeded voids and mixed hp
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const seed = (r * 17 + c * 31 + r * c * 7) % 29;
-    if (seed < 4) return __; // ~14% empty
+    if (seed < 4) return __;
     return ch(1 + (seed % maxHp), maxHp);
   }),
 
-  // Command ship — heavy armoured core, light escort
+  // Command ship — max-hp armoured core, lighter escort ring
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const coreC = c >= 2 && c <= cols - 3;
-    const coreR = r >= 1 && r <= rows - 2;
-    const isCore = coreC && coreR;
+    const isCore = c >= 2 && c <= cols - 3 && r >= 1 && r <= rows - 2;
     const isEdge = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
     if (isCore) return ch(maxHp, maxHp);
     if (isEdge) return ch(Math.max(1, maxHp - 3), maxHp);
     return ch(Math.max(1, maxHp - 1), maxHp);
   }),
 
-  // Lava lake — floor is max-hp, walls are max-1, spires rise
+  // Lava lake — floor + spires = max-hp, rises from bottom
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     if (r === rows - 1) return ch(maxHp, maxHp);
-    const spire = (c % 3 === 1) && r >= rows - 3;
+    const spire = c % 3 === 1 && r >= rows - 3;
     if (spire) return ch(maxHp, maxHp);
-    const wall = c === 0 || c === cols - 1;
-    if (wall) return ch(maxHp - 1, maxHp);
-    return ch(1 + Math.floor((rows - r) / rows * (maxHp - 2)), maxHp);
+    if (c === 0 || c === cols - 1) return ch(maxHp - 1, maxHp);
+    return ch(1 + Math.floor(((rows - 1 - r) / (rows - 1)) * (maxHp - 2)), maxHp);
   }),
 
-  // Matrix rain — vertical columns of varying hp
+  // Tetromino scatter — recognisable tetris shapes placed around grid
+  (rows, cols, maxHp) => {
+    const g = grid(rows, cols, () => __);
+    // Helper to stamp a tetromino
+    const stamp = (cells: [number,number][], hp: number) =>
+      cells.forEach(([r,c]) => { if (r >= 0 && r < rows && c >= 0 && c < cols) g[r][c] = ch(hp, maxHp); });
+    stamp([[0,0],[0,1],[1,0],[1,1]], maxHp);       // O-piece top-left
+    stamp([[0,3],[0,4],[0,5],[1,4]], maxHp - 1);   // T-piece top
+    stamp([[1,6],[1,7],[2,6],[3,6]], maxHp - 1);   // L-piece right
+    stamp([[2,0],[3,0],[3,1],[3,2]], maxHp - 2);   // J-piece left
+    stamp([[2,2],[2,3],[3,3],[3,4]], maxHp - 2);   // S-piece middle
+    stamp([[3,5],[4,5],[4,6],[5,6]], maxHp - 1);   // Z-piece lower
+    stamp([[4,0],[4,1],[4,2],[4,3]], maxHp - 2);   // I-piece bottom
+    stamp([[5,2],[5,3],[6,2],[6,3]], maxHp);       // O-piece bottom
+    return g;
+  },
+
+  // Boss ring — concentric max-hp square ring, void centre
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const midR = (rows - 1) / 2, midC = (cols - 1) / 2;
+    const ring = Math.round(Math.max(Math.abs(r - midR), Math.abs(c - midC)));
+    return ch(maxHp - ring + 1, maxHp);
+  }),
+
+  // Crosshair — thick cross + outer frame, all max-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const midR = Math.floor(rows / 2), midC = Math.floor(cols / 2);
+    const onCross = Math.abs(r - midR) <= 1 || Math.abs(c - midC) <= 1;
+    const onFrame = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+    if (onCross) return ch(maxHp, maxHp);
+    if (onFrame) return ch(Math.max(1, maxHp - 2), maxHp);
+    // Corner quadrants filled with decreasing hp
+    const distToCenter = Math.min(Math.abs(r - midR), Math.abs(c - midC));
+    return ch(Math.max(1, maxHp - distToCenter - 1), maxHp);
+  }),
+
+  // Matrix glitch — column-based hp with noise
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
     const colHp = 1 + (c * 3 + 2) % maxHp;
-    return ch(colHp + (r === 0 ? 1 : 0), maxHp);
+    const noise = (r * 13 + c * 7) % 5 === 0 ? 1 : 0;
+    return ch(colHp + noise + (r === 0 ? 1 : 0), maxHp);
   }),
 
-  // Boss: invincible core ring surrounded by layers
+  // Fortress siege — outer walls max-hp, inner keep max-hp, middle is lighter
   (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
-    const mid = (cols - 1) / 2;
-    const mr = (rows - 1) / 2;
-    const dr2 = Math.abs(r - mr);
-    const dc2 = Math.abs(c - mid);
-    const ring = Math.round(Math.max(dr2, dc2));
-    return ch(maxHp - ring + 1, maxHp);
+    const outerWall = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+    const innerKeep = r >= 2 && r <= rows - 3 && c >= 2 && c <= cols - 3
+                   && (r === 2 || r === rows - 3 || c === 2 || c === cols - 3);
+    const gateGap   = (c === Math.floor(cols / 2) || c === Math.floor(cols / 2) - 1) && r === rows - 1;
+    if (gateGap) return __;
+    if (outerWall) return ch(maxHp, maxHp);
+    if (innerKeep) return ch(maxHp - 1, maxHp);
+    return ch(Math.max(1, maxHp - 3), maxHp);
   }),
 ];
 
 // ── Tier selector ─────────────────────────────────────────────────────────
-function _tierForLevel(lvl: number): { pool: PatternFn[]; maxHp: number; rows: number } {
-  if (lvl === 1) return { pool: PATTERNS_T1, maxHp: 1, rows: 3 };
-  if (lvl <= 3) return { pool: PATTERNS_T2, maxHp: 2, rows: 4 };
-  if (lvl <= 5) return { pool: PATTERNS_T3, maxHp: 3, rows: 5 };
-  if (lvl <= 7) return { pool: PATTERNS_T4, maxHp: 4, rows: 6 };
-  return { pool: PATTERNS_T5, maxHp: 5, rows: 7 + Math.floor((lvl - 8) / 2) };
+function _tierForLevel(lvl: number): { pool: PatternFn[]; maxHp: number; rows: number; tierId: number } {
+  if (lvl === 1) return { pool: PATTERNS_T1, maxHp: 1, rows: 3, tierId: 1 };
+  if (lvl <= 3) return { pool: PATTERNS_T2, maxHp: 2, rows: 4, tierId: 2 };
+  if (lvl <= 5) return { pool: PATTERNS_T3, maxHp: 3, rows: 5, tierId: 3 };
+  if (lvl <= 7) return { pool: PATTERNS_T4, maxHp: 4, rows: 6, tierId: 4 };
+  return { pool: PATTERNS_T5, maxHp: 5, rows: 7 + Math.floor((lvl - 8) / 2), tierId: 5 };
 }
 
+// Track last-used pattern index per tier so we never repeat back-to-back
+const _lastPatternIdx = new Map<number, number>();
+
 function getLevelGrid(lvl: number): number[][] {
-  const { pool, maxHp, rows } = _tierForLevel(lvl);
+  const { pool, maxHp, rows, tierId } = _tierForLevel(lvl);
   const cols = 8;
-  // Pick a random pattern from the tier pool
-  const fn = pool[Math.floor(Math.random() * pool.length)];
+
+  // Pick randomly but exclude the index used last time in this tier
+  const lastIdx = _lastPatternIdx.get(tierId) ?? -1;
+  const candidates = pool.map((_, i) => i).filter(i => i !== lastIdx);
+  const chosenIdx = candidates[Math.floor(Math.random() * candidates.length)];
+  _lastPatternIdx.set(tierId, chosenIdx);
+
+  const fn = pool[chosenIdx];
   const raw = fn(rows, cols, maxHp, lvl);
-  // Safety pass: clamp every cell, ensure at least 30% of cells are filled
+
+  // Safety pass: clamp every cell, ensure at least 30% filled
   const clamped = raw.map(row => row.map(v => v < 0 ? 0 : Math.min(maxHp, v)));
   const filled = clamped.flat().filter(v => v > 0).length;
   const total = rows * cols;
-  // If pattern is too sparse, fill in missing cells with 1-hp blocks
   if (filled < total * 0.3) {
     for (let r = 0; r < clamped.length; r++) {
       for (let c = 0; c < clamped[r].length; c++) {

@@ -22,28 +22,28 @@ export default function Home() {
   };
 
   const games = [
-    { title: "Word Search", description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.", image: "/wordsearch.webp", icon: Search, href: "/games/word-search", color: "blue" },
-    { title: "Tic Tac Toe", description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?", image: "/tictactoe.webp", icon: Hash, href: "/games/tic-tac-toe", color: "purple" },
-    { title: "Memory Game", description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.", image: "/memorygame.png", icon: LayoutGrid, href: "/games/memory", color: "violet" },
-    { title: "Pacman", description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.", image: "/pacman_img.webp", icon: Ghost, href: "/games/pacman", color: "yellow", imagePosition: "center 20%" },
-    { title: "Snake Arena", description: "Grow your snake by eating XP chips. Survive as long as possible and top the leaderboard.", image: "/snake.webp", icon: Activity, href: "/games/snake", color: "emerald" },
-    { title: "Star Siege", description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!", image: "/starsiege.webp", icon: Rocket, href: "/games/space-shooter", color: "orange" },
-    { title: "Connect The Dots", description: "Connect all the dots with the fewest moves. A strategic puzzle that challenges your planning.", image: "/connect-dots.webp", icon: Waypoints, href: "/games/connect-dots", color: "lime" },
-    { title: "Block Breaker", description: "Smash through bricks with your paddle. Survive 10 levels of increasingly brutal layouts.", image: "/block-breaker.webp", icon: Boxes, href: "/games/block-breaker", color: "red" },
+    { title: "Star Siege",       description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",    image: "/starsiege.webp",     icon: Rocket,     href: "/games/space-shooter", color: "orange"  },
+    { title: "Pacman",           description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                        image: "/pacman_img.webp",    icon: Ghost,      href: "/games/pacman",        color: "yellow", imagePosition: "center 20%" },
+    { title: "Connect The Dots", description: "Connect all matching color dots without breaking the flow. Easy, Medium, and Hard puzzle grids.",    image: "/connect-dots.webp",  icon: Waypoints,  href: "/games/connect-dots",  color: "lime",   imagePosition: "center 5%" },
+    { title: "Memory Game",      description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",           image: "/memorygame.png",     icon: LayoutGrid, href: "/games/memory",        color: "violet"  },
+    { title: "Snake Arena",      description: "Grow your snake by eating XP chips. Survive as long as possible and top the leaderboard.",          image: "/snake.webp",         icon: Activity,   href: "/games/snake",         color: "emerald" },
+    { title: "Block Breaker",    description: "Smash through bricks with your paddle. Survive 10 levels of increasingly brutal layouts.",           image: "/block-breaker.webp", icon: Boxes,      href: "/games/block-breaker", color: "red"     },
+    { title: "Word Search",      description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",           image: "/wordsearch.webp",    icon: Search,     href: "/games/word-search",   color: "blue"    },
+    { title: "Tic Tac Toe",      description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",          image: "/tictactoe.webp",     icon: Hash,       href: "/games/tic-tac-toe",   color: "purple"  },
   ];
 
   const gameTypes = [
-    { id: "WORD_SEARCH", label: "Word Search", icon: Search },
-    { id: "TIC_TAC_TOE", label: "Tic Tac Toe", icon: Hash },
-    { id: "MEMORY", label: "Memory", icon: LayoutGrid },
-    { id: "PACMAN", label: "Pacman", icon: Ghost },
-    { id: "SNAKE", label: "Snake", icon: Activity },
-    { id: "SPACE_SHOOTER", label: "Star Siege", icon: Rocket },
+    { id: "SPACE_SHOOTER", label: "Star Siege",       icon: Rocket    },
+    { id: "PACMAN",        label: "Pacman",           icon: Ghost     },
     { id: "CONNECT_DOTS", label: "Connect The Dots", icon: Waypoints },
-    { id: "BLOCK_BREAKER", label: "Block Breaker", icon: Boxes },
+    { id: "MEMORY",       label: "Memory",           icon: LayoutGrid },
+    { id: "SNAKE",        label: "Snake",            icon: Activity  },
+    { id: "BLOCK_BREAKER",label: "Block Breaker",    icon: Boxes     },
+    { id: "WORD_SEARCH",  label: "Word Search",      icon: Search    },
+    { id: "TIC_TAC_TOE",  label: "Tic Tac Toe",      icon: Hash      },
   ];
 
-  const [activeGame, setActiveGame] = useState("WORD_SEARCH");
+  const [activeGame, setActiveGame] = useState("SPACE_SHOOTER");
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [lbLoading, setLbLoading] = useState(true);
 

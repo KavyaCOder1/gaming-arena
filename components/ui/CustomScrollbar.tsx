@@ -14,7 +14,7 @@ export function CustomScrollbar() {
   const [thumbHeight, setThumbHeight] = useState(40);
   const [thumbTop, setThumbTop] = useState(0);
   const [active, setActive] = useState(false);
-  const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const compute = useCallback(() => {
     const doc = document.documentElement;

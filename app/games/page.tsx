@@ -7,14 +7,14 @@ import { Hash, LayoutGrid, Ghost, Zap, Trophy, Play, Gamepad2, Activity, Rocket,
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 
 const games = [
-    { title: "Word Search",      description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",               image: "/wordsearch.webp",    icon: Search,    href: "/games/word-search",    color: "blue"    },
-    { title: "Tic Tac Toe",      description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",              image: "/tictactoe.webp",    icon: Hash,      href: "/games/tic-tac-toe",   color: "purple"  },
-    { title: "Memory Game",      description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",               image: "/memorygame.png",    icon: LayoutGrid, href: "/games/memory",        color: "violet"  },
-    { title: "Connect The Dots", description: "Connect all matching color dots without breaking the flow. Easy, Medium, and Hard puzzle grids.",        image: "/connect-dots.webp", icon: Waypoints, href: "/games/connect-dots",  color: "lime",  imagePosition: "center 5%" },
-    { title: "Pacman",           description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                            image: "/pacman_img.webp",   icon: Ghost,     href: "/games/pacman",        color: "yellow", imagePosition: "center 20%" },
-    { title: "Snake Arena",      description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                       image: "/snake.webp",        icon: Activity,  href: "/games/snake",         color: "emerald" },
-    { title: "Star Siege",       description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",          image: "/starsiege.webp",    icon: Rocket,    href: "/games/space-shooter", color: "orange"  },
+    { title: "Star Siege",       description: "Blast through enemy waves in this space shooter. Auto-fire cannons, missile volleys, survive!",          image: "/starsiege.webp",     icon: Rocket,    href: "/games/space-shooter", color: "orange"  },
+    { title: "Pacman",           description: "Navigate the maze, eat dots, and avoid ghosts in this retro arcade classic.",                            image: "/pacman_img.webp",    icon: Ghost,     href: "/games/pacman",        color: "yellow", imagePosition: "center 20%" },
+    { title: "Connect The Dots", description: "Connect all matching color dots without breaking the flow. Easy, Medium, and Hard puzzle grids.",        image: "/connect-dots.webp",  icon: Waypoints, href: "/games/connect-dots",  color: "lime",   imagePosition: "center 5%" },
+    { title: "Memory Game",      description: "Test your memory by matching pairs of cards. Race against the clock to set a high score.",               image: "/memorygame.png",     icon: LayoutGrid, href: "/games/memory",        color: "violet"  },
+    { title: "Snake Arena",      description: "Collect energy cores, grow your snake, and survive the grid as long as possible.",                       image: "/snake.webp",         icon: Activity,  href: "/games/snake",         color: "emerald" },
     { title: "Block Breaker",    description: "Break all blocks across 10 levels. Classic arcade action with power-ups and customizable extras!",       image: "/block-breaker.webp", icon: Boxes,     href: "/games/block-breaker", color: "red"     },
+    { title: "Word Search",      description: "Find hidden words in a grid. Test your vocabulary and speed in this classic puzzle game.",               image: "/wordsearch.webp",    icon: Search,    href: "/games/word-search",   color: "blue"    },
+    { title: "Tic Tac Toe",      description: "Challenge the AI or a friend in this timeless strategy game. Can you beat the Hard mode?",              image: "/tictactoe.webp",     icon: Hash,      href: "/games/tic-tac-toe",   color: "purple"  },
 ];
 
 export default function GamesPage() {

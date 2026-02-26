@@ -235,16 +235,16 @@ class FlowGame {
 
   layout() {
     const dpr = window.devicePixelRatio || 1;
-    const cssW = this.canvas.clientWidth || this.canvas.offsetWidth;
-    const cssH = this.canvas.clientHeight || this.canvas.offsetHeight;
-    this.canvasSize = Math.min(cssW, cssH);
+    const cssW = Math.max(1, this.canvas.clientWidth || this.canvas.offsetWidth);
+    const cssH = Math.max(1, this.canvas.clientHeight || this.canvas.offsetHeight);
+    this.canvasSize = Math.max(1, Math.min(cssW, cssH));
     if (this.canvas.width !== Math.round(cssW * dpr) || this.canvas.height !== Math.round(cssH * dpr)) {
       this.canvas.width = Math.round(cssW * dpr);
       this.canvas.height = Math.round(cssH * dpr);
     }
     const pad = 10;
-    const avail = this.canvasSize - pad * 2;
-    this.cellSize = avail / this.gridSize;
+    const avail = Math.max(1, this.canvasSize - pad * 2);
+    this.cellSize = Math.max(1, avail / Math.max(1, this.gridSize));
     this.offsetX = (cssW - avail) / 2;
     this.offsetY = (cssH - avail) / 2;
   }
@@ -266,6 +266,11 @@ class FlowGame {
       cx: this.offsetX + c.x * this.cellSize + this.cellSize / 2,
       cy: this.offsetY + c.y * this.cellSize + this.cellSize / 2,
     };
+  }
+
+  safeArc(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, a0: number, a1: number) {
+    if (r <= 0 || !isFinite(r) || !isFinite(cx) || !isFinite(cy)) return;
+    ctx.arc(cx, cy, r, a0, a1);
   }
 
   screenToCell(px: number, py: number): Cell | null {
@@ -363,33 +368,36 @@ class FlowGame {
       const [dr, dg, db] = hexToRgb(dot.color);
       const pulse = 0.6 + 0.4 * Math.sin(this.pulseT * 1.8 + dot.id * 1.3);
 
+      if (r <= 0) continue; // skip if cellSize too small
       if (isConnected) {
         // Glowing connected dot
         ctx.shadowColor = dot.color;
         ctx.shadowBlur = 14 * pulse;
         ctx.fillStyle = dot.color;
-        ctx.beginPath(); ctx.arc(cx, cy, r * 1.08, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); this.safeArc(ctx, cx, cy, r * 1.08, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
         // Inner check ring
         ctx.strokeStyle = "rgba(255,255,255,0.65)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); this.safeArc(ctx, cx, cy, r * 0.5, 0, Math.PI * 2); ctx.stroke();
       } else {
         // Outer soft glow halo
-        const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 1.8);
+        const gradR1 = Math.max(0.01, r * 0.3);
+        const gradR2 = Math.max(0.02, r * 1.8);
+        const grad = ctx.createRadialGradient(cx, cy, gradR1, cx, cy, gradR2);
         grad.addColorStop(0, `rgba(${dr},${dg},${db},${0.25 * pulse})`);
         grad.addColorStop(1, "transparent");
         ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); this.safeArc(ctx, cx, cy, r * 1.8, 0, Math.PI * 2); ctx.fill();
 
         // Main circle
         ctx.shadowColor = dot.color; ctx.shadowBlur = 10;
         ctx.fillStyle = dot.color;
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); this.safeArc(ctx, cx, cy, r, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
 
         // Dark center hole
         ctx.fillStyle = "rgba(0,0,0,0.42)";
-        ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); this.safeArc(ctx, cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
       }
     }
 

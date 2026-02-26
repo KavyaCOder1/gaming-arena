@@ -1021,7 +1021,7 @@ export default function SpaceShooterPage() {
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
-        const el = gameWrapperRef.current ?? document.documentElement;
+        const el = gameWrapperRef.current!;
         const req = (el as any).requestFullscreen
           ?? (el as any).webkitRequestFullscreen
           ?? (el as any).mozRequestFullScreen;
@@ -1052,14 +1052,16 @@ export default function SpaceShooterPage() {
           const vh = window.innerHeight || window.screen.height || 600;
           const isPortrait = vh > vw && vw <= 680;
           if (isPortrait) {
-            // Portrait mobile: pillarboxed 9:16
+            // Portrait mobile: full height, pillarboxed width
             h = vh;
-            w = Math.round(h * 9 / 16);
-            if (w > vw) { w = vw; h = Math.round(w * 16 / 9); }
+            w = Math.round(h * 3 / 4);
+            if (w > vw) { w = vw; h = Math.round(w * 4 / 3); }
           } else {
-            // Desktop / landscape: fill entire screen
-            w = vw;
+            // Desktop: fill height, derive width from 4:3, cap with side margins
             h = vh;
+            w = Math.round(h * 4 / 3);
+            const maxW = vw - 160; // 80px visible margin each side
+            if (w > maxW) { w = maxW; h = Math.round(w * 3 / 4); }
           }
         } else {
           const rect = container.getBoundingClientRect();
@@ -1070,7 +1072,18 @@ export default function SpaceShooterPage() {
         game.scale.resize(w, h);
         const canvas = game.canvas as HTMLCanvasElement | null;
         if (canvas) {
-          canvas.style.cssText = "position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;display:block!important;";
+          if (isFull) {
+            // Fullscreen: exact pixel size, flex parent centers it with dark margins
+            canvas.style.cssText = `display:block!important;width:${w}px!important;height:${h}px!important;position:relative!important;top:unset!important;left:unset!important;`;
+            // Also set the container size to match
+            const cont = containerRef.current;
+            if (cont) { cont.style.width = `${w}px`; cont.style.height = `${h}px`; }
+          } else {
+            // Normal mode: canvas fills its container
+            const cont = containerRef.current;
+            if (cont) { cont.style.width = ''; cont.style.height = ''; }
+            canvas.style.cssText = "position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;display:block!important;";
+          }
         }
       } catch { }
     };
@@ -1177,12 +1190,10 @@ export default function SpaceShooterPage() {
       gameRef.current = game;
       game.events.once("ready", () => {
         sceneRef.current = game.scene.getScene("SpaceScene") ?? game.scene.scenes[0];
-        // Pin the canvas to fill its container at all times
         const c = game.canvas as HTMLCanvasElement;
         if (c) {
           c.style.cssText = "position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;display:block!important;";
         }
-        // Sync immediately in case container grew since init
         resizePhaser();
       });
     }).catch(console.error);
@@ -2028,45 +2039,34 @@ export default function SpaceShooterPage() {
           .ss-canvas-container { aspect-ratio: 3 / 4 !important; min-height: unset !important; }
         }
 
-        /* ── FULLSCREEN: wrapper fills entire screen ── */
+        /* ── FULLSCREEN: game wrapper fills screen, canvas centered with margins ── */
         .ss-game-wrapper:fullscreen,
-        .ss-game-wrapper:-webkit-full-screen,
-        .ss-game-wrapper:-moz-full-screen {
-          position: fixed !important;
-          inset: 0 !important;
-          width: 100vw !important; height: 100vh !important;
-          max-width: 100vw !important; max-height: 100vh !important;
-          margin: 0 !important; padding: 0 !important;
-          border-radius: 0 !important;
-          background: #020817 !important;
-          overflow: hidden !important;
+        .ss-game-wrapper:-webkit-full-screen {
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
+          background: #020817 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
         }
-        /* Canvas in fullscreen: always fill the entire screen (desktop + landscape) */
+        /* Canvas: JS sets exact px size, centering handled by flex on wrapper */
         .ss-game-wrapper:fullscreen .ss-canvas-container,
-        .ss-game-wrapper:-webkit-full-screen .ss-canvas-container,
-        .ss-game-wrapper:-moz-full-screen .ss-canvas-container {
-          position: absolute !important;
-          inset: 0 !important;
-          width: 100% !important;
-          height: 100% !important;
-          min-height: unset !important;
+        .ss-game-wrapper:-webkit-full-screen .ss-canvas-container {
+          position: relative !important;
+          inset: unset !important;
+          flex-shrink: 0 !important;
           aspect-ratio: unset !important;
-          max-width: unset !important;
+          min-height: unset !important;
         }
-        /* Portrait phones in fullscreen: pillarbox to 9:16 */
-        @media (orientation: portrait) and (max-width: 680px) {
-          .ss-game-wrapper:fullscreen .ss-canvas-container,
-          .ss-game-wrapper:-webkit-full-screen .ss-canvas-container {
-            position: relative !important;
-            inset: unset !important;
-            height: 100vh !important;
-            width: auto !important;
-            aspect-ratio: 9 / 16 !important;
-            max-width: 100vw !important;
-          }
+        .ss-game-wrapper:fullscreen .ss-canvas-container canvas,
+        .ss-game-wrapper:-webkit-full-screen .ss-canvas-container canvas {
+          position: relative !important;
+          top: unset !important;
+          left: unset !important;
+          display: block !important;
         }
 
         /* ── MOBILE: natural scrollable page layout ── */
