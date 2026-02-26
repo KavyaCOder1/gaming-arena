@@ -65,8 +65,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Score not plausible for kills/waves achieved" }, { status: 400 });
   }
 
-  // Server-side XP: kills * 2 + wave * 5, capped
-  // Minimum 30s to prevent instant-exit farming
+  // XP formula: kills × 2 + wave × 5, min 30s gate, cap 2000
   const xpBase = survivalTime < 30 ? 0 : Math.floor(kills * 2 + wave * 5);
   const xpEarned = Math.min(xpBase, MAX_XP);
 

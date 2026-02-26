@@ -19,9 +19,9 @@ interface GameRecord {
   difficulty: Difficulty;
   wordsFound: number;
   totalWords: number;
-  duration:   number;
-  completed:  boolean;
-  date:       Date;
+  duration: number;
+  completed: boolean;
+  date: Date;
 }
 interface LBEntry { user: { username: string }; totalXp: number; matches: number; }
 
@@ -31,41 +31,41 @@ const DIFF_CONFIG = {
     label: "EASY",
     color: "#10b981", bg: "rgba(16,185,129,0.12)",
     border: "rgba(16,185,129,0.4)", glow: "rgba(16,185,129,0.25)",
-    gridSize: 5, totalWords: 4, xpReward: 80,
+    gridSize: 5, totalWords: 4, xpReward: 50,
     gridDesc: "5×5 grid",
     wordDesc: "1×3L · 2×4L · 1×5L",
-    dirDesc:  "Horizontal & Vertical",
+    dirDesc: "Horizontal & Vertical",
   },
   MEDIUM: {
     label: "MEDIUM",
     color: "#f59e0b", bg: "rgba(245,158,11,0.12)",
     border: "rgba(245,158,11,0.4)", glow: "rgba(245,158,11,0.25)",
-    gridSize: 7, totalWords: 6, xpReward: 180,
+    gridSize: 7, totalWords: 6, xpReward: 100,
     gridDesc: "7×7 grid",
     wordDesc: "2×3L · 1×4L · 2×5L · 1×7L",
-    dirDesc:  "All axes + diagonal",
+    dirDesc: "All axes + diagonal",
   },
   HARD: {
     label: "HARD",
     color: "#ef4444", bg: "rgba(239,68,68,0.12)",
     border: "rgba(239,68,68,0.4)", glow: "rgba(239,68,68,0.25)",
-    gridSize: 10, totalWords: 7, xpReward: 350,
+    gridSize: 10, totalWords: 7, xpReward: 250,
     gridDesc: "10×10 grid",
     wordDesc: "1×3L · 2×4L · 2×5L · 2×8-9L · 1×10L",
-    dirDesc:  "All 8 directions",
+    dirDesc: "All 8 directions",
   },
 } as const;
 
 const FOUND_COLORS = [
-  "#10b981","#22d3ee","#a78bfa","#f59e0b",
-  "#ec4899","#f97316","#84cc16","#06b6d4",
+  "#10b981", "#22d3ee", "#a78bfa", "#f59e0b",
+  "#ec4899", "#f97316", "#84cc16", "#06b6d4",
 ];
 
 function rankStyle(i: number) {
   if (i === 0) return { color: "#f59e0b", Icon: Crown };
   if (i === 1) return { color: "#94a3b8", Icon: Medal };
   if (i === 2) return { color: "#b45309", Icon: Medal };
-  return         { color: "#475569",   Icon: null  };
+  return { color: "#475569", Icon: null };
 }
 
 const fmt = (s: number) =>
@@ -76,31 +76,31 @@ export default function WordSearchPage() {
   const { user } = useAuthStore();
 
   // game state
-  const [difficulty,   setDifficulty]   = useState<Difficulty>("MEDIUM");
-  const [status,       setStatus]       = useState<GameStatus>("idle");
-  const [grid,         setGrid]         = useState<string[][]>([]);
-  const [words,        setWords]        = useState<string[]>([]);
-  const [found,        setFound]        = useState<Set<string>>(new Set());
-  const [foundCells,   setFoundCells]   = useState<Map<string, number>>(new Map()); // "r,c" → colorIdx
-  const [selecting,    setSelecting]    = useState<[number, number][]>([]);
-  const [startCell,    setStartCell]    = useState<[number, number] | null>(null);
-  const [gameTime,     setGameTime]     = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
+  const [status, setStatus] = useState<GameStatus>("idle");
+  const [grid, setGrid] = useState<string[][]>([]);
+  const [words, setWords] = useState<string[]>([]);
+  const [found, setFound] = useState<Set<string>>(new Set());
+  const [foundCells, setFoundCells] = useState<Map<string, number>>(new Map()); // "r,c" → colorIdx
+  const [selecting, setSelecting] = useState<[number, number][]>([]);
+  const [startCell, setStartCell] = useState<[number, number] | null>(null);
+  const [gameTime, setGameTime] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
 
   // meta
   const [leaderboard, setLeaderboard] = useState<LBEntry[]>([]);
-  const [lbLoading,   setLbLoading]   = useState(true);
-  const [history,     setHistory]     = useState<GameRecord[]>([]);
-  const [stats,       setStats]       = useState({ played: 0, cleared: 0 });
-  const [sessionXp,    setSessionXp]    = useState(0);
-  const [toast,       setToast]       = useState<{ word: string; isLast: boolean; key: number } | null>(null);
+  const [lbLoading, setLbLoading] = useState(true);
+  const [history, setHistory] = useState<GameRecord[]>([]);
+  const [stats, setStats] = useState({ played: 0, cleared: 0 });
+  const [sessionXp, setSessionXp] = useState(0);
+  const [toast, setToast] = useState<{ word: string; isLast: boolean; key: number } | null>(null);
 
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startRef     = useRef<number>(0);
-  const isDragging   = useRef(false);
-  const toastTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef<number>(0);
+  const isDragging = useRef(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
-  const xpRewardRef  = useRef<number>(DIFF_CONFIG[difficulty].xpReward);
+  const xpRewardRef = useRef<number>(DIFF_CONFIG[difficulty].xpReward);
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function WordSearchPage() {
     sessionIdRef.current = null;
 
     try {
-      const res  = await fetch("/api/games/ws/start", {
+      const res = await fetch("/api/games/ws/start", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ difficulty }),
       });
@@ -152,7 +152,7 @@ export default function WordSearchPage() {
       if (!json.success) { setStatus("idle"); return; }
 
       sessionIdRef.current = json.sessionId;
-      xpRewardRef.current  = json.xpReward;
+      xpRewardRef.current = json.xpReward;
       setGrid(json.grid);
       setWords(json.words);
       setStats(s => ({ ...s, played: s.played + 1 }));
@@ -190,7 +190,7 @@ export default function WordSearchPage() {
       const json = await res.json();
       if (!json.valid) { setIsValidating(false); return; }
 
-      const matched    = json.word as string;
+      const matched = json.word as string;
       const colorIndex = found.size;
 
       // Paint found cells
@@ -239,7 +239,7 @@ export default function WordSearchPage() {
   };
 
   // Mouse
-  const onDown  = (r: number, c: number) => {
+  const onDown = (r: number, c: number) => {
     if (status !== "playing" || isValidating) return;
     isDragging.current = true; setStartCell([r, c]); setSelecting([[r, c]]);
   };
@@ -279,7 +279,7 @@ export default function WordSearchPage() {
     handleValidate(selecting); setSelecting([]); setStartCell(null);
   };
 
-  const cfg   = DIFF_CONFIG[difficulty];
+  const cfg = DIFF_CONFIG[difficulty];
   const isSel = (r: number, c: number) => selecting.some(([sr, sc]) => sr === r && sc === c);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ export default function WordSearchPage() {
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,46px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
               WORD <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>SEARCH</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
               SERVER-VERIFIED · v3.0
             </p>
           </div>
@@ -317,9 +317,9 @@ export default function WordSearchPage() {
           {/* Session XP — same design as TTT session score */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP Earned This Session</div>
-              <motion.div key={sessionXp} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#a78bfa" }}
-                style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(167,139,250,0.4))" }}>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP EARNED THIS SESSION</div>
+              <motion.div key={sessionXp} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#22d3ee" }}
+                style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(34,211,238,0.4))" }}>
                 {sessionXp.toLocaleString()}
               </motion.div>
             </div>
@@ -331,34 +331,34 @@ export default function WordSearchPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 14 }}>
         {/* PLAYED */}
         <motion.div
-          animate={status === "playing" ? { boxShadow: ["0 0 0px rgba(167,139,250,0.25)","0 0 16px rgba(167,139,250,0.25)","0 0 4px rgba(167,139,250,0.25)"] } : {}}
+          animate={status === "playing" ? { boxShadow: ["0 0 0px rgba(167,139,250,0.25)", "0 0 16px rgba(167,139,250,0.25)", "0 0 4px rgba(167,139,250,0.25)"] } : {}}
           transition={{ duration: 0.5 }}
           style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>PLAYED</span>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3.5vw,24px)", fontWeight: 900, color: "#a78bfa", filter: "drop-shadow(0 0 6px rgba(167,139,250,0.5))", lineHeight: 1 }}>{stats.played}</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>PLAYED</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,28px)", fontWeight: 900, color: "#a78bfa", filter: "drop-shadow(0 0 8px rgba(167,139,250,0.7))", lineHeight: 1 }}>{stats.played}</span>
         </motion.div>
         {/* CLEARED */}
         <motion.div
-          animate={status === "win" ? { scale:[1,1.06,1], boxShadow:["0 0 0px rgba(16,185,129,0.25)","0 0 20px rgba(16,185,129,0.25)","0 0 8px rgba(16,185,129,0.25)"] } : {}}
+          animate={status === "win" ? { scale: [1, 1.06, 1], boxShadow: ["0 0 0px rgba(16,185,129,0.25)", "0 0 20px rgba(16,185,129,0.25)", "0 0 8px rgba(16,185,129,0.25)"] } : {}}
           transition={{ duration: 0.5 }}
           style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>CLEARED</span>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3.5vw,24px)", fontWeight: 900, color: "#10b981", filter: "drop-shadow(0 0 6px rgba(16,185,129,0.5))", lineHeight: 1 }}>{stats.cleared}</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>CLEARED</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,28px)", fontWeight: 900, color: "#10b981", filter: "drop-shadow(0 0 8px rgba(16,185,129,0.7))", lineHeight: 1 }}>{stats.cleared}</span>
         </motion.div>
         {/* TIME */}
         <div style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</span>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,3vw,20px)", fontWeight: 900, color: "#22d3ee", filter: "drop-shadow(0 0 6px rgba(34,211,238,0.5))", lineHeight: 1 }}>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,28px)", fontWeight: 900, color: "#22d3ee", filter: "drop-shadow(0 0 8px rgba(34,211,238,0.7))", lineHeight: 1 }}>
             {status === "playing" || status === "win" ? fmt(gameTime) : "--:--"}
           </span>
         </div>
         {/* SESSION XP */}
         <motion.div
-          animate={status === "win" ? { scale:[1,1.06,1], boxShadow:["0 0 0px rgba(245,158,11,0.25)","0 0 20px rgba(245,158,11,0.25)","0 0 8px rgba(245,158,11,0.25)"] } : {}}
+          animate={status === "win" ? { scale: [1, 1.06, 1], boxShadow: ["0 0 0px rgba(245,158,11,0.25)", "0 0 20px rgba(245,158,11,0.25)", "0 0 8px rgba(245,158,11,0.25)"] } : {}}
           transition={{ duration: 0.5 }}
           style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>SESSION XP</span>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,3vw,20px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 6px rgba(245,158,11,0.5))", lineHeight: 1 }}>{sessionXp > 0 ? `+${sessionXp}` : "0"}</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>SESSION XP</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,28px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 8px rgba(245,158,11,0.7))", lineHeight: 1 }}>{sessionXp > 0 ? `+${sessionXp}` : "0"}</span>
         </motion.div>
       </div>
 
@@ -383,16 +383,16 @@ export default function WordSearchPage() {
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: status === "win" ? "#10b981" : "#22d3ee", boxShadow: `0 0 10px ${status === "win" ? "#10b981" : "#22d3ee"}`, animation: status === "playing" ? "wsPulse 1.5s infinite" : "none", flexShrink: 0 }} />
             <div>
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: status === "win" ? "#10b981" : "#22d3ee" }}>
-                {status === "idle"    && "READY?"}
+                {status === "idle" && "READY?"}
                 {status === "loading" && "GENERATING…"}
                 {status === "playing" && (isValidating ? "CHECKING…" : "FIND ALL WORDS")}
-                {status === "win"     && "MISSION COMPLETE!"}
+                {status === "win" && "MISSION COMPLETE!"}
               </div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>
-                {status === "idle"    && "Choose difficulty & press START"}
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
+                {status === "idle" && "Choose difficulty & press START"}
                 {status === "loading" && "Building your grid on the server…"}
                 {status === "playing" && `${found.size} / ${words.length} words found — drag to select`}
-                {status === "win"     && `All ${words.length} words found · +${xpRewardRef.current} XP earned!`}
+                {status === "win" && `All ${words.length} words found · +${xpRewardRef.current} XP earned!`}
               </div>
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function WordSearchPage() {
         {(status === "playing" || status === "win") && grid.length > 0 && (
           <div style={{ position: "relative" }}>
             <motion.div
-              animate={{ background: status === "win" ? ["rgba(16,185,129,0.15)","rgba(16,185,129,0.4)","rgba(16,185,129,0.15)"] : "rgba(34,211,238,0.1)" }}
+              animate={{ background: status === "win" ? ["rgba(16,185,129,0.15)", "rgba(16,185,129,0.4)", "rgba(16,185,129,0.15)"] : "rgba(34,211,238,0.1)" }}
               transition={status === "win" ? { duration: 0.9, repeat: 2 } : { duration: 0.4 }}
               style={{ position: "absolute", inset: -5, borderRadius: 26, filter: "blur(14px)", zIndex: 0 }} />
             <motion.div
@@ -452,10 +452,10 @@ export default function WordSearchPage() {
                 onMouseUp={onUp}
                 onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}>
                 {grid.map((row, r) => row.map((letter, c) => {
-                  const sel   = isSel(r, c);
+                  const sel = isSel(r, c);
                   const fcIdx = foundCells.get(`${r},${c}`);
-                  const isF   = fcIdx !== undefined;
-                  const fc    = FOUND_COLORS[(fcIdx ?? 0) % FOUND_COLORS.length];
+                  const isF = fcIdx !== undefined;
+                  const fc = FOUND_COLORS[(fcIdx ?? 0) % FOUND_COLORS.length];
                   return (
                     <motion.div key={`${r}-${c}`} data-cell={`${r},${c}`}
                       onMouseDown={() => onDown(r, c)} onMouseEnter={() => onEnter(r, c)}
@@ -465,8 +465,8 @@ export default function WordSearchPage() {
                         borderRadius: 6,
                         cursor: status === "playing" && !isValidating ? "pointer" : "default",
                         background: isF ? `${fc}22` : sel ? "rgba(34,211,238,0.22)" : "rgba(255,255,255,0.025)",
-                        border:     isF ? `1px solid ${fc}55` : sel ? "1px solid rgba(34,211,238,0.6)" : "1px solid rgba(255,255,255,0.05)",
-                        boxShadow:  isF ? `0 0 8px ${fc}44` : sel ? "0 0 10px rgba(34,211,238,0.35)" : "none",
+                        border: isF ? `1px solid ${fc}55` : sel ? "1px solid rgba(34,211,238,0.6)" : "1px solid rgba(255,255,255,0.05)",
+                        boxShadow: isF ? `0 0 8px ${fc}44` : sel ? "0 0 10px rgba(34,211,238,0.35)" : "none",
                         transition: "background 0.07s, border 0.07s",
                         opacity: isValidating && !isF && !sel ? 0.6 : 1,
                       }}>
@@ -474,7 +474,7 @@ export default function WordSearchPage() {
                         fontFamily: "'Orbitron',sans-serif",
                         fontSize: "clamp(8px,min(3vw,3vh),17px)",
                         fontWeight: 900, lineHeight: 1,
-                        color: isF ? fc : sel ? "#22d3ee" : "#3d5068",
+                        color: isF ? fc : sel ? "#22d3ee" : "#94a3b8",
                         textShadow: isF ? `0 0 8px ${fc}bb` : sel ? "0 0 10px rgba(34,211,238,0.9)" : "none",
                         pointerEvents: "none", transition: "color 0.07s",
                       }}>{letter}</span>
@@ -508,8 +508,8 @@ export default function WordSearchPage() {
                     <Search style={{ width: "clamp(38px,8vw,52px)", height: "clamp(38px,8vw,52px)", color: "#22d3ee", filter: "drop-shadow(0 0 16px rgba(34,211,238,0.55))" }} />
                   </motion.div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,3vw,17px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.12em", marginBottom: 4 }}>LEXICAL GRID</div>
-                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#334155", fontWeight: 600, letterSpacing: "0.22em" }}>AWAITING INITIALIZATION</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,3vw,17px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.12em", marginBottom: 4 }}>WORD HUNT ARENA</div>
+                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#94a3b8", fontWeight: 700, letterSpacing: "0.22em" }}>AWAITING INITIALIZATION</div>
                   </div>
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "center" }}>
                     {["W", "O", "R", "D", "S"].map((l, i) => (
@@ -544,8 +544,8 @@ export default function WordSearchPage() {
                 return (
                   <motion.div key={word} animate={isF ? { scale: [1, 1.09, 1] } : {}} transition={{ duration: 0.22 }}
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", borderRadius: 9, background: isF ? `${col}18` : "rgba(255,255,255,0.03)", border: `1px solid ${isF ? col + "44" : "rgba(255,255,255,0.06)"}`, boxShadow: isF ? `0 0 10px ${col}25` : "none", transition: "all 0.2s" }}>
-                    <CheckCircle2 style={{ width: 11, height: 11, color: isF ? col : "#1e293b", flexShrink: 0 }} />
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2vw,10px)", fontWeight: 700, color: isF ? col : "#475569", textDecoration: isF ? "line-through" : "none", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+                    <CheckCircle2 style={{ width: 11, height: 11, color: isF ? col : "#64748b", flexShrink: 0 }} />
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2vw,10px)", fontWeight: 700, color: isF ? col : "#94a3b8", textDecoration: isF ? "line-through" : "none", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
                       {word}
                     </span>
                   </motion.div>
@@ -581,7 +581,7 @@ export default function WordSearchPage() {
                 </div>
                 {/* right — giant XP */}
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 2 }}>XP EARNED</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 2 }}>XP EARNED</div>
                   <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: "spring", damping: 9, stiffness: 180, delay: 0.2 }}
                     style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(30px,7vw,46px)", fontWeight: 900, color: "#a78bfa", filter: "drop-shadow(0 0 18px rgba(167,139,250,0.65))", lineHeight: 1 }}>
@@ -594,13 +594,13 @@ export default function WordSearchPage() {
               {/* stat chips */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(78px,1fr))", gap: 8, marginTop: 16 }}>
                 {[
-                  { label: "WORDS",   value: `${words.length}/${words.length}`, color: "#10b981" },
-                  { label: "MODE",    value: cfg.label,                          color: cfg.color  },
-                  { label: "TIME",    value: fmt(gameTime),                      color: "#22d3ee"  },
-                  { label: "GRID",    value: cfg.gridDesc,                       color: "#f59e0b"  },
+                  { label: "WORDS", value: `${words.length}/${words.length}`, color: "#10b981" },
+                  { label: "MODE", value: cfg.label, color: cfg.color },
+                  { label: "TIME", value: fmt(gameTime), color: "#22d3ee" },
+                  { label: "GRID", value: cfg.gridDesc, color: "#f59e0b" },
                 ].map(item => (
                   <div key={item.label} style={{ padding: "8px 10px", borderRadius: 10, background: `${item.color}11`, border: `1px solid ${item.color}33`, textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#475569", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 3 }}>{item.label}</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 3 }}>{item.label}</div>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: item.color }}>{item.value}</div>
                   </div>
                 ))}
@@ -611,7 +611,7 @@ export default function WordSearchPage() {
 
         {/* ── DIFFICULTY SELECTOR ────────────────────────────────────────────── */}
         <div>
-          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>
             SELECT DIFFICULTY
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
@@ -623,9 +623,9 @@ export default function WordSearchPage() {
                   disabled={disabled}
                   whileHover={!disabled ? { y: -2 } : {}} whileTap={!disabled ? { scale: 0.96 } : {}}
                   style={{ padding: "11px 6px", borderRadius: 13, background: active ? dc.bg : "rgba(15,23,42,0.6)", border: `2px solid ${active ? dc.border : "rgba(255,255,255,0.05)"}`, cursor: disabled ? "not-allowed" : "pointer", transition: "all 0.2s", textAlign: "center", boxShadow: active ? `0 0 18px ${dc.glow}` : "none", opacity: disabled && !active ? 0.28 : 1, position: "relative", overflow: "hidden" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#334155", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#1e293b", fontWeight: 600, marginBottom: 3 }}>{dc.gridDesc}</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? "#a78bfa" : "#334155" }}>+{dc.xpReward} XP</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#94a3b8", fontWeight: 600, marginBottom: 3 }}>{dc.gridDesc}</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? "#a78bfa" : "#94a3b8" }}>+{dc.xpReward} XP</div>
                   {active && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: dc.color, boxShadow: `0 0 8px ${dc.color}` }} />}
                 </motion.button>
               );
@@ -654,7 +654,7 @@ export default function WordSearchPage() {
               <RefreshCw style={{ width: 14, height: 14 }} /> PLAY AGAIN
             </motion.button>
             <motion.button onClick={resetGame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               MENU
             </motion.button>
           </div>
@@ -664,71 +664,71 @@ export default function WordSearchPage() {
 
       {/* ── LEADERBOARD — full width ──────────────────────────────────────── */}
       <div style={{ marginTop: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#f59e0b,#ef4444)", borderRadius: 1 }} />
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.3em", textTransform: "uppercase" }}>TOP PLAYERS</span>
-          </div>
-          <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
-            {/* Header row */}
-            <div className="ws-lb-head" style={{ display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-              {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map(h => (
-                <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
-              ))}
-            </div>
-            {lbLoading ? (
-              <div style={{ padding: "12px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-                {[...Array(5)].map((_, i) => <div key={i} style={{ height: 36, borderRadius: 8, background: "rgba(255,255,255,0.03)", animation: "wsSkel 1.5s infinite" }} />)}
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "28px 0" }}>
-                <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
-                <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
-              </div>
-            ) : (
-              leaderboard.map((entry, i) => {
-                const { color, Icon: RI } = rankStyle(i);
-                const isTop3 = i < 3;
-                return (
-                  <motion.div key={i}
-                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                    className="ws-lb-head"
-                    style={{ display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, padding: "11px 18px", borderBottom: i < leaderboard.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: isTop3 ? `rgba(${i===0?"245,158,11":i===1?"148,163,184":"180,83,9"},0.04)` : "transparent" }}>
-                    {/* rank */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {RI
-                        ? <RI style={{ width: 13, height: 13, color }}/>
-                        : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#475569" }}>{i + 1}</span>}
-                    </div>
-                    {/* player */}
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#475569", textTransform: "uppercase", letterSpacing: "0.06em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
-                    {/* xp */}
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: isTop3 ? color : "#a78bfa" }}>{entry.totalXp.toLocaleString()}</span>
-                      <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>
-                    </div>
-                    {/* matches */}
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{entry.matches}</span>
-                  </motion.div>
-                );
-              })
-            )}
-            {user && (
-              <div style={{ padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, alignItems: "center", background: "rgba(99,102,241,0.06)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#22d3ee)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: "#fff" }}>{user.username[0].toUpperCase()}</span>
-                  </div>
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#6366f1", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 1 }}>YOU</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.username}</div>
-                </div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#334155", letterSpacing: "0.1em" }}>— session</span>
-                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569" }}>—</span>
-              </div>
-            )}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#f59e0b,#ef4444)", borderRadius: 1 }} />
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.3em", textTransform: "uppercase" }}>TOP PLAYERS</span>
         </div>
+        <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
+          {/* Header row */}
+          <div className="ws-lb-head" style={{ display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+            {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map(h => (
+              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+            ))}
+          </div>
+          {lbLoading ? (
+            <div style={{ padding: "12px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {[...Array(5)].map((_, i) => <div key={i} style={{ height: 36, borderRadius: 8, background: "rgba(255,255,255,0.03)", animation: "wsSkel 1.5s infinite" }} />)}
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "28px 0" }}>
+              <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 8px" }} />
+              <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
+            </div>
+          ) : (
+            leaderboard.map((entry, i) => {
+              const { color, Icon: RI } = rankStyle(i);
+              const isTop3 = i < 3;
+              return (
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                  className="ws-lb-head"
+                  style={{ display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, padding: "11px 18px", borderBottom: i < leaderboard.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: isTop3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent" }}>
+                  {/* rank */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {RI
+                      ? <RI style={{ width: 13, height: 13, color }} />
+                      : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#94a3b8" }}>{i + 1}</span>}
+                  </div>
+                  {/* player */}
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
+                  {/* xp */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: isTop3 ? color : "#a78bfa" }}>{entry.totalXp.toLocaleString()}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
+                  </div>
+                  {/* matches */}
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{entry.matches}</span>
+                </motion.div>
+              );
+            })
+          )}
+          {user && (
+            <div style={{ padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "grid", gridTemplateColumns: "40px 1fr 90px 70px", gap: 10, alignItems: "center", background: "rgba(99,102,241,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#22d3ee)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: "#fff" }}>{user.username[0].toUpperCase()}</span>
+                </div>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#6366f1", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 1 }}>YOU</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.username}</div>
+              </div>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em" }}>— session</span>
+              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8" }}>—</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── GAME HISTORY — full width ────────────────────────────────────── */}
       <AnimatePresence>
@@ -741,7 +741,7 @@ export default function WordSearchPage() {
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div className="ws-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 {["RESULT", "DIFFICULTY", "WORDS", "TIME", "PLAYED"].map(h => (
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
                 ))}
               </div>
               {history.map((rec, i) => {
@@ -751,13 +751,13 @@ export default function WordSearchPage() {
                     className="ws-hist-head ws-hist-row"
                     style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "11px 18px", borderBottom: i < history.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
                     <div style={{ padding: "3px 9px", borderRadius: 6, background: rec.completed ? "rgba(16,185,129,0.1)" : "rgba(100,116,139,0.1)", border: `1px solid ${rec.completed ? "rgba(16,185,129,0.4)" : "rgba(100,116,139,0.25)"}`, display: "inline-flex", width: "fit-content" }}>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: rec.completed ? "#10b981" : "#475569", letterSpacing: "0.1em" }}>
+                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: rec.completed ? "#10b981" : "#94a3b8", letterSpacing: "0.1em" }}>
                         {rec.completed ? "CLEARED" : "PARTIAL"}
                       </span>
                     </div>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: dc.color, letterSpacing: "0.1em", fontWeight: 700 }}>{rec.difficulty}</span>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#22d3ee" }}>{rec.wordsFound}/{rec.totalWords}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(rec.duration)}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(rec.duration)}</span>
                     <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{rec.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </motion.div>
                 );

@@ -12,10 +12,24 @@ interface GameStats {
   level: number; score: number; lives: number;
   blocksLeft: number; blocksDestroyed: number; timeElapsed: number;
 }
-interface LBEntry { user: { username: string }; highScore: number; level?: number; matches?: number }
+interface LBEntry { user: { username: string }; highScore: number; matches?: number }
 interface HistRecord {
   id: string; level: number; score: number;
   blocksDestroyed: number; duration: number; xpEarned: number; createdAt: string;
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const fmt = (s: number) =>
@@ -35,7 +49,7 @@ function getAudio(): AudioContext | null {
   if (!_audioCtx) {
     try { _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { return null; }
   }
-  if (_audioCtx.state === "suspended") _audioCtx.resume().catch(() => {});
+  if (_audioCtx.state === "suspended") _audioCtx.resume().catch(() => { });
   return _audioCtx;
 }
 function tone(freq: number, dur: number, vol = 0.08, type: OscillatorType = "square") {
@@ -48,7 +62,7 @@ function tone(freq: number, dur: number, vol = 0.08, type: OscillatorType = "squ
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.start(t); o.stop(t + dur + 0.01);
-  } catch {}
+  } catch { }
 }
 function sndPaddle() { tone(520, 0.07, 0.07, "sine"); }
 function sndHit() { tone(880, 0.05, 0.06, "square"); }
@@ -82,118 +96,414 @@ const COL_COLORS = [
 // hp still tints brightness: lower hp = darker/more transparent tile
 const blockColor = (_hp: number, col: number) => COL_COLORS[col % COL_COLORS.length];
 
-// ── 10 hand-crafted level grids ───────────────────────────────────────────────
-// 0 = empty, 1-4 = hp (tile exists with that durability)
-// All levels use ALL 8 columns so all 8 colors always show
-const LEVEL_GRIDS: number[][][] = [
-  // Level 1 — "Horizon" — 3 solid rows, all hp-1, clean intro
-  [
-    [0,1,1,1,1,1,1,0],
-    [1,1,1,1,1,1,1,1],
-    [0,1,1,1,1,1,1,0],
-  ],
-  // Level 2 — "Wave" — 4 rows, hp 1-2, gentle wave pattern
-  [
-    [1,1,2,2,2,2,1,1],
-    [1,2,2,1,1,2,2,1],
-    [2,2,1,1,1,1,2,2],
-    [1,1,1,1,1,1,1,1],
-  ],
-  // Level 3 — "Arch" — 5 rows, hp 1-2, arch/window opening
-  [
-    [1,1,1,1,1,1,1,1],
-    [1,2,2,2,2,2,2,1],
-    [1,2,0,0,0,0,2,1],
-    [1,2,2,2,2,2,2,1],
-    [1,1,1,1,1,1,1,1],
-  ],
-  // Level 4 — "Staircase" — 6 rows, hp 1-3, symmetric double staircase
-  [
-    [1,0,0,0,0,0,0,1],
-    [1,2,0,0,0,0,2,1],
-    [1,2,3,0,0,3,2,1],
-    [1,2,3,0,0,3,2,1],
-    [1,2,0,0,0,0,2,1],
-    [1,1,1,1,1,1,1,1],
-  ],
-  // Level 5 — "Diamond" — 6 rows, hp 1-3, full diamond with core
-  [
-    [0,0,1,2,2,1,0,0],
-    [0,1,2,3,3,2,1,0],
-    [1,2,3,3,3,3,2,1],
-    [1,2,3,3,3,3,2,1],
-    [0,1,2,3,3,2,1,0],
-    [0,0,1,2,2,1,0,0],
-  ],
-  // Level 6 — "Fortress" — 7 rows, hp 1-4, castle battlements
-  [
-    [2,0,2,0,0,2,0,2],
-    [2,2,2,1,1,2,2,2],
-    [3,3,3,3,3,3,3,3],
-    [4,3,2,3,3,2,3,4],
-    [4,4,3,3,3,3,4,4],
-    [4,4,4,3,3,4,4,4],
-    [4,4,4,4,4,4,4,4],
-  ],
-  // Level 7 — "X-Cross" — 7 rows, hp 1-4, bold X with fill
-  [
-    [4,1,1,2,2,1,1,4],
-    [1,4,1,2,2,1,4,1],
-    [1,1,4,3,3,4,1,1],
-    [2,2,3,4,4,3,2,2],
-    [1,1,4,3,3,4,1,1],
-    [1,4,1,2,2,1,4,1],
-    [4,1,1,2,2,1,1,4],
-  ],
-  // Level 8 — "Pyramid" — 8 rows, hp 1-5, full colored pyramid
-  [
-    [0,0,0,1,1,0,0,0],
-    [0,0,2,2,2,2,0,0],
-    [0,2,3,2,2,3,2,0],
-    [2,3,4,3,3,4,3,2],
-    [3,4,4,4,4,4,4,3],
-    [3,4,3,4,4,3,4,3],
-    [4,4,4,4,4,4,4,4],
-    [1,2,3,4,4,3,2,1],
-  ],
-  // Level 9 — "Labyrinth" — 8 rows, hp 1-5, maze with inner rooms
-  [
-    [4,4,4,4,4,4,4,4],
-    [4,1,1,4,4,1,1,4],
-    [4,1,3,3,3,3,1,4],
-    [4,4,3,5,5,3,4,4],
-    [4,4,3,5,5,3,4,4],
-    [4,1,3,3,3,3,1,4],
-    [4,1,1,4,4,1,1,4],
-    [4,4,4,4,4,4,4,4],
-  ],
-  // Level 10 — "Armageddon" — 9 rows, hp 1-6, maximum density chaos
-  [
-    [4,3,5,2,2,5,3,4],
-    [3,5,4,5,5,4,5,3],
-    [5,4,3,4,4,3,4,5],
-    [4,5,4,3,3,4,5,4],
-    [3,4,5,4,4,5,4,3],
-    [5,3,4,5,5,4,3,5],
-    [4,5,3,4,4,3,5,4],
-    [3,4,5,3,3,5,4,3],
-    [5,5,5,5,5,5,5,5],
-  ],
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// LEVEL PATTERN SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+// HP progression per level:
+//   L1        → max 1 hp  (all 1-hit)
+//   L2-3      → max 2 hp  (mostly 1-hit, sprinkle of 2-hit on edges/center)
+//   L4-5      → max 3 hp
+//   L6-7      → max 4 hp
+//   L8-10     → max 5 hp
+//
+// Each level tier has its own pool of named patterns.
+// getLevelGrid() picks one at random from the matching tier pool.
+// ─────────────────────────────────────────────────────────────────────────────
 
-function getLevelGrid(lvl: number): number[][] {
-  return LEVEL_GRIDS[Math.min(lvl - 1, LEVEL_GRIDS.length - 1)];
+type PatternFn = (rows: number, cols: number, maxHp: number, lvl: number) => number[][];
+
+// clamp hp value within [1..maxHp]
+const ch = (v: number, maxHp: number) => Math.min(maxHp, Math.max(1, Math.round(v)));
+// empty cell
+const __ = 0;
+
+// ── Helper: build grid from a 2-D lambda ──────────────────────────────────
+function grid(rows: number, cols: number, fn: (r: number, c: number) => number): number[][] {
+  return Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => fn(r, c))
+  );
 }
 
-// ── All blocks use rounded rect — shape stays consistent, DECORATION varies ──
-type BlockShape = "rect";
-const SHAPE_BY_LEVEL: BlockShape[] = Array(10).fill("rect");
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER 1  (L1)  ── simple, all 1-hit, intro patterns
+// ─────────────────────────────────────────────────────────────────────────────
+const PATTERNS_T1: PatternFn[] = [
+  // Solid 3-row rectangle
+  (rows, cols) => grid(3, cols, () => 1),
+
+  // 3 rows — alternating full / gap / full (train track)
+  (rows, cols) => grid(3, cols, (r, c) => (r === 1 && c % 2 === 1) ? __ : 1),
+
+  // Staircase descending left→right
+  (rows, cols) => grid(4, cols, (r, c) => c >= r ? 1 : __),
+
+  // Staircase ascending
+  (rows, cols) => grid(4, cols, (r, c) => c <= (cols - 1 - r) ? 1 : __),
+
+  // V-shape (open top)
+  (rows, cols) => grid(4, cols, (r, c) => {
+    const dist = Math.abs(c - (cols - 1) / 2);
+    return dist >= rows - 1 - r ? 1 : __;
+  }),
+
+  // Columns of 3, alternating heights
+  (rows, cols) => grid(4, cols, (r, c) => {
+    const height = c % 2 === 0 ? 3 : 2;
+    return r >= (4 - height) ? 1 : __;
+  }),
+
+  // Double arch (two bumps)
+  (rows, cols) => grid(3, cols, (r, c) => {
+    const half = Math.floor(cols / 2);
+    const d = Math.min(Math.abs(c - (half / 2 - 0.5)), Math.abs(c - (cols - half / 2 - 0.5)));
+    return d + r < 4 ? 1 : __;
+  }),
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER 2  (L2-L3)  ── introduce 2-hp tiles on strong positions
+// ─────────────────────────────────────────────────────────────────────────────
+const PATTERNS_T2: PatternFn[] = [
+  // Solid rows — bottom row is 2-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r) => r === rows - 1 ? ch(2, maxHp) : 1),
+
+  // Pyramid — peak cells are 2-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const spread = rows - 1 - r;
+    if (Math.abs(c - mid) > spread + 0.4) return __;
+    return Math.abs(c - mid) <= 1 && r <= 1 ? ch(2, maxHp) : 1;
+  }),
+
+  // Diamond outline with 2-hp outer ring
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const spread = r < rows / 2 ? r : rows - 1 - r;
+    if (Math.abs(c - mid) > spread + 0.5) return __;
+    return Math.abs(c - mid) >= spread - 0.5 ? ch(2, maxHp) : 1;
+  }),
+
+  // Cross / plus sign — center spine is 2-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const midC = Math.floor(cols / 2);
+    const midR = Math.floor(rows / 2);
+    const onH = r === midR;
+    const onV = c === midC || c === midC - 1;
+    if (!onH && !onV) return __;
+    return (onH && onV) ? ch(2, maxHp) : 1;
+  }),
+
+  // Fortress walls — side columns 2-hp, rest 1-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const isWall = c === 0 || c === cols - 1;
+    const isBattlement = r === 0 && c % 2 === 0;
+    return isWall || isBattlement ? ch(2, maxHp) : r < rows - 1 ? 1 : ch(2, maxHp);
+  }),
+
+  // Zigzag rows — odd rows offset, 2-hp on row peaks
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    if (r % 2 === 1 && c === 0) return __;
+    if (r % 2 === 1 && c === cols - 1) return __;
+    return r === 0 ? ch(2, maxHp) : 1;
+  }),
+
+  // Hourglass — narrow middle, thick top+bottom
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const minW = 1; // min half-width at centre
+    const maxW = (cols - 1) / 2;
+    const t = Math.abs(r - (rows - 1) / 2) / ((rows - 1) / 2); // 0 at centre, 1 at edges
+    const hw = minW + (maxW - minW) * t;
+    if (Math.abs(c - mid) > hw + 0.5) return __;
+    return (r === 0 || r === rows - 1) ? ch(2, maxHp) : 1;
+  }),
+
+  // Scattered 2-hp defenders — random-looking but seeded by col+row
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const strong = (r * 3 + c * 7) % 11 < 3;
+    return strong ? ch(2, maxHp) : 1;
+  }),
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER 3  (L4-L5)  ── 3-hp boss tiles appear, more complex shapes
+// ─────────────────────────────────────────────────────────────────────────────
+const PATTERNS_T3: PatternFn[] = [
+  // Castle — thick base (3hp), medium walls (2hp), thin battlements (1hp)
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const isWall = c <= 1 || c >= cols - 2;
+    const isBattlement = r === 0 && c % 2 === 0 && !isWall;
+    const isBase = r >= rows - 2;
+    if (isBattlement) return ch(1, maxHp);
+    if (isBase) return ch(3, maxHp);
+    if (isWall) return ch(2, maxHp);
+    return r < rows - 1 ? 1 : __;
+  }),
+
+  // Concentric rings — outermost=3, middle=2, inner=1
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const dr = Math.min(r, rows - 1 - r);
+    const dc = Math.min(c, cols - 1 - c);
+    const ring = Math.min(dr, dc);
+    if (ring === 0) return ch(3, maxHp);
+    if (ring === 1) return ch(2, maxHp);
+    return ch(1, maxHp);
+  }),
+
+  // X-cross — diagonals are 3hp, rest is sparse 1hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const d1 = Math.abs(c - r * (cols - 1) / (rows - 1));
+    const d2 = Math.abs(c - ((cols - 1) - r * (cols - 1) / (rows - 1)));
+    if (d1 < 0.8) return ch(3, maxHp);
+    if (d2 < 0.8) return ch(3, maxHp);
+    return (r + c) % 3 === 0 ? ch(1, maxHp) : __;
+  }),
+
+  // Snake — a thick serpentine band winding down
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const segment = Math.floor(r / 2);
+    const goRight = segment % 2 === 0;
+    const head = goRight ? c >= cols - 2 : c <= 1;
+    const body = goRight
+      ? c <= (rows - 1 - r) * (cols / rows) + 1
+      : c >= cols - 1 - (rows - 1 - r) * (cols / rows) - 1;
+    if (r % 2 === 1 && head) return ch(3, maxHp);
+    return 1;
+  }),
+
+  // Checker with 3-hp on (0,0) colour squares
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    return (r + c) % 2 === 0 ? ch(3, maxHp) : ch(1, maxHp);
+  }),
+
+  // Frame inside frame — 3 rings of decreasing hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const outer = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+    const inner = r === 1 || r === rows - 2 || c === 1 || c === cols - 2;
+    const core = !outer && !inner;
+    if (outer) return ch(3, maxHp);
+    if (inner) return ch(2, maxHp);
+    return core && rows > 4 ? ch(1, maxHp) : ch(2, maxHp);
+  }),
+
+  // Columns of escalating hp left→right
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const hp = 1 + Math.floor(c / (cols / 3));
+    return ch(hp, maxHp);
+  }),
+
+  // Inverted triangle of 3-hp core, surrounded by 1-hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const spread = rows - 1 - r;
+    const inCore = Math.abs(c - mid) <= spread * 0.45;
+    if (Math.abs(c - mid) > spread + 0.5) return __;
+    return inCore ? ch(3, maxHp) : ch(1, maxHp);
+  }),
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER 4  (L6-L7)  ── 4-hp tiles, dense and punishing layouts
+// ─────────────────────────────────────────────────────────────────────────────
+const PATTERNS_T4: PatternFn[] = [
+  // Full dense fill — hp rises from top to bottom
+  (rows, cols, maxHp) => grid(rows, cols, (r) => ch(1 + Math.round(r / (rows - 1) * (maxHp - 1)), maxHp)),
+
+  // Bullseye — 4-hp core, rings decreasing outward
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const dr = (r - (rows - 1) / 2) / ((rows - 1) / 2);
+    const dc = (c - (cols - 1) / 2) / ((cols - 1) / 2);
+    const dist = Math.sqrt(dr * dr + dc * dc);
+    return ch(maxHp - Math.floor(dist * (maxHp - 1)), maxHp);
+  }),
+
+  // Maze-like: solid except corridors every 3rd col
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    if (c % 3 === 2 && r % 2 === 0) return __;
+    const dist = Math.min(r, rows - 1 - r);
+    return ch(1 + Math.floor(dist / 2), maxHp);
+  }),
+
+  // Arch cathedral — tall arched opening in centre
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const archH = Math.round(rows * 0.6);
+    const archW = 2;
+    const inArch = Math.abs(c - mid) <= archW && r >= rows - archH;
+    if (inArch) return __;
+    const distToEdge = Math.min(c, cols - 1 - c, r);
+    return ch(1 + Math.floor(distToEdge / 2), maxHp);
+  }),
+
+  // Shockwave rings from top-left
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const dist = Math.round(Math.sqrt(r * r + c * c));
+    const ring = dist % (maxHp + 1);
+    return ch(ring === 0 ? maxHp : ring, maxHp);
+  }),
+
+  // Diagonal stripes of alternating hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const stripe = Math.floor((r + c) / 2) % maxHp;
+    return ch(stripe + 1, maxHp);
+  }),
+
+  // Twin towers — two tall solid columns, cross-bridge in middle
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const leftTower = c <= 1;
+    const rightTower = c >= cols - 2;
+    const bridge = r === Math.floor(rows / 2) && !leftTower && !rightTower;
+    const turret = r === 0 && (c === 1 || c === cols - 2);
+    if (leftTower || rightTower) return ch(maxHp, maxHp);
+    if (bridge || turret) return ch(Math.max(1, maxHp - 1), maxHp);
+    return __;
+  }),
+
+  // Honeycomb approximation — offset rows, 2-3-4 hp per depth
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const offset = r % 2 === 1 ? 0 : 0; // visual only via colour
+    const depth = rows - 1 - r;
+    return ch(1 + Math.floor(depth / 2), maxHp);
+  }),
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER 5  (L8-L10)  ── 5-hp tanks, maximum density, brutal layouts
+// ─────────────────────────────────────────────────────────────────────────────
+const PATTERNS_T5: PatternFn[] = [
+  // Full brick wall — gradient bottom=5, top=2
+  (rows, cols, maxHp) => grid(rows, cols, (r) => ch(maxHp - Math.floor(r / rows * (maxHp - 2)), maxHp)),
+
+  // Skull — eye-sockets hollow, thick forehead
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const eyeRow = Math.floor(rows * 0.5);
+    const leftEye = c >= 1 && c <= 2 && r === eyeRow;
+    const rightEye = c >= cols - 3 && c <= cols - 2 && r === eyeRow;
+    if (leftEye || rightEye) return __;
+    const dist = Math.min(r, cols - 1 - c, c);
+    return ch(1 + Math.floor(dist / 2), maxHp);
+  }),
+
+  // Dragon scales — overlapping arcs, hp by depth
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const scaleRow = Math.floor(r / 2);
+    const offset = (scaleRow % 2) * Math.floor(cols / 4);
+    const localC = (c + offset) % cols;
+    const scalePos = localC % Math.ceil(cols / 3);
+    const hp = maxHp - Math.floor(scalePos / (cols / 3) * (maxHp - 1));
+    return ch(hp, maxHp);
+  }),
+
+  // Spiral tightening toward centre
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const dr = Math.min(r, rows - 1 - r);
+    const dc = Math.min(c, cols - 1 - c);
+    const ring = Math.min(dr, dc);
+    return ch(maxHp - ring, maxHp);
+  }),
+
+  // Asteroid field — dense with scattered voids
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const seed = (r * 17 + c * 31 + r * c * 7) % 29;
+    if (seed < 4) return __; // ~14% empty
+    return ch(1 + (seed % maxHp), maxHp);
+  }),
+
+  // Command ship — heavy armoured core, light escort
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const coreC = c >= 2 && c <= cols - 3;
+    const coreR = r >= 1 && r <= rows - 2;
+    const isCore = coreC && coreR;
+    const isEdge = r === 0 || r === rows - 1 || c === 0 || c === cols - 1;
+    if (isCore) return ch(maxHp, maxHp);
+    if (isEdge) return ch(Math.max(1, maxHp - 3), maxHp);
+    return ch(Math.max(1, maxHp - 1), maxHp);
+  }),
+
+  // Lava lake — floor is max-hp, walls are max-1, spires rise
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    if (r === rows - 1) return ch(maxHp, maxHp);
+    const spire = (c % 3 === 1) && r >= rows - 3;
+    if (spire) return ch(maxHp, maxHp);
+    const wall = c === 0 || c === cols - 1;
+    if (wall) return ch(maxHp - 1, maxHp);
+    return ch(1 + Math.floor((rows - r) / rows * (maxHp - 2)), maxHp);
+  }),
+
+  // Matrix rain — vertical columns of varying hp
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const colHp = 1 + (c * 3 + 2) % maxHp;
+    return ch(colHp + (r === 0 ? 1 : 0), maxHp);
+  }),
+
+  // Boss: invincible core ring surrounded by layers
+  (rows, cols, maxHp) => grid(rows, cols, (r, c) => {
+    const mid = (cols - 1) / 2;
+    const mr = (rows - 1) / 2;
+    const dr2 = Math.abs(r - mr);
+    const dc2 = Math.abs(c - mid);
+    const ring = Math.round(Math.max(dr2, dc2));
+    return ch(maxHp - ring + 1, maxHp);
+  }),
+];
+
+// ── Tier selector ─────────────────────────────────────────────────────────
+function _tierForLevel(lvl: number): { pool: PatternFn[]; maxHp: number; rows: number } {
+  if (lvl === 1) return { pool: PATTERNS_T1, maxHp: 1, rows: 3 };
+  if (lvl <= 3) return { pool: PATTERNS_T2, maxHp: 2, rows: 4 };
+  if (lvl <= 5) return { pool: PATTERNS_T3, maxHp: 3, rows: 5 };
+  if (lvl <= 7) return { pool: PATTERNS_T4, maxHp: 4, rows: 6 };
+  return { pool: PATTERNS_T5, maxHp: 5, rows: 7 + Math.floor((lvl - 8) / 2) };
+}
+
+function getLevelGrid(lvl: number): number[][] {
+  const { pool, maxHp, rows } = _tierForLevel(lvl);
+  const cols = 8;
+  // Pick a random pattern from the tier pool
+  const fn = pool[Math.floor(Math.random() * pool.length)];
+  const raw = fn(rows, cols, maxHp, lvl);
+  // Safety pass: clamp every cell, ensure at least 30% of cells are filled
+  const clamped = raw.map(row => row.map(v => v < 0 ? 0 : Math.min(maxHp, v)));
+  const filled = clamped.flat().filter(v => v > 0).length;
+  const total = rows * cols;
+  // If pattern is too sparse, fill in missing cells with 1-hp blocks
+  if (filled < total * 0.3) {
+    for (let r = 0; r < clamped.length; r++) {
+      for (let c = 0; c < clamped[r].length; c++) {
+        if (clamped[r][c] === 0 && Math.random() < 0.45) clamped[r][c] = 1;
+      }
+    }
+  }
+  return clamped;
+}
+
+// ── Block shapes vary by level tier for visual progression ──
+type BlockShape = "rect" | "rounded" | "pill" | "hex" | "diamond";
+// L1-2: plain rect, L3-4: rounded, L5-6: pill, L7-8: hex, L9-10: diamond
+const SHAPE_BY_LEVEL: BlockShape[] = [
+  "rect",    // L1
+  "rect",    // L2
+  "rounded", // L3
+  "rounded", // L4
+  "pill",    // L5
+  "pill",    // L6
+  "hex",     // L7
+  "hex",     // L8
+  "diamond", // L9
+  "diamond", // L10
+];
+
+// Fallback palette used in idle screen
+const BLOCK_PALETTE = [
+  "#ef4444", "#f97316", "#f59e0b", "#10b981",
+  "#22d3ee", "#6366f1", "#a78bfa", "#ec4899",
+];
 
 // ── Game engine (pure canvas) ─────────────────────────────────────────────────
-interface Block { x: number; y: number; w: number; h: number; hp: number; maxHp: number; phase: number; shape: BlockShape; col: number }
+interface Block { x: number; y: number; w: number; h: number; hp: number; maxHp: number; phase: number; shape: BlockShape; col: number; _row: number }
 interface Ball { x: number; y: number; vx: number; vy: number }
 interface Particle { x: number; y: number; vx: number; vy: number; r: number; life: number; maxLife: number; col: string }
-interface Powerup { x: number; y: number; vy: number; type: "expand"|"slow"|"life"|"multi" }
+interface Powerup { x: number; y: number; vy: number; type: "expand" | "slow" | "life" | "multi" }
 interface Star { x: number; y: number; r: number; bright: number }
 
 class BlockBreakerEngine {
@@ -209,15 +519,14 @@ class BlockBreakerEngine {
   stars: Star[] = [];
   expandTimer = 0; slowTimer = 0;
   shakeMag = 0;
-  transitioning = false; transTimer = 0;
+  transitioning = false;
   dead = false;
   baseSpeed = 380;
-  onStats: (s: Partial<GameStats>) => void = () => {};
-  onGameOver: () => void = () => {};
-  onVictory: () => void = () => {};
+  onStats: (s: Partial<GameStats>) => void = () => { };
+  onGameOver: () => void = () => { };
+  onVictory: () => void = () => { };
   private _timerAcc = 0;
-  private _prevTime = 0;
-  private _rafId = 0;
+  private _prevTime = -1;
   private _getStatus: () => GameStatus = () => "idle";
   private _getMuted: () => boolean = () => false;
 
@@ -233,40 +542,81 @@ class BlockBreakerEngine {
     this.loadLevel(1);
   }
 
+  // Store the current level grid so resize can re-layout without re-randomizing
+  private _currentGrid: number[][] = [];
+  private _currentShape: BlockShape = "rect";
+  // Store per-block phases so they don't re-randomize on resize
+  private _blockPhases: number[] = [];
+
   loadLevel(lvl: number) {
     this.level = lvl;
-    const shape: BlockShape = SHAPE_BY_LEVEL[Math.min(lvl - 1, SHAPE_BY_LEVEL.length - 1)];
-    const pat = getLevelGrid(lvl);
-    const COLS = 8;
-    const gapX = 5, gapY = 5;
-    const bw = Math.floor((this.W - gapX * (COLS + 1)) / COLS);
-    const bh = Math.max(14, Math.floor(bw * 0.3));
-    const startX = gapX;
-    const startY = Math.max(44, this.H * 0.08);
-    this.blocks = [];
-    pat.forEach((row, ri) => {
-      row.forEach((hp, ci) => {
-        if (hp > 0) {
-          this.blocks.push({
-            x: startX + ci * (bw + gapX),
-            y: startY + ri * (bh + gapY),
-            w: bw, h: bh,
-            hp, maxHp: hp,
-            phase: Math.random() * Math.PI * 2,
-            shape,
-            col: ci, // column index drives color
-          });
-        }
-      });
-    });
+    this._currentShape = SHAPE_BY_LEVEL[Math.min(lvl - 1, SHAPE_BY_LEVEL.length - 1)];
+    this._currentGrid = getLevelGrid(lvl);
+    this._blockPhases = Array.from({ length: 8 * 12 }, () => Math.random() * Math.PI * 2);
+    this._blockState.clear(); // Fresh state for new level
+    this._layoutBlocks();
     this.transitioning = false;
-    // Speed: gentle ramp — 360 (L1) up to 600 (L10)
     this.baseSpeed = Math.min(600, 360 + (lvl - 1) * 26);
     this._emit();
   }
 
+  // Stable block state map keyed by "row,col" — survives resize
+  // hp=-1 means destroyed; any other value = current hp
+  private _blockState = new Map<string, number>();
+
+  // Re-layout blocks using saved grid — called on resize WITHOUT re-randomizing
+  _layoutBlocks() {
+    const { gx, gw } = this._gameArea();
+    const COLS = 8;
+    const gapX = 5, gapY = 5;
+    const rawBw = Math.floor((gw - gapX * (COLS + 1)) / COLS);
+    const bw = Math.min(72, rawBw);
+    const bh = Math.max(14, Math.min(26, Math.floor(bw * 0.32)));
+    const gridW = COLS * bw + (COLS - 1) * gapX;
+    const startX = gx + Math.floor((gw - gridW) / 2);
+    const startY = Math.max(50, this.H * 0.09);
+
+    // Snapshot current live block HPs into state map BEFORE rebuilding
+    // This preserves: broken blocks (absent from this.blocks = destroyed = skip)
+    // and damaged blocks (hp < maxHp)
+    this.blocks.forEach(b => {
+      if (b._row !== undefined) this._blockState.set(`${b._row},${b.col}`, b.hp);
+    });
+
+    let phaseIdx = 0;
+    const newBlocks: Block[] = [];
+    this._currentGrid.forEach((row, ri) => {
+      row.forEach((origHp, ci) => {
+        if (origHp === 0) return; // empty cell
+        const key = `${ri},${ci}`;
+        // If this block was destroyed, skip it (don't re-add)
+        if (this._blockState.has(key) && this._blockState.get(key) === -1) return;
+        // Use saved HP if available, otherwise use original
+        const hp = this._blockState.has(key) ? this._blockState.get(key)! : origHp;
+        newBlocks.push({
+          x: startX + ci * (bw + gapX),
+          y: startY + ri * (bh + gapY),
+          w: bw, h: bh,
+          hp, maxHp: origHp,
+          phase: this._blockPhases[phaseIdx++] ?? Math.random() * Math.PI * 2,
+          shape: this._currentShape,
+          col: ci,
+          _row: ri,
+        } as Block);
+      });
+    });
+    this.blocks = newBlocks;
+  }
+
+  // Call this when a block is destroyed so _layoutBlocks skips it
+  _markDestroyed(row: number, col: number) {
+    this._blockState.set(`${row},${col}`, -1);
+  }
+
   resetBall() {
+    const { gx, gw } = this._gameArea();
     const paddleY = this.H - (this.W < 500 ? 50 : 60);
+    this.px = gx + gw / 2; // center paddle in game area
     this.balls = [{ x: this.px, y: paddleY - this.ph / 2 - 8, vx: 0, vy: 0 }];
     this.launched = false;
     this.expandTimer = 0; this.slowTimer = 0;
@@ -294,12 +644,14 @@ class BlockBreakerEngine {
   }
 
   movePaddle(x: number) {
+    const { gx, gw } = this._gameArea();
     const halfW = this.pw / 2;
-    this.px = Math.max(halfW, Math.min(this.W - halfW, x));
+    this.px = Math.max(gx + halfW, Math.min(gx + gw - halfW, x));
     if (!this.launched && this.balls[0]) this.balls[0].x = this.px;
   }
 
   tick(now: number) {
+    if (this._prevTime < 0) { this._prevTime = now; return; }
     const dt = Math.min((now - this._prevTime) / 1000, 0.05);
     this._prevTime = now;
     const st = this._getStatus();
@@ -315,8 +667,7 @@ class BlockBreakerEngine {
 
     const paddleY = this.H - (this.W < 500 ? 50 : 60);
     const paddleTop = paddleY - this.ph / 2;
-    const ballR = Math.max(5, this.W * 0.012);
-    const speed = this.slowTimer > 0 ? this.baseSpeed * 0.6 : this.baseSpeed;
+    const ballR = Math.min(10, Math.max(5, this.W * 0.012));
 
     this.balls = this.balls.filter((ball) => {
       if (!this.launched) return true;
@@ -324,17 +675,19 @@ class BlockBreakerEngine {
       ball.y += ball.vy * dt;
 
       const curSpd = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-      if (curSpd > 0 && Math.abs(curSpd - speed) > 5) {
-        ball.vx = (ball.vx / curSpd) * speed;
-        ball.vy = (ball.vy / curSpd) * speed;
+      const targetSpd = this.slowTimer > 0 ? this.baseSpeed * 0.6 : this.baseSpeed;
+      if (curSpd > 0 && Math.abs(curSpd - targetSpd) > 5) {
+        ball.vx = (ball.vx / curSpd) * targetSpd;
+        ball.vy = (ball.vy / curSpd) * targetSpd;
       }
 
-      if (ball.x - ballR < 0) { ball.x = ballR; ball.vx = Math.abs(ball.vx); }
-      if (ball.x + ballR > this.W) { ball.x = this.W - ballR; ball.vx = -Math.abs(ball.vx); }
+      const { gx: _gx, gw: _gw } = this._gameArea();
+      if (ball.x - ballR < _gx) { ball.x = _gx + ballR; ball.vx = Math.abs(ball.vx); }
+      if (ball.x + ballR > _gx + _gw) { ball.x = _gx + _gw - ballR; ball.vx = -Math.abs(ball.vx); }
       if (ball.y - ballR < 0) { ball.y = ballR; ball.vy = Math.abs(ball.vy); }
 
       if (ball.vy > 0 && ball.y + ballR >= paddleTop && ball.y - ballR <= paddleTop + this.ph &&
-          ball.x >= this.px - this.pw / 2 - ballR && ball.x <= this.px + this.pw / 2 + ballR) {
+        ball.x >= this.px - this.pw / 2 - ballR && ball.x <= this.px + this.pw / 2 + ballR) {
         const rel = (ball.x - this.px) / (this.pw / 2);
         const angle = rel * 1.15;
         const spd2 = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
@@ -375,7 +728,7 @@ class BlockBreakerEngine {
     this.powerups = this.powerups.filter(p => {
       p.y += 140 * dt;
       if (Math.abs(p.x - this.px) < this.pw / 2 + 12 &&
-          p.y >= paddleTop && p.y <= paddleTop + this.ph + 16) {
+        p.y >= paddleTop && p.y <= paddleTop + this.ph + 16) {
         this._collectPowerup(p);
         return false;
       }
@@ -431,6 +784,8 @@ class BlockBreakerEngine {
       }
 
       b.hp--;
+      // Always sync current hp into state map so resize preserves it
+      this._blockState.set(`${b._row},${b.col}`, b.hp);
       this.shake(3);
       if (b.hp <= 0) {
         this.score += 10 * this.level * b.maxHp;
@@ -439,6 +794,8 @@ class BlockBreakerEngine {
         this.shake(7);
         if (!this._getMuted()) sndBreak();
         if (Math.random() < 0.18) this._spawnPowerup(b.x + b.w / 2, b.y + b.h / 2);
+        // Mark destroyed so _layoutBlocks never resurrects this block
+        this._markDestroyed(b._row, b.col);
         this.blocks.splice(i, 1);
       } else {
         this._explode(b.x + b.w / 2, b.y + b.h / 2, blockColor(b.hp, b.col), 6);
@@ -449,7 +806,7 @@ class BlockBreakerEngine {
   }
 
   private _spawnPowerup(x: number, y: number) {
-    const types: Array<"expand"|"slow"|"life"|"multi"> = ["expand","slow","life","multi"];
+    const types: Array<"expand" | "slow" | "life" | "multi"> = ["expand", "slow", "life", "multi"];
     this.powerups.push({ x, y, vy: 0, type: types[Math.floor(Math.random() * types.length)] });
   }
 
@@ -490,24 +847,52 @@ class BlockBreakerEngine {
   }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
+  // Game area: centered with max width for wide screens (fullscreen desktop)
+  // Returns { gx, gw } — game x offset and game width
+  private _gameArea(): { gx: number; gw: number } {
+    // On very wide canvases (fullscreen desktop), constrain game to center
+    const maxGameW = Math.min(this.W, Math.max(600, this.H * 0.78));
+    const gx = Math.floor((this.W - maxGameW) / 2);
+    return { gx, gw: maxGameW };
+  }
+
   draw(ctx: CanvasRenderingContext2D, status: GameStatus, now: number) {
     const W = this.W, H = this.H;
     const t = now / 1000;
     const sx = this.shakeMag > 0.3 ? (Math.random() - 0.5) * this.shakeMag * 2 : 0;
     const sy = this.shakeMag > 0.3 ? (Math.random() - 0.5) * this.shakeMag * 2 : 0;
+    const { gx, gw } = this._gameArea();
 
     ctx.save();
     ctx.translate(sx, sy);
 
-    // Background
+    // Full background
     ctx.fillStyle = "#020817";
     ctx.fillRect(-4, -4, W + 8, H + 8);
 
-    // Grid lines
+    // Side gutters — slightly lighter to show border effect
+    if (gx > 0) {
+      ctx.fillStyle = "rgba(2,8,23,0.95)";
+      ctx.fillRect(0, 0, gx, H);
+      ctx.fillRect(gx + gw, 0, W - gx - gw, H);
+      // Border lines
+      ctx.strokeStyle = "rgba(34,211,238,0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(gx + gw, 0); ctx.lineTo(gx + gw, H); ctx.stroke();
+      // Gutter decoration — tiny dots
+      ctx.fillStyle = "rgba(34,211,238,0.06)";
+      for (let gy = 20; gy < H; gy += 40) {
+        ctx.beginPath(); ctx.arc(gx / 2, gy, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(gx + gw + gx / 2, gy, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // Grid lines (only inside game area)
     ctx.strokeStyle = "rgba(34,211,238,0.035)";
     ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (let x = gx; x < gx + gw; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx + gw, y); ctx.stroke(); }
 
     // Ambient blobs
     const blob1 = ctx.createRadialGradient(W * 0.2, H * 0.25, 0, W * 0.2, H * 0.25, 180);
@@ -580,41 +965,88 @@ class BlockBreakerEngine {
   }
 
   private _drawIdle(ctx: CanvasRenderingContext2D, t: number, W: number, H: number) {
-    const cols = 8, rows = 4;
-    const bw = Math.floor((W - 5 * (cols + 1)) / cols);
-    const bh = Math.max(12, Math.floor(bw * 0.28));
-    const startX = 5, startY = H * 0.16;
+    const isMobile = W < 500;
+    const cols = 8, rows = isMobile ? 5 : 6;
+    const gapX = 4, gapY = isMobile ? 5 : 6;
+    // Cap block width just like in-game
+    const rawBw = Math.floor((W - gapX * (cols + 1)) / cols);
+    const bw = Math.min(72, rawBw);
+    const bh = Math.max(12, Math.min(22, Math.floor(bw * 0.3)));
+    const gridW = cols * bw + (cols - 1) * gapX;
+    const startX = Math.floor((W - gridW) / 2);
+    const startY = isMobile ? H * 0.06 : H * 0.09;
+
     for (let r = 0; r < rows; r++) {
-      const col = BLOCK_PALETTE[r % BLOCK_PALETTE.length];
       for (let c = 0; c < cols; c++) {
-        const bx = startX + c * (bw + 5), by = startY + r * (bh + 5);
-        const glow = 0.4 + 0.4 * Math.sin(t * 1.4 + r * 0.8 + c * 0.35);
-        ctx.globalAlpha = glow;
-        ctx.fillStyle = col + "22";
-        ctx.fillRect(bx - 3, by - 3, bw + 6, bh + 6);
-        ctx.fillStyle = col;
-        ctx.fillRect(bx, by, bw, bh);
-        ctx.fillStyle = "rgba(255,255,255,0.22)";
-        ctx.fillRect(bx, by, bw, 3);
+        // Each column gets its own color — matches in-game look
+        const col = COL_COLORS[c % 8];
+        const bx = startX + c * (bw + gapX);
+        const by = startY + r * (bh + gapY);
+        const wave = 0.45 + 0.45 * Math.sin(t * 1.6 + c * 0.55 + r * 0.9);
+        const floatY = Math.sin(t * 1.2 + c * 0.4 + r * 0.3) * 2;
+        const rr = Math.min(5, bh * 0.35);
+        ctx.globalAlpha = wave;
+        // Glow
+        ctx.fillStyle = col + "18";
+        ctx.fillRect(bx - 4, by - 4 + floatY, bw + 8, bh + 8);
+        // Tile body with rounded corners
+        ctx.beginPath();
+        ctx.moveTo(bx + rr, by + floatY);
+        ctx.arcTo(bx + bw, by + floatY, bx + bw, by + bh + floatY, rr);
+        ctx.arcTo(bx + bw, by + bh + floatY, bx, by + bh + floatY, rr);
+        ctx.arcTo(bx, by + bh + floatY, bx, by + floatY, rr);
+        ctx.arcTo(bx, by + floatY, bx + bw, by + floatY, rr);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(bx, by + floatY, bx, by + bh + floatY);
+        grad.addColorStop(0, col + "ee");
+        grad.addColorStop(1, col + "66");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        // Top shine
+        ctx.fillStyle = "rgba(255,255,255,0.28)";
+        ctx.fillRect(bx, by + floatY, bw, Math.max(2, bh * 0.28));
         ctx.globalAlpha = 1;
       }
     }
-    const py = H * 0.8;
-    const pw = 110 + 20 * Math.sin(t * 1.2);
-    const idleGrad = ctx.createLinearGradient(W / 2 - pw / 2, 0, W / 2 + pw / 2, 0);
-    idleGrad.addColorStop(0, "#0e7490"); idleGrad.addColorStop(0.5, "#22d3ee"); idleGrad.addColorStop(1, "#0e7490");
-    ctx.fillStyle = idleGrad;
+
+    // Animated paddle
+    const pw = Math.min(W * 0.28, 130) + Math.sin(t * 1.3) * 14;
+    const py = H * (isMobile ? 0.79 : 0.82);
+    const pg = ctx.createLinearGradient(W / 2 - pw / 2, 0, W / 2 + pw / 2, 0);
+    pg.addColorStop(0, "#0e7490"); pg.addColorStop(0.5, "#22d3ee"); pg.addColorStop(1, "#0e7490");
+    ctx.shadowColor = "#22d3ee"; ctx.shadowBlur = 12;
+    ctx.fillStyle = pg;
     ctx.fillRect(W / 2 - pw / 2, py, pw, 11);
-    const bx = W / 2 + Math.sin(t * 1.8) * 80;
-    const by = H * 0.54 + Math.sin(t * 2.8 + 1) * 55;
-    ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 14;
-    ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillRect(W / 2 - pw / 2, py, pw, 3);
     ctx.shadowBlur = 0;
+
+    // Bouncing ball
+    const ballR = Math.max(5, W * 0.012);
+    const bx = W / 2 + Math.sin(t * 1.8) * W * 0.28;
+    const by = H * 0.62 + Math.sin(t * 2.7 + 1) * H * 0.1;
+    ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 16;
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath(); ctx.arc(bx, by, ballR, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath(); ctx.arc(bx - ballR * 0.28, by - ballR * 0.28, ballR * 0.3, 0, Math.PI * 2); ctx.fill();
+
+    // "TAP TO PLAY" hint on mobile
+    if (isMobile) {
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 2.5);
+      ctx.fillStyle = "#22d3ee";
+      ctx.font = `bold ${Math.round(W * 0.044)}px 'Orbitron', monospace`;
+      ctx.textAlign = "center";
+      ctx.fillText("TAP TO PLAY", W / 2, H * 0.93);
+      ctx.textAlign = "left";
+      ctx.globalAlpha = 1;
+    }
   }
 
   private _drawBlocks(ctx: CanvasRenderingContext2D, t: number) {
     this.blocks.forEach(b => {
-      const col = blockColor(b.hp);
+      const col = blockColor(b.hp, b.col);
       const hpRatio = b.hp / b.maxHp;
       const glow = 0.05 + 0.04 * Math.sin(t * 2.5 + b.phase);
 
@@ -624,6 +1056,7 @@ class BlockBreakerEngine {
       ctx.fillStyle = col + Math.round(glow * 255).toString(16).padStart(2, "0");
       ctx.fillRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
 
+      // ── Rounded rect for ALL shapes — decoration varies by hp ──
       if (b.shape === "rounded") {
         // Rounded rectangle with corner radius
         const rr = Math.min(5, b.h * 0.35);
@@ -700,16 +1133,77 @@ class BlockBreakerEngine {
         ctx.stroke();
         ctx.globalAlpha = 1;
       } else {
-        // Default rect
+        // ── Enhanced decorated rect — rounded corners + layered decoration ──
+        const rr = Math.min(6, b.h * 0.38);
+
+        // Body gradient: top-to-bottom with hp-based brightness
         const bgrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        bgrad.addColorStop(0, col + Math.round(hpRatio * 0.88 * 255).toString(16).padStart(2, "0"));
-        bgrad.addColorStop(1, col + Math.round(hpRatio * 0.60 * 255).toString(16).padStart(2, "0"));
+        bgrad.addColorStop(0, col + Math.round(hpRatio * 0.92 * 255).toString(16).padStart(2, "0"));
+        bgrad.addColorStop(0.5, col + Math.round(hpRatio * 0.72 * 255).toString(16).padStart(2, "0"));
+        bgrad.addColorStop(1, col + Math.round(hpRatio * 0.48 * 255).toString(16).padStart(2, "0"));
+
+        // Clipping rounded rect path
+        ctx.beginPath();
+        ctx.moveTo(b.x + rr, b.y);
+        ctx.arcTo(b.x + b.w, b.y, b.x + b.w, b.y + b.h, rr);
+        ctx.arcTo(b.x + b.w, b.y + b.h, b.x, b.y + b.h, rr);
+        ctx.arcTo(b.x, b.y + b.h, b.x, b.y, rr);
+        ctx.arcTo(b.x, b.y, b.x + b.w, b.y, rr);
+        ctx.closePath();
         ctx.fillStyle = bgrad;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.fillStyle = "rgba(255,255,255,0.22)";
-        ctx.fillRect(b.x, b.y, b.w, Math.max(2, b.h * 0.2));
-        ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.72;
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.fill();
+
+        // Inner shine band — top 28%
+        ctx.save();
+        ctx.clip();
+        const shineGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h * 0.45);
+        shineGrad.addColorStop(0, "rgba(255,255,255,0.38)");
+        shineGrad.addColorStop(0.45, "rgba(255,255,255,0.10)");
+        shineGrad.addColorStop(1, "rgba(255,255,255,0.0)");
+        ctx.fillStyle = shineGrad;
+        ctx.fillRect(b.x, b.y, b.w, b.h * 0.45);
+
+        // Side gleam — left edge
+        const sideGrad = ctx.createLinearGradient(b.x, 0, b.x + b.w * 0.35, 0);
+        sideGrad.addColorStop(0, "rgba(255,255,255,0.18)");
+        sideGrad.addColorStop(1, "rgba(255,255,255,0.0)");
+        ctx.fillStyle = sideGrad;
+        ctx.fillRect(b.x, b.y, b.w * 0.35, b.h);
+
+        // Bottom dark edge
+        const bottomGrad = ctx.createLinearGradient(b.x, b.y + b.h * 0.75, b.x, b.y + b.h);
+        bottomGrad.addColorStop(0, "rgba(0,0,0,0)");
+        bottomGrad.addColorStop(1, "rgba(0,0,0,0.35)");
+        ctx.fillStyle = bottomGrad;
+        ctx.fillRect(b.x, b.y + b.h * 0.75, b.w, b.h * 0.25);
+
+        // Decorative inner border
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.38;
+        ctx.beginPath();
+        ctx.moveTo(b.x + rr + 3, b.y + 3);
+        ctx.arcTo(b.x + b.w - 3, b.y + 3, b.x + b.w - 3, b.y + b.h - 3, Math.max(1, rr - 2));
+        ctx.arcTo(b.x + b.w - 3, b.y + b.h - 3, b.x + 3, b.y + b.h - 3, Math.max(1, rr - 2));
+        ctx.arcTo(b.x + 3, b.y + b.h - 3, b.x + 3, b.y + 3, Math.max(1, rr - 2));
+        ctx.arcTo(b.x + 3, b.y + 3, b.x + b.w - 3, b.y + 3, Math.max(1, rr - 2));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // Outer border glow
+        ctx.beginPath();
+        ctx.moveTo(b.x + rr, b.y);
+        ctx.arcTo(b.x + b.w, b.y, b.x + b.w, b.y + b.h, rr);
+        ctx.arcTo(b.x + b.w, b.y + b.h, b.x, b.y + b.h, rr);
+        ctx.arcTo(b.x, b.y + b.h, b.x, b.y, rr);
+        ctx.arcTo(b.x, b.y, b.x + b.w, b.y, rr);
+        ctx.closePath();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.78;
+        ctx.stroke();
         ctx.globalAlpha = 1;
       }
 
@@ -757,7 +1251,8 @@ class BlockBreakerEngine {
   }
 
   private _drawBalls(ctx: CanvasRenderingContext2D, t: number) {
-    const ballR = Math.max(5, this.W * 0.012);
+    // Cap ball radius so it doesn't grow huge in fullscreen
+    const ballR = Math.min(10, Math.max(5, this.W * 0.012));
     this.balls.forEach((ball, idx) => {
       const col = idx === 0 ? (this.slowTimer > 0 ? "#a78bfa" : "#fbbf24") : "#f97316";
       const pulse = 1 + 0.08 * Math.sin(t * 18 + idx);
@@ -791,10 +1286,11 @@ export default function BlockBreakerPage() {
   const [lb, setLb] = useState<LBEntry[]>([]);
   const [lbLoad, setLbLoad] = useState(true);
   const [hist, setHist] = useState<HistRecord[]>([]);
-  const [histLoad, setHistLoad] = useState(true);
+  const [, setHistLoad] = useState(true);
   const [muted, setMuted] = useState(false);
   const [sessionScore, setSessionScore] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const fsOverlayRef = useRef<HTMLDivElement>(null);
   const [levelAnnounce, setLevelAnnounce] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -810,6 +1306,7 @@ export default function BlockBreakerPage() {
   const prevLevelRef = useRef(1);
   const kLeftRef = useRef(false);
   const kRightRef = useRef(false);
+  const togglePauseRef = useRef<() => void>(() => { });
 
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
@@ -838,24 +1335,22 @@ export default function BlockBreakerPage() {
   }, [user]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Resize canvas
+  // Resize canvas — also reloads level so block positions recompute for new size
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current, wrapper = wrapperRef.current;
     if (!canvas || !wrapper) return;
     const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-    const W = isFull ? window.innerWidth : wrapper.clientWidth;
-    const H = isFull ? window.innerHeight : wrapper.clientHeight;
+    // In fullscreen: use actual viewport. Otherwise: use wrapper's rendered size.
+    const W = isFull ? window.innerWidth : (wrapper.getBoundingClientRect().width || wrapper.clientWidth || 400);
+    const H = isFull ? window.innerHeight : (wrapper.getBoundingClientRect().height || wrapper.clientHeight || 300);
     if (W < 10 || H < 10) return;
-    if (canvas.width !== W || canvas.height !== H) {
-      canvas.width = W; canvas.height = H;
-    }
+    canvas.width = Math.round(W); canvas.height = Math.round(H);
     const eng = engineRef.current;
     if (eng) {
       eng.W = W; eng.H = H;
-      eng.stars = Array.from({ length: 120 }, () => ({
-        x: Math.random() * W, y: Math.random() * H,
-        r: 0.4 + Math.random() * 1.6, bright: 0.12 + Math.random() * 0.88,
-      }));
+      // Re-layout blocks using SAVED grid — no re-randomization
+      eng._layoutBlocks();
+      if (!eng.launched) eng.resetBall();
     }
   }, []);
 
@@ -867,9 +1362,11 @@ export default function BlockBreakerPage() {
     const eng = new BlockBreakerEngine();
     engineRef.current = eng;
 
-    const W = wrapper.clientWidth || 400;
-    const H = wrapper.clientHeight || 300;
-    canvas.width = W; canvas.height = H;
+    // Use getBoundingClientRect for accurate initial dimensions after CSS is applied
+    const rect = wrapper.getBoundingClientRect();
+    const W = rect.width || wrapper.clientWidth || 400;
+    const H = rect.height || wrapper.clientHeight || 300;
+    canvas.width = Math.round(W); canvas.height = Math.round(H);
 
     eng.onStats = s => setStats(prev => ({ ...prev, ...s }));
     eng.onGameOver = () => endGameRef.current?.(false);
@@ -888,6 +1385,8 @@ export default function BlockBreakerPage() {
     rafRef.current = requestAnimationFrame(loop);
 
     const onTouchMove = (e: TouchEvent) => {
+      // Don't intercept touches on buttons — let them bubble normally
+      if ((e.target as HTMLElement)?.closest('button')) return;
       e.preventDefault();
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
@@ -895,6 +1394,8 @@ export default function BlockBreakerPage() {
       eng.movePaddle((touch.clientX - rect.left) * scaleX);
     };
     const onTouchStart = (e: TouchEvent) => {
+      // Don't intercept touches on buttons — let them bubble normally
+      if ((e.target as HTMLElement)?.closest('button')) return;
       e.preventDefault();
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
@@ -935,40 +1436,78 @@ export default function BlockBreakerPage() {
     return () => ro.disconnect();
   }, [resizeCanvas]);
 
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement) {
-        const el = wrapperRef.current ?? document.documentElement;
-        await (el.requestFullscreen ?? (el as any).webkitRequestFullscreen)?.call(el, { navigationUI: "hide" });
-      } else {
-        await document.exitFullscreen?.();
+  // Pure JS fullscreen: move canvas into a fixed overlay, no browser fullscreen API needed
+  const toggleFullscreen = useCallback(() => {
+    const canvas = canvasRef.current;
+    const wrapper = wrapperRef.current;
+    const overlay = fsOverlayRef.current;
+    if (!canvas || !wrapper || !overlay) return;
+
+    if (!isFullscreen) {
+      // Enter fullscreen: move canvas into overlay
+      overlay.appendChild(canvas);
+      overlay.style.display = 'flex';
+      setIsFullscreen(true);
+      const W = window.innerWidth, H = window.innerHeight;
+      canvas.width = W; canvas.height = H;
+      const eng = engineRef.current;
+      if (eng) {
+        eng.W = W; eng.H = H;
+        eng._layoutBlocks();
+        if (!eng.launched) eng.resetBall();
       }
-    } catch {}
-  }, []);
+    } else {
+      wrapper.appendChild(canvas);
+      overlay.style.display = 'none';
+      setIsFullscreen(false);
+      const rect = wrapper.getBoundingClientRect();
+      const W = Math.round(rect.width) || 400;
+      const H = Math.round(rect.height) || 300;
+      canvas.width = W; canvas.height = H;
+      const eng = engineRef.current;
+      if (eng) {
+        eng.W = W; eng.H = H;
+        eng._layoutBlocks();
+        if (!eng.launched) eng.resetBall();
+      }
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
-    const onChange = () => {
-      const full = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      setIsFullscreen(full);
-      setTimeout(resizeCanvas, 50);
-      setTimeout(resizeCanvas, 200);
+    // Debounced resize: only fires once after user stops resizing
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        // Only resize the normal wrapper when NOT in our JS fullscreen mode
+        if (!isFullscreen) resizeCanvas();
+        else {
+          // In JS fullscreen: update canvas to current viewport
+          const canvas = canvasRef.current;
+          const eng = engineRef.current;
+          if (canvas && eng) {
+            const W = window.innerWidth, H = window.innerHeight;
+            canvas.width = W; canvas.height = H;
+            eng.W = W; eng.H = H;
+            eng._layoutBlocks();
+            if (!eng.launched) { eng.px = W / 2; eng.resetBall(); }
+          }
+        }
+      }, 150);
     };
-    document.addEventListener("fullscreenchange", onChange);
-    document.addEventListener("webkitfullscreenchange", onChange);
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("resize", onResize);
     return () => {
-      document.removeEventListener("fullscreenchange", onChange);
-      document.removeEventListener("webkitfullscreenchange", onChange);
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("resize", onResize);
+      clearTimeout(resizeTimer);
     };
-  }, [resizeCanvas]);
+  }, [resizeCanvas, isFullscreen]);
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
-      if (e.code === "Escape" && document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+      if (e.code === "Escape" && isFullscreen) { toggleFullscreen(); return; }
       if (e.code === "KeyF") { e.preventDefault(); toggleFullscreen(); return; }
       if (e.code === "KeyP" && (statusRef.current === "playing" || statusRef.current === "paused")) {
-        e.preventDefault(); togglePause(); return;
+        e.preventDefault(); togglePauseRef.current(); return;
       }
       if (e.code === "ArrowLeft" || e.code === "KeyA") kLeftRef.current = true;
       if (e.code === "ArrowRight" || e.code === "KeyD") kRightRef.current = true;
@@ -992,7 +1531,7 @@ export default function BlockBreakerPage() {
     const xp = Math.min(Math.floor(s.timeElapsed / 4) + s.blocksDestroyed * 3 + (victory ? 200 : 0), 2500);
     const newStatus = victory ? "victory" : "gameover";
     setStatus(newStatus); statusRef.current = newStatus;
-    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch {} }
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { } }
     setFinalStats({ score: s.score, level: s.level, xpEarned: xp, blocksDestroyed: s.blocksDestroyed });
     setSessionScore(prev => prev + xp);
     if (user && sessionIdRef.current) {
@@ -1031,7 +1570,7 @@ export default function BlockBreakerPage() {
           body: JSON.stringify({ paddleSize: "NORMAL", extraBalls: 0, hasGun: false }),
         });
         if (r.ok) { const d = await r.json(); sessionIdRef.current = d.sessionId; }
-      } catch {}
+      } catch { }
     }
     setStatus("playing"); statusRef.current = "playing";
   }, [user]);
@@ -1043,6 +1582,9 @@ export default function BlockBreakerPage() {
       return next;
     });
   }, []);
+  // Keep ref in sync so the keydown effect always calls the latest version
+  // without needing togglePause in its dependency array (avoids TDZ error)
+  useEffect(() => { togglePauseRef.current = togglePause; }, [togglePause]);
 
   const reset = useCallback(() => {
     engineRef.current?.resetGame();
@@ -1058,8 +1600,8 @@ export default function BlockBreakerPage() {
   const isVictory = status === "victory";
   const isDone = isOver || isVictory;
   const hpColor = stats.lives >= 3 ? "#22d3ee" : stats.lives === 2 ? "#f59e0b" : "#ef4444";
-  const lvlColor = ["#94a3b8","#22d3ee","#10b981","#f59e0b","#ef4444","#a78bfa","#f97316","#f97316","#ef4444","#fbbf24"][Math.min(stats.level - 1, 9)];
-  const fc = isOver ? "#ef4444" : isVictory ? "#10b981" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#334155";
+  const lvlColor = ["#94a3b8", "#22d3ee", "#10b981", "#f59e0b", "#ef4444", "#a78bfa", "#f97316", "#f97316", "#ef4444", "#fbbf24"][Math.min(stats.level - 1, 9)];
+  const fc = isOver ? "#ef4444" : isVictory ? "#10b981" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#94a3b8";
 
   const puInfo = [
     { col: "#10b981", label: "WIDE", desc: "Bigger paddle" },
@@ -1069,7 +1611,68 @@ export default function BlockBreakerPage() {
   ];
 
   return (
-    <div style={{ width: "100%", minHeight: "100vh", paddingBottom: 60 }}>
+    <div style={{ width: "100%", minHeight: "100vh", paddingBottom: 60 }} className="bb-page">
+
+      {/* ── JS Fullscreen Overlay Portal ── */}
+      <div
+        ref={fsOverlayRef}
+        style={{
+          display: "none",
+          position: "fixed",
+          inset: 0,
+          zIndex: 99999,
+          background: "#020817",
+          flexDirection: "column",
+          alignItems: "stretch",
+          justifyContent: "stretch",
+        }}
+      >
+        {/* Canvas gets moved here by toggleFullscreen — buttons rendered on top */}
+        {isFullscreen && (
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 10 }}>
+            {/* Corner frames */}
+            <div style={{ position: "absolute", top: 10, left: 10, width: 32, height: 32, borderTop: `2px solid ${fc}`, borderLeft: `2px solid ${fc}`, opacity: 0.8 }} />
+            <div style={{ position: "absolute", top: 10, right: 10, width: 32, height: 32, borderTop: `2px solid ${fc}`, borderRight: `2px solid ${fc}`, opacity: 0.8 }} />
+            <div style={{ position: "absolute", bottom: 10, left: 10, width: 32, height: 32, borderBottom: `2px solid ${fc}`, borderLeft: `2px solid ${fc}`, opacity: 0.8 }} />
+            <div style={{ position: "absolute", bottom: 10, right: 10, width: 32, height: 32, borderBottom: `2px solid ${fc}`, borderRight: `2px solid ${fc}`, opacity: 0.8 }} />
+          </div>
+        )}
+        {isFullscreen && (
+          <div style={{ position: "absolute", top: 8, right: 8, zIndex: 20, display: "flex", gap: 8, pointerEvents: "auto" }}>
+            {(status === "playing" || status === "paused") && (
+              <button
+                onClick={togglePause}
+                style={{
+                  minWidth: 44, minHeight: 44, height: 44, paddingInline: 12,
+                  borderRadius: 10,
+                  background: status === "paused" ? "rgba(245,158,11,0.25)" : "rgba(15,23,42,0.9)",
+                  border: `1px solid ${status === "paused" ? "rgba(245,158,11,0.6)" : "rgba(34,211,238,0.3)"}`,
+                  color: status === "paused" ? "#f59e0b" : "#22d3ee",
+                  cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  backdropFilter: "blur(8px)", touchAction: "none",
+                }}
+              >
+                {status === "paused" ? <><Play style={{ width: 16, height: 16 }} /> RESUME</> : <><Pause style={{ width: 16, height: 16 }} /> PAUSE</>}
+              </button>
+            )}
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                minWidth: 44, minHeight: 44, width: 44, height: 44,
+                borderRadius: 10,
+                background: "rgba(15,23,42,0.9)",
+                border: "1px solid rgba(34,211,238,0.4)",
+                color: "#22d3ee", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(8px)", touchAction: "none",
+              }}
+            >
+              <Minimize style={{ width: 18, height: 18 }} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Flash overlay */}
       <AnimatePresence>
@@ -1107,14 +1710,14 @@ export default function BlockBreakerPage() {
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,44px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
               BLOCK <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>BREAKER</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>BREAK · SURVIVE · 10 LEVELS</p>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>BREAK · SURVIVE · 10 LEVELS</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setMuted(m => !m)} style={{ padding: "5px 11px", borderRadius: 7, background: "rgba(15,23,42,0.7)", border: "1px solid rgba(255,255,255,0.08)", color: muted ? "#475569" : "#22d3ee", cursor: "pointer", fontSize: 13 }}>
               {muted ? "🔇" : "🔊"}
             </button>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 2 }}>SESSION XP</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>SESSION XP</div>
               <motion.div key={sessionScore} initial={{ scale: 1.25 }} animate={{ scale: 1 }}
                 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,26px)", fontWeight: 900, color: "#22d3ee", filter: "drop-shadow(0 0 8px rgba(34,211,238,0.4))" }}>
                 {sessionScore.toLocaleString()}
@@ -1133,7 +1736,7 @@ export default function BlockBreakerPage() {
           { label: "TIME", val: (isPlaying || isPaused || isDone) ? fmt(stats.timeElapsed) : "--:--", col: "#f59e0b" },
         ].map(s => (
           <div key={s.label} style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 6px", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>{s.label}</span>
             <motion.span key={String(s.val)} initial={{ scale: 1.18, y: -2 }} animate={{ scale: 1, y: 0 }}
               style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(11px,3vw,19px)", fontWeight: 900, color: s.col, filter: `drop-shadow(0 0 5px ${s.col}80)`, lineHeight: 1 }}>
               {s.val}
@@ -1150,7 +1753,7 @@ export default function BlockBreakerPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
               <div style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, padding: "7px 10px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>LIVES</span>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>LIVES</span>
                   <div style={{ display: "flex", gap: 4 }}>
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: i < stats.lives ? hpColor : "rgba(255,255,255,0.06)", boxShadow: i < stats.lives ? `0 0 6px ${hpColor}` : "none", transition: "all 0.3s" }} />
@@ -1164,7 +1767,7 @@ export default function BlockBreakerPage() {
               </div>
               <div style={{ background: "rgba(15,23,42,0.8)", border: `1px solid ${lvlColor}28`, borderRadius: 9, padding: "7px 10px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>PROGRESS</span>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>PROGRESS</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: lvlColor }}>{stats.blocksLeft} left</span>
                 </div>
                 <div style={{ display: "flex", gap: 2 }}>
@@ -1179,7 +1782,7 @@ export default function BlockBreakerPage() {
       </AnimatePresence>
 
       {/* Game + side panels */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: "min(680px, 100%)", margin: "0 auto" }}>
 
         {/* Status banner */}
         <motion.div key={status} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -1205,13 +1808,13 @@ export default function BlockBreakerPage() {
         </motion.div>
 
         {/* Canvas wrapper */}
-        <div ref={wrapperRef} data-canvas-wrapper="1" style={{
+        <div ref={wrapperRef} data-canvas-wrapper="1" className="bb-canvas-wrapper" style={{
           position: "relative", borderRadius: 16, overflow: "hidden", background: "#020817",
-          aspectRatio: "4/3",
           boxShadow: isPlaying ? `0 0 0 2px ${fc}44,0 0 40px ${fc}18` : `0 0 0 1px rgba(34,211,238,0.08),0 6px 32px rgba(0,0,0,0.8)`,
           transition: "box-shadow 0.4s",
+          /* height is driven by aspect-ratio on .bb-canvas-wrapper; canvas is absolute */
         }}>
-          <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", cursor: "crosshair" }} />
+          <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%", cursor: "crosshair", position: "absolute", inset: 0 }} />
 
           {/* Corner frame */}
           {(() => {
@@ -1243,14 +1846,44 @@ export default function BlockBreakerPage() {
             );
           })()}
 
-          {/* Fullscreen + Pause buttons */}
-          <button onClick={toggleFullscreen} style={{ position: "absolute", top: 10, right: 10, zIndex: 20, background: "rgba(15,23,42,0.85)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 7, padding: "5px 7px", cursor: "pointer", color: "#22d3ee", backdropFilter: "blur(8px)" }}>
-            {isFullscreen ? <Minimize style={{ width: 13, height: 13 }} /> : <Maximize style={{ width: 13, height: 13 }} />}
+          {/* Fullscreen + Pause buttons — large touch targets on mobile */}
+          <button
+            onClick={toggleFullscreen}
+            style={{
+              position: "absolute", top: 8, right: 8, zIndex: 20,
+              background: "rgba(15,23,42,0.9)",
+              border: "1px solid rgba(34,211,238,0.4)",
+              borderRadius: 10,
+              /* min 44x44 touch target */
+              minWidth: 44, minHeight: 44,
+              width: 44, height: 44,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#22d3ee",
+              backdropFilter: "blur(8px)",
+              touchAction: "none",
+            }}
+          >
+            {isFullscreen ? <Minimize style={{ width: 18, height: 18 }} /> : <Maximize style={{ width: 18, height: 18 }} />}
           </button>
           {(isPlaying || isPaused) && (
-            <button onClick={togglePause} style={{ position: "absolute", top: 10, left: 10, zIndex: 20, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(15,23,42,0.85)", border: `1px solid ${isPaused ? "rgba(245,158,11,0.5)" : "rgba(34,211,238,0.25)"}`, borderRadius: 7, padding: "5px 9px", cursor: "pointer", color: isPaused ? "#f59e0b" : "#22d3ee", display: "flex", alignItems: "center", gap: 3, backdropFilter: "blur(8px)" }}>
-              {isPaused ? <Play style={{ width: 11, height: 11 }} /> : <Pause style={{ width: 11, height: 11 }} />}
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700 }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+            <button
+              onClick={togglePause}
+              style={{
+                position: "absolute", top: 8, left: 8, zIndex: 20,
+                background: isPaused ? "rgba(245,158,11,0.25)" : "rgba(15,23,42,0.9)",
+                border: `1px solid ${isPaused ? "rgba(245,158,11,0.6)" : "rgba(34,211,238,0.3)"}`,
+                borderRadius: 10,
+                minWidth: 44, minHeight: 44,
+                height: 44,
+                paddingInline: 10,
+                cursor: "pointer", color: isPaused ? "#f59e0b" : "#22d3ee",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                backdropFilter: "blur(8px)",
+                touchAction: "none",
+              }}
+            >
+              {isPaused ? <Play style={{ width: 16, height: 16 }} /> : <Pause style={{ width: 16, height: 16 }} />}
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700 }}>{isPaused ? "RESUME" : "PAUSE"}</span>
             </button>
           )}
 
@@ -1265,7 +1898,7 @@ export default function BlockBreakerPage() {
                   <p style={{ margin: "4px 0 0", fontFamily: "'Rajdhani',sans-serif", fontSize: "clamp(9px,2.2vw,11px)", color: "#475569", letterSpacing: "0.18em" }}>10 LEVELS · 4 POWER-UPS · SURVIVE ALL</p>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 5 }}>
-                  {[["MOUSE/TOUCH","MOVE","#22d3ee"],["CLICK/SPACE","LAUNCH","#f97316"],["P","PAUSE","#f59e0b"],["F","FULLSCREEN","#a78bfa"]].map(([k, v, c]) => (
+                  {[["MOUSE/TOUCH", "MOVE", "#22d3ee"], ["CLICK/SPACE", "LAUNCH", "#f97316"], ["P", "PAUSE", "#f59e0b"], ["F", "FULLSCREEN", "#a78bfa"]].map(([k, v, c]) => (
                     <div key={k} style={{ display: "flex", gap: 4, alignItems: "center" }}>
                       <div style={{ padding: "2px 6px", borderRadius: 4, background: `${c}12`, border: `1px solid ${c}30`, fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: c }}>{k}</div>
                       <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: "#475569" }}>{v}</span>
@@ -1352,7 +1985,7 @@ export default function BlockBreakerPage() {
                   </div>
                 </div>
                 <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 9, delay: 0.2 }} style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 2 }}>TOTAL XP</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>TOTAL XP</div>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(24px,6vw,40px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 14px rgba(245,158,11,0.6))", lineHeight: 1 }}>+{finalStats.xpEarned}</div>
                 </motion.div>
               </div>
@@ -1394,9 +2027,9 @@ export default function BlockBreakerPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 5 }}>
           {puInfo.map(p => (
             <div key={p.label} style={{ padding: "7px 5px", borderRadius: 9, background: `${p.col}0f`, border: `1px solid ${p.col}28`, textAlign: "center" }}>
-              <div style={{ width: 9, height: 9, borderRadius: "50%", background: p.col, margin: "0 auto 4px", boxShadow: `0 0 7px ${p.col}` }} />
+              <div style={{ width: 18, height: 18, borderRadius: "50%", background: p.col, margin: "0 auto 4px", boxShadow: `0 0 7px ${p.col}` }} />
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 900, color: p.col, letterSpacing: "0.08em" }}>{p.label}</div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569", marginTop: 1 }}>{p.desc}</div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, color: "#ffffffff", marginTop: 1 }}>{p.desc}</div>
             </div>
           ))}
         </div>
@@ -1412,7 +2045,7 @@ export default function BlockBreakerPage() {
           {/* Header */}
           <div className="bb-lb-head" style={{ display: "grid", gridTemplateColumns: "44px 1fr 110px 80px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             {["RANK", "PLAYER", "BEST SCORE", "LEVEL"].map(h => (
-              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em" }}>{h}</span>
+              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em" }}>{h}</span>
             ))}
           </div>
           {lbLoad ? (
@@ -1421,7 +2054,7 @@ export default function BlockBreakerPage() {
             </div>
           ) : lb.length === 0 ? (
             <div style={{ textAlign: "center", padding: "36px 0" }}>
-              <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 10px" }} />
+              <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 10px" }} />
               <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO BREAKERS YET — BE FIRST!</p>
             </div>
           ) : lb.map((e, i) => {
@@ -1432,11 +2065,11 @@ export default function BlockBreakerPage() {
                 className="bb-lb-head"
                 style={{ display: "grid", gridTemplateColumns: "44px 1fr 110px 80px", gap: 10, padding: "11px 18px", borderBottom: i < lb.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: top3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{rankIcon(i)}</div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#22d3ee" }}>{(e.highScore ?? 0).toLocaleString()}</span>
                 </div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{e.level ?? "—"}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{i + 1}</span>
               </motion.div>
             );
           })}
@@ -1470,20 +2103,21 @@ export default function BlockBreakerPage() {
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#22d3ee", letterSpacing: "0.3em", textTransform: "uppercase" }}>GAME HISTORY</span>
             </div>
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
-              <div className="bb-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                {["SCORE", "LEVEL", "BREAKS", "TIME", "XP"].map(h => (
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em" }}>{h}</span>
+              <div className="bb-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 52px 72px 60px 60px 80px", gap: 8, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                {["SCORE", "LVL", "BREAKS", "TIME", "XP", "WHEN"].map(h => (
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>{h}</span>
                 ))}
               </div>
               {hist.map((r, i) => (
                 <motion.div key={r.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                   className="bb-hist-head bb-hist-row"
-                  style={{ display: "grid", gridTemplateColumns: "1fr 70px 80px 70px 70px", gap: 10, padding: "11px 18px", borderBottom: i < hist.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
+                  style={{ display: "grid", gridTemplateColumns: "1fr 52px 72px 60px 60px 80px", gap: 8, padding: "11px 18px", borderBottom: i < hist.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#22d3ee" }}>{r.score.toLocaleString()}</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#a78bfa" }}>{r.level}</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f97316" }}>{r.blocksDestroyed}</span>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(r.duration)}</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(r.duration)}</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: "#f59e0b" }}>+{r.xpEarned}</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, fontWeight: 600, color: "#475569" }}>{fmtDate(r.createdAt)}</span>
                 </motion.div>
               ))}
             </div>
@@ -1495,13 +2129,26 @@ export default function BlockBreakerPage() {
         @keyframes bbPulse { 0%,100%{opacity:1;box-shadow:0 0 8px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 2px #22d3ee} }
         @keyframes bbSkel  { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-        @media (max-width:520px) {
-          [data-canvas-wrapper='1'] { aspect-ratio: 3/4 !important; }
+        /* ── Canvas wrapper — aspect-ratio drives height; canvas is absolute inside ── */
+        .bb-canvas-wrapper {
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          min-height: 260px;
+        }
+
+        /* ── Mobile portrait: taller ratio ── */
+        @media (max-width: 600px) {
+          .bb-canvas-wrapper { aspect-ratio: 3 / 4; min-height: 380px; }
+        }
+
+        /* ── Leaderboard / history responsive columns ── */
+        @media (max-width: 520px) {
           .bb-lb-head   { grid-template-columns: 36px 1fr 100px !important; }
           .bb-lb-head > *:nth-child(4) { display: none !important; }
-          .bb-hist-head { grid-template-columns: 1fr 60px 70px !important; }
-          .bb-hist-row > *:nth-child(4),
-          .bb-hist-row > *:nth-child(5) { display: none !important; }
+          /* mobile: SCORE | LVL | XP | WHEN — hide BREAKS + TIME */
+          .bb-hist-head { grid-template-columns: 1fr 44px 52px 72px !important; }
+          .bb-hist-row > *:nth-child(3),
+          .bb-hist-row > *:nth-child(4) { display: none !important; }
         }
       `}</style>
     </div>

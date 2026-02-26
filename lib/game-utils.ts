@@ -67,37 +67,37 @@ export const RANKS: Record<UserRank, {
 
 export function calcRank(xp: number): UserRank {
   if (xp >= 15001) return "LEGEND";
-  if (xp >= 5001)  return "ELITE";
-  if (xp >= 1001)  return "VETERAN";
+  if (xp >= 5001) return "ELITE";
+  if (xp >= 1001) return "VETERAN";
   return "ROOKIE";
 }
 
 export function xpForNextRank(xp: number): number {
   if (xp >= 15001) return 0;   // maxed out
-  if (xp >= 5001)  return 15001 - xp;
-  if (xp >= 1001)  return 5001 - xp;
+  if (xp >= 5001) return 15001 - xp;
+  if (xp >= 1001) return 5001 - xp;
   return 1001 - xp;
 }
 
 export function xpProgressInRank(xp: number): { current: number; total: number; pct: number } {
   if (xp >= 15001) return { current: xp - 15001, total: 0, pct: 100 };
-  if (xp >= 5001)  return { current: xp - 5001,  total: 9999, pct: Math.round(((xp - 5001)  / 9999)  * 100) };
-  if (xp >= 1001)  return { current: xp - 1001,  total: 3999, pct: Math.round(((xp - 1001)  / 3999)  * 100) };
-  return                   { current: xp,         total: 1000, pct: Math.round((xp / 1000) * 100) };
+  if (xp >= 5001) return { current: xp - 5001, total: 9999, pct: Math.round(((xp - 5001) / 9999) * 100) };
+  if (xp >= 1001) return { current: xp - 1001, total: 3999, pct: Math.round(((xp - 1001) / 3999) * 100) };
+  return { current: xp, total: 1000, pct: Math.round((xp / 1000) * 100) };
 }
 
 // ─── XP rewards per game ──────────────────────────────────────────────────────
 export const XP_TABLE = {
   TIC_TAC_TOE: {
-    WIN:  { EASY: 50,  MEDIUM: 120, HARD: 250 },
-    DRAW: { EASY: 15,  MEDIUM: 40,  HARD:  80 },
-    LOSE: { EASY:  5,  MEDIUM: 12,  HARD:  25 },
+    WIN: { EASY: 20, MEDIUM: 50, HARD: 100 },
+    DRAW: { EASY: 0, MEDIUM: 0, HARD: 10 },
+    LOSE: { EASY: 0, MEDIUM: 0, HARD: 0 },
   },
   WORD_SEARCH: {
-    COMPLETE: { EASY: 80, MEDIUM: 180, HARD: 350 },
+    COMPLETE: { EASY: 50, MEDIUM: 100, HARD: 250 },
   },
   MEMORY: {
-    COMPLETE: { EASY: 80,  MEDIUM: 200, HARD: 400 },
+    COMPLETE: { EASY: 50, MEDIUM: 150, HARD: 350 },
     // Bonus XP per move under par (calculated server-side)
   },
 } as const;
@@ -107,9 +107,9 @@ export const MEMORY_PAR_MOVES = { EASY: 20, MEDIUM: 40, HARD: 80 } as const;
 // ─── Score table (leaderboard values) ───────────────────────────────────────
 export const SCORE_TABLE = {
   TIC_TAC_TOE: {
-    WIN:  { EASY: 100, MEDIUM: 250, HARD: 500 },
-    DRAW: { EASY:  30, MEDIUM:  75, HARD: 150 },
-    LOSE: { EASY:   0, MEDIUM:   0, HARD:   0 },
+    WIN: { EASY: 100, MEDIUM: 250, HARD: 500 },
+    DRAW: { EASY: 30, MEDIUM: 75, HARD: 150 },
+    LOSE: { EASY: 0, MEDIUM: 0, HARD: 0 },
   },
   // Word Search has no per-word score — leaderboard tracks xpEarned directly
 } as const;

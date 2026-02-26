@@ -26,10 +26,12 @@ const rajdhani = Rajdhani({
 export const metadata: Metadata = {
   title: "Gaming Arena | Competitive Web Gaming",
   description: "Play, Compete, Win. The ultimate competitive gaming platform.",
+
 };
 
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { CustomScrollbar } from "@/components/ui/CustomScrollbar";
 
 export default function RootLayout({
   children,
@@ -58,6 +60,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <CustomScrollbar />
             <AuthModal />
             {children}
             <BottomNav />

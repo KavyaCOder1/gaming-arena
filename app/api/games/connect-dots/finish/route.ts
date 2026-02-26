@@ -9,26 +9,26 @@ import { getSession } from "@/lib/auth";
 import { calcRank } from "@/lib/game-utils";
 import { z } from "zod";
 
-const MAX_MOVES    = 2000;
+const MAX_MOVES = 2000;
 const MAX_DURATION = 7200; // 2 hour hard cap (no time limit but need a ceiling)
-const MAX_XP       = 3000;
+const MAX_XP = 3000;
 
 const bodySchema = z.object({
   sessionId: z.string().min(1),
   completed: z.boolean(),
-  moves:     z.number().int().min(0).max(MAX_MOVES),
-  duration:  z.number().int().min(0).max(MAX_DURATION),
+  moves: z.number().int().min(0).max(MAX_MOVES),
+  duration: z.number().int().min(0).max(MAX_DURATION),
 });
 
 // Base XP per pair by difficulty
-const BASE_XP: Record<string, number> = { EASY: 15, MEDIUM: 30, HARD: 55 };
+const BASE_XP: Record<string, number> = { EASY: 2, MEDIUM: 4, HARD: 10 };
 
 // Speed thresholds (seconds) for each difficulty → bonus tiers
 // Under FAST = big bonus, under MED = small bonus, else no bonus
 const SPEED_TIERS: Record<string, { fast: number; med: number; fastBonus: number; medBonus: number }> = {
-  EASY:   { fast: 60,  med: 120, fastBonus: 60,  medBonus: 25  },
-  MEDIUM: { fast: 120, med: 240, fastBonus: 120, medBonus: 50  },
-  HARD:   { fast: 200, med: 400, fastBonus: 240, medBonus: 100 },
+  EASY: { fast: 60, med: 120, fastBonus: 60, medBonus: 25 },
+  MEDIUM: { fast: 120, med: 240, fastBonus: 70, medBonus: 50 },
+  HARD: { fast: 200, med: 400, fastBonus: 150, medBonus: 100 },
 };
 
 export async function POST(req: Request) {

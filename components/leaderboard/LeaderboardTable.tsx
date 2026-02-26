@@ -5,19 +5,24 @@ import { LeaderboardEntry } from "@/types";
 import { Trophy, Crown, Medal, Sparkles } from "lucide-react";
 
 interface Props {
-  entries:         LeaderboardEntry[];
-  showDifficulty?: boolean; // kept for API compat — no longer used
-  matchesLabel?:   string;  // override the "Matches" column header
+  entries: LeaderboardEntry[];
+  showDifficulty?: boolean;
+  matchesLabel?: string;
+  scoreMode?: boolean;
+  scoreModeLabel?: string;
+  hideLevel?: boolean;
+  showWaves?: boolean;
+  showBlocks?: boolean; // Block Breaker: show Blocks Destroyed column
 }
 
 function rankMeta(rank: number) {
-  if (rank === 1) return { color: "#f59e0b", Icon: Crown,  bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.22)"  };
-  if (rank === 2) return { color: "#94a3b8", Icon: Medal,  bg: "rgba(148,163,184,0.07)", border: "rgba(148,163,184,0.18)" };
-  if (rank === 3) return { color: "#b45309", Icon: Medal,  bg: "rgba(180,83,9,0.07)",    border: "rgba(180,83,9,0.18)"    };
-  return           { color: "#334155",      Icon: null,   bg: "transparent",             border: "transparent"            };
+  if (rank === 1) return { color: "#f59e0b", Icon: Crown, bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.22)" };
+  if (rank === 2) return { color: "#94a3b8", Icon: Medal, bg: "rgba(148,163,184,0.07)", border: "rgba(148,163,184,0.18)" };
+  if (rank === 3) return { color: "#b45309", Icon: Medal, bg: "rgba(180,83,9,0.07)", border: "rgba(180,83,9,0.18)" };
+  return { color: "#334155", Icon: null, bg: "transparent", border: "transparent" };
 }
 
-export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
+export function LeaderboardTable({ entries, matchesLabel = "Matches", scoreMode = false, scoreModeLabel = "Total Score", hideLevel = false, showWaves = false, showBlocks = false }: Props) {
   if (!entries || entries.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "60px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -33,18 +38,25 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 420 }}>
         <thead>
           <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            {["Rank", "Player", "Total XP", matchesLabel].map(h => (
-              <th key={h} style={{ padding: "10px 18px", textAlign: h === "Total XP" || h === matchesLabel ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
+            {(scoreMode
+                ? hideLevel
+                  ? showWaves ? ["Rank", "Player", scoreModeLabel, "Kills", "Wave"] : ["Rank", "Player", scoreModeLabel]
+                  : showBlocks ? ["Rank", "Player", scoreModeLabel, "Blocks", "Level"] : ["Rank", "Player", scoreModeLabel, "Level"]
+                : ["Rank", "Player", "Total XP", matchesLabel]
+              ).map(h => (
+              <th key={h} style={{ padding: "10px 18px", textAlign: (h === "Total XP" || h === matchesLabel || h === scoreModeLabel || h === "Level" || h === "Kills" || h === "Wave" || h === "Blocks") ? "right" : "left", fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.28em", textTransform: "uppercase", background: "rgba(255,255,255,0.015)", whiteSpace: "nowrap" }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {entries.map((entry, i) => {
-            const pos  = i + 1;
+            const pos = i + 1;
             const { color, Icon, bg, border } = rankMeta(pos);
             const isTop3 = pos <= 3;
-            const xp      = entry.totalXp ?? 0;
-            const matches = entry.matches  ?? 0;
+            const xp = entry.totalXp ?? 0;
+            const matches = entry.matches ?? 0;
+            const score = (entry as any).highScore ?? 0;
+            const level = (entry as any).level ?? 1;
 
             return (
               <motion.tr key={entry.user.username + i}
@@ -52,8 +64,8 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.035 }}
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", background: isTop3 ? bg : "transparent", transition: "background 0.15s", cursor: "default" }}
-                onMouseEnter={e  => { (e.currentTarget as HTMLElement).style.background = isTop3 ? bg : "rgba(34,211,238,0.025)"; }}
-                onMouseLeave={e  => { (e.currentTarget as HTMLElement).style.background = isTop3 ? bg : "transparent"; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isTop3 ? bg : "rgba(34,211,238,0.025)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isTop3 ? bg : "transparent"; }}
               >
                 {/* Rank badge */}
                 <td style={{ padding: "14px 18px", width: 70 }}>
@@ -88,22 +100,65 @@ export function LeaderboardTable({ entries, matchesLabel = "Matches" }: Props) {
                   </div>
                 </td>
 
-                {/* Total XP */}
+                {/* Total XP / Total Score */}
                 <td style={{ padding: "14px 18px", textAlign: "right" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                     <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 18, fontWeight: 900, color: isTop3 ? color : "#22d3ee", filter: isTop3 ? `drop-shadow(0 0 8px ${color}60)` : "none", lineHeight: 1 }}>
-                      {xp.toLocaleString()}
+                      {scoreMode ? score.toLocaleString() : xp.toLocaleString()}
                     </span>
-                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>XP</span>
+                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>
+                      {scoreMode ? (hideLevel ? "HIGH SCORE" : "SCORE") : "XP"}
+                    </span>
                   </div>
                 </td>
 
-                {/* Matches */}
-                <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#475569" }}>
-                    {matches}
-                  </span>
-                </td>
+                {/* Kills + Wave columns — Star Siege only */}
+                {showWaves && (
+                  <>
+                    <td style={{ padding: "14px 18px", textAlign: "right" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 900, color: isTop3 ? color : "#ef4444" }}>
+                          {(entry as any).kills ?? 0}
+                        </span>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>KILLS</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "14px 18px", textAlign: "right" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 900, color: isTop3 ? color : "#94a3b8" }}>
+                          {(entry as any).wave ?? 0}
+                        </span>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>WAVE</span>
+                      </div>
+                    </td>
+                  </>
+                )}
+                {/* Blocks Destroyed — Block Breaker only */}
+                {showBlocks && (
+                  <td style={{ padding: "14px 18px", textAlign: "right" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 900, color: isTop3 ? color : "#a78bfa" }}>
+                        {(entry as any).blocksDestroyed ?? 0}
+                      </span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>BLOCKS</span>
+                    </div>
+                  </td>
+                )}
+                {/* Level / Matches — hidden for Pacman & Space Shooter */}
+                {!hideLevel && !showWaves && <td style={{ padding: "14px 18px", textAlign: "right" }}>
+                  {scoreMode ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 16, fontWeight: 900, color: isTop3 ? color : "#94a3b8" }}>
+                        {level}
+                      </span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: "#64748b", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 2 }}>LVL</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#475569" }}>
+                      {matches}
+                    </span>
+                  )}
+                </td>}
               </motion.tr>
             );
           })}

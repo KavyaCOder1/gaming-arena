@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       });
 
       const userIds = rows.map((r) => r.userId);
-      const users   = await db.user.findMany({
+      const users = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, username: true },
       });
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       const data = rows
         .filter((r) => userMap[r.userId])
         .map((r) => ({
-          user:    userMap[r.userId],
+          user: userMap[r.userId],
           totalXp: r._sum.xpEarned ?? 0,
           matches: r._count.id,
         }));
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       });
 
       const userIds = rows.map((r) => r.userId);
-      const users   = await db.user.findMany({
+      const users = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, username: true },
       });
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       const data = rows
         .filter((r) => userMap[r.userId])
         .map((r) => ({
-          user:    userMap[r.userId],
+          user: userMap[r.userId],
           totalXp: r._sum.xpEarned ?? 0,
           matches: r._count.id,
         }));
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
       });
 
       const userIds = rows.map((r) => r.userId);
-      const users   = await db.user.findMany({
+      const users = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, username: true },
       });
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       const data = rows
         .filter((r) => userMap[r.userId])
         .map((r) => ({
-          user:    userMap[r.userId],
+          user: userMap[r.userId],
           totalXp: r._sum.xpEarned ?? 0,
           matches: r._count.id,
         }));
@@ -92,16 +92,16 @@ export async function GET(request: Request) {
     if (gameType === "PACMAN") {
       // Best score per user from leaderboard table
       const rows = await db.leaderboard.findMany({
-        where:   { gameType: "PACMAN", difficulty: null },
+        where: { gameType: "PACMAN", difficulty: null },
         include: { user: { select: { id: true, username: true } } },
         orderBy: { highScore: "desc" },
-        take:    20,
+        take: 20,
       });
 
       const data = rows.map(r => ({
-        user:      r.user,
+        user: r.user,
         highScore: r.highScore,
-        totalXp:   r.highScore,
+        totalXp: r.highScore,
       }));
 
       return NextResponse.json({ success: true, data });
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
       });
 
       const userIds = rows.map((r) => r.userId);
-      const users   = await db.user.findMany({
+      const users = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, username: true },
       });
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
       const data = rows
         .filter((r) => userMap[r.userId])
         .map((r) => ({
-          user:    userMap[r.userId],
+          user: userMap[r.userId],
           totalXp: r._sum.xpEarned ?? 0,
           matches: r._count.id,
         }));
@@ -146,7 +146,7 @@ export async function GET(request: Request) {
       });
 
       const userIds = rows.map((r) => r.userId);
-      const users   = await db.user.findMany({
+      const users = await db.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, username: true },
       });
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
       const data = rows
         .filter((r) => userMap[r.userId])
         .map((r) => ({
-          user:    userMap[r.userId],
+          user: userMap[r.userId],
           totalXp: r._sum.xpEarned ?? 0,
           matches: r._count.id,
         }));
@@ -164,39 +164,76 @@ export async function GET(request: Request) {
     }
 
     if (gameType === "SPACE_SHOOTER") {
-      // Aggregate per user: pick their highest highScore across any difficulty row,
-      // then also pull total matches + total XP from SpaceShooterGame records.
-      const lbRows = await db.leaderboard.findMany({
-        where:   { gameType: "SPACE_SHOOTER" },
+      // Pull best game per user directly from SpaceShooterGame (has wave + kills)
+      const allGames = await db.spaceShooterGame.findMany({
         include: { user: { select: { id: true, username: true } } },
-        orderBy: { highScore: "desc" },
+        orderBy: { score: "desc" },
       });
 
-      // Deduplicate: keep best row per user
-      const bestByUser = new Map<string, typeof lbRows[0]>();
-      for (const row of lbRows) {
-        const existing = bestByUser.get(row.userId);
-        if (!existing || row.highScore > existing.highScore) {
-          bestByUser.set(row.userId, row);
+      // Keep best score row per user
+      const bestByUser = new Map<string, typeof allGames[0]>();
+      for (const g of allGames) {
+        const existing = bestByUser.get(g.userId);
+        if (!existing || g.score > existing.score) {
+          bestByUser.set(g.userId, g);
         }
       }
 
-      // Pull total XP + match counts from game records
+      // Also aggregate total XP + match counts
       const gameRows = await db.spaceShooterGame.groupBy({
         by: ["userId"],
-        _sum:   { xpEarned: true },
+        _sum: { xpEarned: true },
         _count: { id: true },
       });
       const gameMap = new Map(gameRows.map(r => [r.userId, r]));
 
       const data = Array.from(bestByUser.values())
-        .sort((a, b) => b.highScore - a.highScore)
+        .sort((a, b) => b.score - a.score)
         .slice(0, 20)
         .map(r => ({
-          user:      r.user,
-          highScore: r.highScore,
-          totalXp:   gameMap.get(r.userId)?._sum.xpEarned ?? r.highScore,
-          matches:   gameMap.get(r.userId)?._count.id ?? 0,
+          user: r.user,
+          highScore: r.score,
+          wave: r.wave,
+          kills: r.kills,
+          totalXp: gameMap.get(r.userId)?._sum.xpEarned ?? 0,
+          matches: gameMap.get(r.userId)?._count.id ?? 0,
+        }));
+
+      return NextResponse.json({ success: true, data });
+    }
+
+    if (gameType === "BLOCK_BREAKER") {
+      // Pull all games, keep best score per user (same pattern as Space Shooter)
+      const allGames = await db.blockBreakerGame.findMany({
+        include: { user: { select: { id: true, username: true } } },
+        orderBy: { score: "desc" },
+      });
+
+      // Keep best score row per user
+      const bestByUser = new Map<string, typeof allGames[0]>();
+      for (const g of allGames) {
+        const existing = bestByUser.get(g.userId);
+        if (!existing || g.score > existing.score) {
+          bestByUser.set(g.userId, g);
+        }
+      }
+
+      // Aggregate total matches per user
+      const gameRows = await db.blockBreakerGame.groupBy({
+        by: ["userId"],
+        _count: { id: true },
+      });
+      const matchMap = new Map(gameRows.map(r => [r.userId, r._count.id]));
+
+      const data = Array.from(bestByUser.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20)
+        .map(r => ({
+          user: r.user,
+          highScore: r.score,
+          level: r.level,
+          blocksDestroyed: r.blocksDestroyed,
+          matches: matchMap.get(r.userId) ?? 0,
         }));
 
       return NextResponse.json({ success: true, data });

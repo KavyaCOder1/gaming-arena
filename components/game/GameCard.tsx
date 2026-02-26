@@ -16,10 +16,16 @@ interface GameCardProps {
 }
 
 const COLOR_MAP: Record<string, { accent: string; glow: string; border: string; bg: string }> = {
-    blue:   { accent: "#22d3ee", glow: "rgba(34,211,238,0.35)",  border: "rgba(34,211,238,0.4)",  bg: "rgba(34,211,238,0.08)"  },
-    green:  { accent: "#10b981", glow: "rgba(16,185,129,0.35)",  border: "rgba(16,185,129,0.4)",  bg: "rgba(16,185,129,0.08)"  },
-    purple: { accent: "#a78bfa", glow: "rgba(167,139,250,0.35)", border: "rgba(167,139,250,0.4)", bg: "rgba(167,139,250,0.08)" },
-    yellow: { accent: "#f59e0b", glow: "rgba(245,158,11,0.35)",  border: "rgba(245,158,11,0.4)",  bg: "rgba(245,158,11,0.08)"  },
+    blue:    { accent: "#22d3ee", glow: "rgba(34,211,238,0.35)",   border: "rgba(34,211,238,0.4)",   bg: "rgba(34,211,238,0.08)"   },
+    green:   { accent: "#10b981", glow: "rgba(16,185,129,0.35)",   border: "rgba(16,185,129,0.4)",   bg: "rgba(16,185,129,0.08)"   },
+    purple:  { accent: "#a78bfa", glow: "rgba(167,139,250,0.35)",  border: "rgba(167,139,250,0.4)",  bg: "rgba(167,139,250,0.08)"  },
+    yellow:  { accent: "#f59e0b", glow: "rgba(245,158,11,0.35)",   border: "rgba(245,158,11,0.4)",   bg: "rgba(245,158,11,0.08)"   },
+    cyan:    { accent: "#06b6d4", glow: "rgba(6,182,212,0.35)",    border: "rgba(6,182,212,0.4)",    bg: "rgba(6,182,212,0.08)"    },
+    orange:  { accent: "#f97316", glow: "rgba(249,115,22,0.35)",   border: "rgba(249,115,22,0.4)",   bg: "rgba(249,115,22,0.08)"   },
+    red:     { accent: "#ef4444", glow: "rgba(239,68,68,0.35)",    border: "rgba(239,68,68,0.4)",    bg: "rgba(239,68,68,0.08)"    },
+    emerald: { accent: "#34d399", glow: "rgba(52,211,153,0.35)",   border: "rgba(52,211,153,0.4)",   bg: "rgba(52,211,153,0.08)"   },
+    violet:  { accent: "#7c3aed", glow: "rgba(124,58,237,0.35)",  border: "rgba(124,58,237,0.4)",  bg: "rgba(124,58,237,0.08)"  },
+    lime:    { accent: "#a3e635", glow: "rgba(163,230,53,0.35)",  border: "rgba(163,230,53,0.4)",  bg: "rgba(163,230,53,0.08)"  },
 };
 
 export function GameCard({ title, description, href, icon: Icon, image, color = "blue", delay = 0, imagePosition }: GameCardProps) {
@@ -31,7 +37,6 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay }}
-                whileHover={{ y: -4, boxShadow: `0 12px 40px ${c.glow}` }}
                 style={{
                     position: "relative",
                     overflow: "hidden",
@@ -42,16 +47,24 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                     background: "rgba(10,15,35,0.9)",
                     backdropFilter: "blur(16px)",
                     border: `1px solid ${c.border}`,
-                    boxShadow: `0 4px 24px rgba(0,0,0,0.5), 0 0 0 0 ${c.glow}`,
+                    boxShadow: `0 4px 24px rgba(0,0,0,0.5)`,
                     cursor: "pointer",
-                    transition: "box-shadow 0.3s",
+                    transition: "box-shadow 0.3s, transform 0.3s",
+                }}
+                onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 40px ${c.glow}`;
+                }}
+                onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 24px rgba(0,0,0,0.5)`;
                 }}
             >
                 {/* Top accent line */}
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${c.accent}, transparent)`, zIndex: 2 }} />
 
-                {/* ── POSTER IMAGE — fixed ratio crop showing top of image ── */}
-                <div style={{ width: "100%", position: "relative", overflow: "hidden", borderRadius: "18px 18px 0 0", aspectRatio: "4/3" }}>
+                {/* ── POSTER IMAGE ── */}
+                <div className="gc-image" style={{ width: "100%", position: "relative", overflow: "hidden", borderRadius: "18px 18px 0 0" }}>
                     <img
                         src={image}
                         alt={title}
@@ -64,36 +77,31 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                             objectPosition: imagePosition ?? "top center",
                         }}
                     />
-                    {/* Bottom fade to blend into content area */}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: "linear-gradient(to bottom, transparent, rgba(10,15,35,0.95))" }} />
-                    {/* Active badge */}
-                    <div style={{ position: "absolute", top: 12, right: 12, display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "rgba(10,15,35,0.75)", border: `1px solid ${c.border}`, backdropFilter: "blur(8px)" }}>
-                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.accent, boxShadow: `0 0 6px ${c.accent}`, display: "inline-block", animation: "gcPulse 2s infinite" }} />
-                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 7, fontWeight: 700, color: c.accent, letterSpacing: "0.15em", textTransform: "uppercase" }}>ACTIVE</span>
-                    </div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", background: "linear-gradient(to bottom, transparent, rgba(10,15,35,0.97))" }} />
                 </div>
 
                 {/* ── CONTENT AREA ── */}
-                <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+                <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
 
                     {/* Title row with icon */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ padding: 9, borderRadius: 11, background: c.bg, border: `1px solid ${c.border}`, boxShadow: `0 0 14px ${c.glow}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <Icon style={{ width: 20, height: 20, color: c.accent, filter: `drop-shadow(0 0 5px ${c.accent})` }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        <div style={{ padding: 7, borderRadius: 9, background: c.bg, border: `1px solid ${c.border}`, boxShadow: `0 0 10px ${c.glow}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon style={{ width: 16, height: 16, color: c.accent, filter: `drop-shadow(0 0 4px ${c.accent})` }} />
                         </div>
-                        <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(14px,3.5vw,20px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.01em", lineHeight: 1.1, margin: 0 }}>
+                        <h3 className="gc-title" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.01em", lineHeight: 1.15, margin: 0 }}>
                             {title}
                         </h3>
                     </div>
 
-                    {/* Description */}
-                    <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "clamp(10px,2.5vw,12px)", fontWeight: 500, color: "#94a3b8", letterSpacing: "0.05em", lineHeight: 1.5, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {/* Description — hidden on desktop */}
+                    <p className="gc-desc" style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 12, fontWeight: 500, color: "#94a3b8", letterSpacing: "0.05em", lineHeight: 1.5, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {description}
                     </p>
 
                     {/* Play Now button */}
                     <div
-                        style={{ height: 44, borderRadius: 11, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", background: c.bg, cursor: "pointer", transition: "all 0.25s", marginTop: "auto", position: "relative", overflow: "hidden" }}
+                        className="gc-btn"
+                        style={{ borderRadius: 10, border: `1px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", background: c.bg, cursor: "pointer", transition: "all 0.25s", marginTop: "auto", position: "relative", overflow: "hidden" }}
                         onMouseEnter={e => {
                             (e.currentTarget as HTMLElement).style.background = c.glow.replace("0.35", "0.18");
                             (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${c.glow}`;
@@ -103,11 +111,27 @@ export function GameCard({ title, description, href, icon: Icon, image, color = 
                             (e.currentTarget as HTMLElement).style.boxShadow = "none";
                         }}
                     >
-                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 10, fontWeight: 700, color: c.accent, letterSpacing: "0.3em", textTransform: "uppercase" }}>PLAY NOW</span>
+                        <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: c.accent, letterSpacing: "0.25em", textTransform: "uppercase" }}>PLAY NOW</span>
                     </div>
                 </div>
 
-                <style>{`@keyframes gcPulse { 0%,100%{opacity:1;box-shadow:0 0 6px currentColor} 50%{opacity:0.35;box-shadow:none} }`}</style>
+                <style>{`
+                  @keyframes gcPulse { 0%,100%{opacity:1;box-shadow:0 0 6px currentColor} 50%{opacity:0.35;box-shadow:none} }
+
+                  /* Mobile — tall image, full card */
+                  .gc-image { aspect-ratio: 4/3; }
+                  .gc-title { font-size: 13px; }
+                  .gc-desc  { display: -webkit-box; }
+                  .gc-btn   { height: 42px; }
+
+                  /* Desktop — balanced card */
+                  @media (min-width: 1024px) {
+                    .gc-image { aspect-ratio: 4/3; }
+                    .gc-title { font-size: 13px; }
+                    .gc-desc  { display: -webkit-box !important; font-size: 11px; }
+                    .gc-btn   { height: 38px; }
+                  }
+                `}</style>
             </motion.div>
         </Link>
     );

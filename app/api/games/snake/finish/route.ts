@@ -24,7 +24,7 @@ const MAX_LENGTH  = 503;   // 3 start + MAX_CORES
 const MAX_XP      = 5000;  // hard ceiling regardless of multiplier
 
 // ── Server-side XP multipliers per difficulty (must match frontend display) ──
-const XP_MULT: Record<string, number> = { EASY: 1, MEDIUM: 1.5, HARD: 2 };
+const XP_MULT: Record<string, number> = { EASY: 1, MEDIUM: 1.6, HARD: 3 };
 const XP_PER_CORE = 5;
 
 const schema = z.object({

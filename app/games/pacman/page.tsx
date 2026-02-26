@@ -124,7 +124,7 @@ export default function PacmanPage() {
     setLastXp(xp);
     setStatus("finished");
     setStats(s => ({
-      played:    s.played + 1,
+      played: s.played + 1,
       bestScore: Math.max(s.bestScore, score),
       bestStage: Math.max(s.bestStage, stage),
     }));
@@ -182,7 +182,8 @@ export default function PacmanPage() {
   const startGame = async () => {
     savedRef.current = false;
     tokenRef.current = "";
-    iframeSrc.current = "/pacman/index.html";
+    const uname = encodeURIComponent((user?.username ?? 'PLAYER').toUpperCase());
+    iframeSrc.current = `/pacman/index.html?username=${uname}`;
     setStatus("loading");
     setIframeReady(false);
     setGameTime(0);
@@ -198,7 +199,8 @@ export default function PacmanPage() {
         const json = await res.json();
         if (json.success && json.token) {
           tokenRef.current = json.token;
-          iframeSrc.current = `/pacman/index.html?token=${encodeURIComponent(json.token)}`;
+          const uname = encodeURIComponent((user?.username ?? '').toUpperCase());
+          iframeSrc.current = `/pacman/index.html?token=${encodeURIComponent(json.token)}&username=${uname}`;
         }
       } catch { /* non-fatal */ }
     }
@@ -276,7 +278,7 @@ export default function PacmanPage() {
           { label: "TIME", value: status === "playing" ? fmt(gameTime) : "--:--", color: C.cyan, raw: true },
         ].map((s, i) => (
           <div key={i} style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
             <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(11px,2.5vw,20px)", fontWeight: 900, color: s.color, filter: `drop-shadow(0 0 6px ${s.color}80)`, lineHeight: 1 }}>
               {s.raw ? s.value : (s.value as number).toLocaleString()}
             </span>
@@ -285,304 +287,204 @@ export default function PacmanPage() {
       </div>
 
       {/* MAIN LAYOUT */}
-      <div className="pac-layout" style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+      <div style={{ width: "100%", maxWidth: "min(680px, 100%)", margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
 
-        {/* LEFT: Game */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* Status banner */}
-          <motion.div key={status} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            style={{ background: "rgba(15,23,42,0.85)", backdropFilter: "blur(16px)", border: `1px solid ${status === "playing" ? "rgba(34,211,238,0.3)" : status === "finished" ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: status === "playing" ? C.cyan : status === "finished" ? "#10b981" : "#334155", boxShadow: status === "playing" ? `0 0 10px ${C.cyan}` : "none", flexShrink: 0, animation: status === "playing" ? "pacPulse 1.5s infinite" : "none" }} />
-              <div>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: status === "playing" ? C.cyan : status === "finished" ? "#10b981" : "#475569", letterSpacing: "0.08em" }}>
-                  {status === "idle" && "READY TO PLAY"}
-                  {status === "loading" && "LOADING GAME…"}
-                  {status === "playing" && (iframeReady ? `STAGE ${liveStage} · SCORE ${liveScore.toLocaleString()}` : "STARTING ENGINE…")}
-                  {status === "finished" && `GAME OVER · ${lastScore.toLocaleString()} PTS · STAGE ${lastStage}`}
-                </div>
-                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>
-                  {status === "idle" && "Press START to play"}
-                  {status === "loading" && "Initialising PAC-MAN engine…"}
-                  {status === "playing" && `${fmt(gameTime)} · ~${previewXp} XP`}
-                  {status === "finished" && (lastXp > 0 ? `+${lastXp} XP earned (score base + stage bonus)` : "Score 0 — no XP this round")}
-                </div>
+        {/* Status banner */}
+        <motion.div key={status} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          style={{ background: "rgba(15,23,42,0.85)", backdropFilter: "blur(16px)", border: `1px solid ${status === "playing" ? "rgba(34,211,238,0.3)" : status === "finished" ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: status === "playing" ? C.cyan : status === "finished" ? "#10b981" : "#334155", boxShadow: status === "playing" ? `0 0 10px ${C.cyan}` : "none", flexShrink: 0, animation: status === "playing" ? "pacPulse 1.5s infinite" : "none" }} />
+            <div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: status === "playing" ? C.cyan : status === "finished" ? "#10b981" : "#475569", letterSpacing: "0.08em" }}>
+                {status === "idle" && "READY TO PLAY"}
+                {status === "loading" && "LOADING GAME…"}
+                {status === "playing" && (iframeReady ? `STAGE ${liveStage} · SCORE ${liveScore.toLocaleString()}` : "STARTING ENGINE…")}
+                {status === "finished" && `GAME OVER · ${lastScore.toLocaleString()} PTS · STAGE ${lastStage}`}
+              </div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>
+                {status === "idle" && "Press START to play"}
+                {status === "loading" && "Initialising PAC-MAN engine…"}
+                {status === "playing" && `${fmt(gameTime)} · ~${previewXp} XP`}
+                {status === "finished" && (lastXp > 0 ? `+${lastXp} XP earned (score base + stage bonus)` : "Score 0 — no XP this round")}
               </div>
             </div>
-            {status === "playing" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 8, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", flexShrink: 0 }}>
-                <Clock style={{ width: 11, height: 11, color: C.cyan }} />
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: C.text }}>{fmt(gameTime)}</span>
-              </div>
+          </div>
+          {status === "playing" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 8, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", flexShrink: 0 }}>
+              <Clock style={{ width: 11, height: 11, color: C.cyan }} />
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: C.text }}>{fmt(gameTime)}</span>
+            </div>
+          )}
+        </motion.div>
+
+        {/* IFRAME WRAPPER */}
+        <div style={{
+          position: "relative", borderRadius: 20, overflow: "hidden",
+          border: "1px solid rgba(34,211,238,0.18)",
+          boxShadow: "0 0 40px rgba(34,211,238,0.06), 0 8px 40px rgba(0,0,0,0.5)",
+          ...(fullscreen ? { position: "fixed", inset: 0, zIndex: 9999, borderRadius: 0, border: "none" } as any : {}),
+        }}>
+          {/* Loading overlay */}
+          <AnimatePresence>
+            {(status === "loading" || (status === "playing" && !iframeReady)) && (
+              <motion.div key="loader" initial={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                style={{ position: "absolute", inset: 0, background: "rgba(8,12,28,0.97)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, zIndex: 10 }}>
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                  <Ghost style={{ width: 52, height: 52, color: C.cyan, filter: `drop-shadow(0 0 16px ${C.cyan})` }} />
+                </motion.div>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: C.cyan, letterSpacing: "0.2em" }}>LOADING PAC-MAN…</span>
+                <div style={{ width: 180, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 0.85, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ height: "100%", width: "50%", background: `linear-gradient(90deg,transparent,${C.cyan},transparent)`, borderRadius: 2 }} />
+                </div>
+              </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
 
-          {/* IFRAME WRAPPER */}
-          <div style={{
-            position: "relative", borderRadius: 20, overflow: "hidden",
-            border: "1px solid rgba(34,211,238,0.18)",
-            boxShadow: "0 0 40px rgba(34,211,238,0.06), 0 8px 40px rgba(0,0,0,0.5)",
-            ...(fullscreen ? { position: "fixed", inset: 0, zIndex: 9999, borderRadius: 0, border: "none" } as any : {}),
-          }}>
-            {/* Loading overlay */}
-            <AnimatePresence>
-              {(status === "loading" || (status === "playing" && !iframeReady)) && (
-                <motion.div key="loader" initial={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}
-                  style={{ position: "absolute", inset: 0, background: "rgba(8,12,28,0.97)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, zIndex: 10 }}>
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                    <Ghost style={{ width: 52, height: 52, color: C.cyan, filter: `drop-shadow(0 0 16px ${C.cyan})` }} />
+          {/* IDLE placeholder */}
+          {status === "idle" && (
+            <div style={{ width: "100%", height: "clamp(420px,54vw,620px)", background: "rgba(8,12,28,0.96)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+              <motion.div animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.04, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, #6366f1, #22d3ee)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 32px rgba(34,211,238,0.5), 0 0 60px rgba(99,102,241,0.3)" }}>
+                    <Gamepad2 style={{ width: 36, height: 36, color: "#fff", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.6))" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,32px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                      GAMING<span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}> ARENA</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3vw,24px)", fontWeight: 900, color: C.text, letterSpacing: "0.08em", marginBottom: 6 }}>PAC-MAN HALLOWEEN 2025</div>
+                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#9ca3adff", fontWeight: 600, letterSpacing: "0.25em" }}>
+                  {user ? `PLAYING AS: ${user.username.toUpperCase()}` : "PRESS START TO PLAY"}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                {["P", "A", "C", "M", "A", "N"].map((l, i) => (
+                  <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3], y: [0, -5, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.15 }}
+                    style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: C.cyan }}>
+                    {l}
                   </motion.div>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: C.cyan, letterSpacing: "0.2em" }}>LOADING PAC-MAN…</span>
-                  <div style={{ width: 180, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                    <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 0.85, repeat: Infinity, ease: "easeInOut" }}
-                      style={{ height: "100%", width: "50%", background: `linear-gradient(90deg,transparent,${C.cyan},transparent)`, borderRadius: 2 }} />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ))}
+              </div>
+            </div>
+          )}
 
-            {/* IDLE placeholder */}
-            {status === "idle" && (
-              <div style={{ width: "100%", height: "clamp(420px,54vw,620px)", background: "rgba(8,12,28,0.96)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-                <motion.div animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.04, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, #6366f1, #22d3ee)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 32px rgba(34,211,238,0.5), 0 0 60px rgba(99,102,241,0.3)" }}>
-                      <Gamepad2 style={{ width: 36, height: 36, color: "#fff", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.6))" }} />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,32px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "-0.02em", lineHeight: 1 }}>
-                        GAMING<span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}> ARENA</span>
-                      </div>
-                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", marginTop: 4 }}>PAC-MAN · HALLOWEEN 2025</div>
-                    </div>
-                  </div>
-                </motion.div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3vw,24px)", fontWeight: 900, color: C.text, letterSpacing: "0.08em", marginBottom: 6 }}>PAC-MAN HALLOWEEN 2025</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#334155", fontWeight: 600, letterSpacing: "0.25em" }}>
-                    {user ? `PLAYING AS: ${user.username.toUpperCase()}` : "PRESS START TO PLAY"}
-                  </div>
+          {/* FINISHED screen */}
+          {status === "finished" && (
+            <div style={{ width: "100%", height: "clamp(420px,54vw,620px)", background: "rgba(4,14,8,0.97)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 12, stiffness: 200 }}>
+                <Trophy style={{ width: 72, height: 72, color: "#f59e0b", filter: "drop-shadow(0 0 20px rgba(245,158,11,0.6))" }} />
+              </motion.div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 16px rgba(245,158,11,0.5))" }}>
+                  {lastScore.toLocaleString()}
                 </div>
-                <div style={{ padding: "10px 18px", borderRadius: 12, background: "rgba(34,211,238,0.05)", border: "1px solid rgba(34,211,238,0.15)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.2em", marginBottom: 4 }}>XP FORMULA</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: C.cyan, fontWeight: 700 }}>floor(log₁₀(score+1)×10) + stages×15</div>
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {["P", "A", "C", "M", "A", "N"].map((l, i) => (
-                    <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3], y: [0, -5, 0] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.15 }}
-                      style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: C.cyan }}>
-                      {l}
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#64748b", letterSpacing: "0.3em", marginTop: 4, fontWeight: 700 }}>FINAL SCORE</div>
+                <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+                  {[
+                    { label: "STAGE", value: `${lastStage} / 8`, color: C.cyan },
+                    { label: "XP", value: `+${lastXp}`, color: "#10b981" },
+                    { label: "TIME", value: fmt(gameTime), color: "#a78bfa" },
+                  ].map((s, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
+                      style={{ padding: "12px 20px", borderRadius: 12, background: `rgba(15,23,42,0.9)`, border: `1px solid ${s.color}55`, textAlign: "center", boxShadow: `0 0 16px ${s.color}20` }}>
+                      <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", marginBottom: 6, fontWeight: 700 }}>{s.label}</div>
+                      <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 20, fontWeight: 900, color: s.color, textShadow: `0 0 12px ${s.color}80`, filter: `drop-shadow(0 0 6px ${s.color}60)` }}>{s.value}</div>
                     </motion.div>
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* FINISHED screen */}
-            {status === "finished" && (
-              <div style={{ width: "100%", height: "clamp(420px,54vw,620px)", background: "rgba(4,14,8,0.97)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 12, stiffness: 200 }}>
-                  <Trophy style={{ width: 72, height: 72, color: "#f59e0b", filter: "drop-shadow(0 0 20px rgba(245,158,11,0.6))" }} />
-                </motion.div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 16px rgba(245,158,11,0.5))" }}>
-                    {lastScore.toLocaleString()}
-                  </div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#64748b", letterSpacing: "0.3em", marginTop: 4, fontWeight: 700 }}>FINAL SCORE</div>
-                  <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
-                    {[
-                      { label: "STAGE", value: `${lastStage} / 8`, color: C.cyan },
-                      { label: "XP", value: `+${lastXp}`, color: "#10b981" },
-                      { label: "TIME", value: fmt(gameTime), color: "#a78bfa" },
-                    ].map((s, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
-                        style={{ padding: "12px 20px", borderRadius: 12, background: `rgba(15,23,42,0.9)`, border: `1px solid ${s.color}55`, textAlign: "center", boxShadow: `0 0 16px ${s.color}20` }}>
-                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", marginBottom: 6, fontWeight: 700 }}>{s.label}</div>
-                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 20, fontWeight: 900, color: s.color, textShadow: `0 0 12px ${s.color}80`, filter: `drop-shadow(0 0 6px ${s.color}60)` }}>{s.value}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Actual iframe */}
-            {(status === "playing" || status === "loading") && (
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc.current}
-                onLoad={handleIframeLoad}
-                style={{ width: "100%", height: fullscreen ? "100vh" : "clamp(420px,54vw,620px)", border: "none", display: "block", background: "#000" }}
-                allow="autoplay"
-                title="PAC-MAN Halloween 2025"
-              />
-            )}
-
-            {/* Live score overlay */}
-            {status === "playing" && iframeReady && (
-              <div style={{ position: "absolute", bottom: 12, left: 12, display: "flex", gap: 8, zIndex: 20, pointerEvents: "none" }}>
-                <div style={{ padding: "4px 10px", borderRadius: 8, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(34,211,238,0.3)" }}>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: C.cyan, fontWeight: 900 }}>STAGE {liveStage}</span>
-                </div>
-                <div style={{ padding: "4px 10px", borderRadius: 8, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(245,158,11,0.3)" }}>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#f59e0b", fontWeight: 900 }}>{liveScore.toLocaleString()} PTS</span>
-                </div>
-              </div>
-            )}
-
-            {/* Fullscreen toggle */}
-            {status === "playing" && (
-              <button onClick={() => setFullscreen(f => !f)}
-                style={{ position: "absolute", top: 12, right: 12, padding: "5px 12px", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, zIndex: 20 }}>
-                {fullscreen ? <Minimize2 style={{ width: 13, height: 13, color: C.cyan }} /> : <Maximize2 style={{ width: 13, height: 13, color: C.cyan }} />}
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.cyan, letterSpacing: "0.15em" }}>
-                  {fullscreen ? "EXIT" : "FULLSCREEN"}
-                </span>
-              </button>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div style={{ ...card, padding: "14px 20px" }}>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10 }}>CONTROLS</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-              {[
-                { key: "↑ ↓ ← →", action: "Move Pac-Man" },
-                { key: "WASD", action: "Alternative" },
-                { key: "SPACE", action: "Pause" },
-                { key: "↗", action: "Fullscreen" },
-              ].map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ padding: "3px 10px", borderRadius: 7, background: "rgba(34,211,238,0.06)", border: "1px solid rgba(34,211,238,0.2)", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: C.cyan, letterSpacing: "0.1em", whiteSpace: "nowrap" }}>{item.key}</div>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.muted, letterSpacing: "0.15em", textTransform: "uppercase" }}>{item.action}</span>
-                </div>
-              ))}
             </div>
-          </div>
-
-          {/* Action buttons */}
-          {status === "idle" && (
-            <motion.button onClick={startGame} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
-              style={{ width: "100%", padding: "clamp(14px,3vw,18px)", borderRadius: 16, background: "linear-gradient(135deg,#22d3ee,#6366f1)", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,3vw,16px)", fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: "#020617", boxShadow: "0 0 30px rgba(34,211,238,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, position: "relative", overflow: "hidden" }}>
-              <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.8, ease: "linear" }}
-                style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)", pointerEvents: "none" }} />
-              <Zap style={{ width: 20, height: 20 }} /> START GAME
-            </motion.button>
           )}
 
+          {/* Actual iframe */}
+          {(status === "playing" || status === "loading") && (
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc.current}
+              onLoad={handleIframeLoad}
+              style={{ width: "100%", height: fullscreen ? "100vh" : "clamp(420px,54vw,620px)", border: "none", display: "block", background: "#000" }}
+              allow="autoplay"
+              title="PAC-MAN Halloween 2025"
+            />
+          )}
+
+          {/* Live score overlay */}
+          {status === "playing" && iframeReady && (
+            <div style={{ position: "absolute", bottom: 12, left: 12, display: "flex", gap: 8, zIndex: 20, pointerEvents: "none" }}>
+              <div style={{ padding: "4px 10px", borderRadius: 8, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(34,211,238,0.3)" }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: C.cyan, fontWeight: 900 }}>STAGE {liveStage}</span>
+              </div>
+              <div style={{ padding: "4px 10px", borderRadius: 8, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(245,158,11,0.3)" }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#f59e0b", fontWeight: 900 }}>{liveScore.toLocaleString()} PTS</span>
+              </div>
+            </div>
+          )}
+
+          {/* Fullscreen toggle */}
           {status === "playing" && (
-            <motion.button onClick={handleQuit} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ width: "100%", padding: 14, borderRadius: 15, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <RefreshCw style={{ width: 14, height: 14 }} /> QUIT & SAVE SCORE
-            </motion.button>
-          )}
-
-          {status === "finished" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <motion.button onClick={startGame} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
-                style={{ padding: 14, borderRadius: 15, background: "linear-gradient(135deg,#22d3ee,#6366f1)", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "#020617", boxShadow: "0 0 20px rgba(34,211,238,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <RefreshCw style={{ width: 14, height: 14 }} /> PLAY AGAIN
-              </motion.button>
-              <motion.button onClick={() => setStatus("idle")} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                MENU
-              </motion.button>
-            </div>
+            <button onClick={() => setFullscreen(f => !f)}
+              style={{ position: "absolute", top: 12, right: 12, padding: "5px 12px", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, zIndex: 20 }}>
+              {fullscreen ? <Minimize2 style={{ width: 13, height: 13, color: C.cyan }} /> : <Maximize2 style={{ width: 13, height: 13, color: C.cyan }} />}
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.cyan, letterSpacing: "0.15em" }}>
+                {fullscreen ? "EXIT" : "FULLSCREEN"}
+              </span>
+            </button>
           )}
         </div>
 
-        {/* RIGHT: Info + Leaderboard */}
-        <div className="pac-right" style={{ width: 270, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-
-          {/* XP Info card */}
-          <div style={{ ...card, padding: "16px 18px" }}>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: C.muted, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 8 }}>XP SYSTEM</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {[
-                { label: "Score XP", value: "floor(log₁₀(score+1)×10)", color: C.cyan },
-                { label: "Per Stage", value: "+15 XP each", color: "#10b981" },
-                { label: "Total", value: "Score XP + Stage XP", color: "#f59e0b" },
-              ].map((row, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>{row.label}</span>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: row.color }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "rgba(34,211,238,0.05)", border: "1px solid rgba(34,211,238,0.12)", textAlign: "center" }}>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155" }}>EXAMPLE: 10,000 pts + 3 stages = </span>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: C.cyan, fontWeight: 900 }}>{calcXp(10000, 3)} XP</span>
-            </div>
-          </div>
-
-          {/* Leaderboard */}
-          <div style={{ ...card, padding: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <Trophy style={{ width: 13, height: 13, color: "#f59e0b" }} />
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: C.text, letterSpacing: "0.2em", textTransform: "uppercase" }}>TOP SCORES</span>
-              <div style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 900, color: C.indigo, letterSpacing: "0.12em" }}>ALL TIME</div>
-            </div>
-            {lbLoading ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {[...Array(5)].map((_, i) => <div key={i} style={{ height: 36, borderRadius: 9, background: "rgba(255,255,255,0.03)", animation: "pacSkel 1.5s infinite", animationDelay: `${i * 0.1}s` }} />)}
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
-                <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {leaderboard.map((entry, i) => {
-                  const { color, Icon: RankIcon } = rankStyle(i);
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, background: i < 3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.06)` : "rgba(255,255,255,0.02)", border: `1px solid ${i < 3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.18)` : "rgba(255,255,255,0.04)"}` }}>
-                      <div style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {RankIcon ? <RankIcon style={{ width: 12, height: 12, color }} /> : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#475569" }}>{i + 1}</span>}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: i < 3 ? C.text : "#475569", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</div>
-                      </div>
-                      <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: i < 3 ? color : C.cyan, flexShrink: 0 }}>
-                        {entry.highScore.toLocaleString()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {user && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#22d3ee)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#fff" }}>{user.username[0].toUpperCase()}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: C.indigo, letterSpacing: "0.1em" }}>YOU</div>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.username}</div>
-                  </div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: "#f59e0b" }}>
-                    {stats.bestScore > 0 ? stats.bestScore.toLocaleString() : "—"}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Stat pills */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {/* Controls */}
+        <div style={{ ...card, padding: "14px 20px" }}>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 10 }}>CONTROLS</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
             {[
-              { label: "Max Stages", value: "8 LVL", color: C.cyan },
-              { label: "Max Stage+", value: "+105 XP", color: "#f59e0b" },
-            ].map((s, i) => (
-              <div key={i} style={{ ...card, padding: "12px 14px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: C.muted, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: s.color }}>{s.value}</div>
+              { key: "↑ ↓ ← →", action: "Move Pac-Man" },
+              { key: "WASD", action: "Alternative" },
+              { key: "SPACE", action: "Pause" },
+              { key: "↗", action: "Fullscreen" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: "3px 10px", borderRadius: 7, background: "rgba(34,211,238,0.06)", border: "1px solid rgba(34,211,238,0.2)", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: C.cyan, letterSpacing: "0.1em", whiteSpace: "nowrap" }}>{item.key}</div>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.muted, letterSpacing: "0.15em", textTransform: "uppercase" }}>{item.action}</span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Action buttons */}
+        {status === "idle" && (
+          <motion.button onClick={startGame} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
+            style={{ width: "100%", padding: "clamp(14px,3vw,18px)", borderRadius: 16, background: "linear-gradient(135deg,#22d3ee,#6366f1)", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,3vw,16px)", fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: "#020617", boxShadow: "0 0 30px rgba(34,211,238,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, position: "relative", overflow: "hidden" }}>
+            <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.8, ease: "linear" }}
+              style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)", pointerEvents: "none" }} />
+            <Zap style={{ width: 20, height: 20 }} /> START GAME
+          </motion.button>
+        )}
+
+        {status === "playing" && (
+          <motion.button onClick={handleQuit} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            style={{ width: "100%", padding: 14, borderRadius: 15, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <RefreshCw style={{ width: 14, height: 14 }} /> QUIT & SAVE SCORE
+          </motion.button>
+        )}
+
+        {status === "finished" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <motion.button onClick={startGame} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
+              style={{ padding: 14, borderRadius: 15, background: "linear-gradient(135deg,#22d3ee,#6366f1)", border: "none", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "#020617", boxShadow: "0 0 20px rgba(34,211,238,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <RefreshCw style={{ width: 14, height: 14 }} /> PLAY AGAIN
+            </motion.button>
+            <motion.button onClick={() => setStatus("idle")} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              MENU
+            </motion.button>
+          </div>
+        )}
       </div>
 
       {/* FULL-WIDTH LEADERBOARD */}
@@ -594,7 +496,7 @@ export default function PacmanPage() {
         <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 140px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             {["RANK", "PLAYER", "HIGH SCORE"].map(h => (
-              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
             ))}
           </div>
           {lbLoading
@@ -609,7 +511,7 @@ export default function PacmanPage() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {RI ? <RI style={{ width: 14, height: 14, color }} /> : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#334155" }}>{String(i + 1).padStart(2, "0")}</span>}
                     </div>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: i < 3 ? "#f8fafc" : "#475569", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: i < 3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                       <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: i < 3 ? color : C.cyan }}>{entry.highScore.toLocaleString()}</span>
                       <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155" }}>PTS</span>
@@ -633,7 +535,7 @@ export default function PacmanPage() {
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 60px 70px 60px", gap: 8, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 {["SCORE", "STAGE", "XP", "TIME", "PLAYED"].map(h => (
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
                 ))}
               </div>
               {histLoading
@@ -644,7 +546,7 @@ export default function PacmanPage() {
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{rec.score.toLocaleString()}</span>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: C.cyan, fontWeight: 700 }}>{rec.stage}/8</span>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: "#10b981", fontWeight: 700 }}>+{rec.xpEarned}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(rec.duration)}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(rec.duration)}</span>
                     <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{new Date(rec.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </motion.div>
                 ))
@@ -664,11 +566,7 @@ export default function PacmanPage() {
       <style>{`
         @keyframes pacPulse { 0%,100%{opacity:1;box-shadow:0 0 10px #22d3ee} 50%{opacity:0.3;box-shadow:0 0 4px #22d3ee} }
         @keyframes pacSkel  { 0%,100%{opacity:1} 50%{opacity:0.35} }
-        .pac-layout { flex-direction: row; }
-        @media(max-width:900px){
-          .pac-layout { flex-direction: column !important; }
-          .pac-right  { width: 100% !important; }
-        }
+
       `}</style>
     </div>
   );

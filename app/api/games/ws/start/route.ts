@@ -15,18 +15,18 @@
  * XP rewards: EASY → 80 | MEDIUM → 180 | HARD → 350
  */
 
-import { NextResponse }    from "next/server";
-import { db }              from "@/lib/db";
-import { getSession }      from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 import { pickWordsBySpec } from "@/lib/word-bank";
-import { buildGrid }       from "@/lib/word-grid";
-import { z }               from "zod";
+import { buildGrid } from "@/lib/word-grid";
+import { z } from "zod";
 
 // ── Per-difficulty config ─────────────────────────────────────────────────────
 const DIFF_CFG = {
   EASY: {
-    gridSize:   5,
-    xpReward:   80,
+    gridSize: 5,
+    xpReward: 50,
     directions: "EASY",
     wordSpec: [
       { length: 3, count: 1 },
@@ -35,8 +35,8 @@ const DIFF_CFG = {
     ],
   },
   MEDIUM: {
-    gridSize:   7,
-    xpReward:   180,
+    gridSize: 7,
+    xpReward: 100,
     directions: "MEDIUM",
     wordSpec: [
       { length: 3, count: 2 },
@@ -46,14 +46,14 @@ const DIFF_CFG = {
     ],
   },
   HARD: {
-    gridSize:   10,
-    xpReward:   350,
+    gridSize: 10,
+    xpReward: 250,
     directions: "HARD",
     wordSpec: [
-      { length: 3,  count: 1 },
-      { length: 4,  count: 2 },
-      { length: 5,  count: 2 },
-      { length: 9,  altLength: 8, count: 2 },   // 2 words of 8-9 letters
+      { length: 3, count: 1 },
+      { length: 4, count: 2 },
+      { length: 5, count: 2 },
+      { length: 9, altLength: 8, count: 2 },   // 2 words of 8-9 letters
       { length: 10, count: 1 },                  // 1 word of exactly 10 letters
     ],
   },
@@ -63,7 +63,7 @@ const DIFF_CFG = {
 const _rateMap = new Map<string, { count: number; ts: number }>();
 function rateOk(userId: string): boolean {
   const now = Date.now();
-  const e   = _rateMap.get(userId);
+  const e = _rateMap.get(userId);
   if (!e || now - e.ts > 60_000) { _rateMap.set(userId, { count: 1, ts: now }); return true; }
   if (e.count >= 30) return false;
   e.count++;
@@ -86,32 +86,32 @@ export async function POST(req: Request) {
   const cfg = DIFF_CFG[difficulty];
 
   // ── Pick words + build grid (both server-side) ────────────────────────────
-  const words            = pickWordsBySpec([...cfg.wordSpec]);
+  const words = pickWordsBySpec([...cfg.wordSpec]);
   const { grid, placed } = buildGrid(cfg.directions, cfg.gridSize, words);
-  const actualWords      = placed.map(pw => pw.word);
+  const actualWords = placed.map(pw => pw.word);
 
   // ── Save session to DB ────────────────────────────────────────────────────
   const gameSession = await db.wordSearchSession.create({
     data: {
-      userId:      session.user.id,
+      userId: session.user.id,
       difficulty,
-      gridSize:    cfg.gridSize,
-      gridData:    JSON.stringify(grid),
+      gridSize: cfg.gridSize,
+      gridData: JSON.stringify(grid),
       placedWords: JSON.stringify(placed),
-      foundWords:  JSON.stringify([]),
-      totalWords:  actualWords.length,
-      finished:    false,
-      completed:   false,
+      foundWords: JSON.stringify([]),
+      totalWords: actualWords.length,
+      finished: false,
+      completed: false,
     },
   });
 
   return NextResponse.json({
-    success:    true,
-    sessionId:  gameSession.id,
+    success: true,
+    sessionId: gameSession.id,
     grid,
-    words:      actualWords,
-    gridSize:   cfg.gridSize,
+    words: actualWords,
+    gridSize: cfg.gridSize,
     totalWords: actualWords.length,
-    xpReward:   cfg.xpReward,
+    xpReward: cfg.xpReward,
   });
 }

@@ -29,58 +29,58 @@ const DIFF_CONFIG = {
     color: "#10b981", bg: "rgba(16,185,129,0.12)",
     border: "rgba(16,185,129,0.4)", glow: "rgba(16,185,129,0.25)",
     cols: 4, pairs: 8,
-    gridDesc: "4×4 grid", xp: 80, par: 20,
+    gridDesc: "4×4 grid", xp: 50, par: 20,
   },
   MEDIUM: {
     label: "MEDIUM",
     color: "#f59e0b", bg: "rgba(245,158,11,0.12)",
     border: "rgba(245,158,11,0.4)", glow: "rgba(245,158,11,0.25)",
     cols: 6, pairs: 18,
-    gridDesc: "6×6 grid", xp: 200, par: 40,
+    gridDesc: "6×6 grid", xp: 150, par: 40,
   },
   HARD: {
     label: "HARD",
     color: "#ef4444", bg: "rgba(239,68,68,0.12)",
     border: "rgba(239,68,68,0.4)", glow: "rgba(239,68,68,0.25)",
     cols: 8, pairs: 32,
-    gridDesc: "8×8 grid", xp: 400, par: 80,
+    gridDesc: "8×8 grid", xp: 350, par: 80,
   },
 } as const;
 
 // ─── 32 Lucide icon cards — gaming/tech themed ───────────────────────────────
 const SYMBOL_DEFS: { id: string; Icon: LucideIcon; label: string; color: string; bg: string }[] = [
-  { id: "rocket",      Icon: Rocket,       label: "ROCKET",   color: "#22d3ee", bg: "rgba(34,211,238,0.12)"  },
-  { id: "globe",       Icon: Globe,        label: "GLOBE",    color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
-  { id: "flame",       Icon: Flame,        label: "FLAME",    color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
-  { id: "snowflake",   Icon: Snowflake,    label: "FROST",    color: "#7dd3fc", bg: "rgba(125,211,252,0.12)" },
-  { id: "cpu",         Icon: Cpu,          label: "CPU",      color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-  { id: "shield",      Icon: Shield,       label: "SHIELD",   color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
-  { id: "gem",         Icon: Gem,          label: "GEM",      color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
-  { id: "radio",       Icon: Radio,        label: "SIGNAL",   color: "#34d399", bg: "rgba(52,211,153,0.12)"  },
-  { id: "database",    Icon: Database,     label: "DATA",     color: "#60a5fa", bg: "rgba(96,165,250,0.12)"  },
-  { id: "lock",        Icon: Lock,         label: "LOCK",     color: "#fbbf24", bg: "rgba(251,191,36,0.12)"  },
-  { id: "eye",         Icon: Eye,          label: "EYE",      color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
-  { id: "crosshair",   Icon: Crosshair,    label: "TARGET",   color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
-  { id: "atom",        Icon: Atom,         label: "ATOM",     color: "#22d3ee", bg: "rgba(34,211,238,0.12)"  },
-  { id: "hexagon",     Icon: Hexagon,      label: "HEX",      color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
-  { id: "sparkles",    Icon: Sparkles,     label: "SPARK",    color: "#fde047", bg: "rgba(253,224,71,0.12)"  },
-  { id: "radar",       Icon: Radar,        label: "RADAR",    color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
-  { id: "brain",       Icon: BrainCircuit, label: "NEURAL",   color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-  { id: "circuit",     Icon: CircuitBoard, label: "CIRCUIT",  color: "#22d3ee", bg: "rgba(34,211,238,0.12)"  },
-  { id: "fingerprint", Icon: Fingerprint,  label: "ID",       color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
-  { id: "scan",        Icon: ScanLine,     label: "SCAN",     color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
-  { id: "flask",       Icon: FlaskConical, label: "LAB",      color: "#34d399", bg: "rgba(52,211,153,0.12)"  },
-  { id: "microscope",  Icon: Microscope,   label: "SCOPE",    color: "#60a5fa", bg: "rgba(96,165,250,0.12)"  },
-  { id: "star",        Icon: Star,         label: "STAR",     color: "#fbbf24", bg: "rgba(251,191,36,0.12)"  },
-  { id: "zap",         Icon: Zap,          label: "BOLT",     color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
-  { id: "trophy",      Icon: Trophy,       label: "TROPHY",   color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
-  { id: "wifi",        Icon: Wifi,         label: "LINK",     color: "#22d3ee", bg: "rgba(34,211,238,0.12)"  },
-  { id: "diamond",     Icon: Diamond,      label: "DIAMOND",  color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
-  { id: "triangle",    Icon: Triangle,     label: "DELTA",    color: "#fde047", bg: "rgba(253,224,71,0.12)"  },
-  { id: "circle",      Icon: Circle,       label: "ORION",    color: "#7dd3fc", bg: "rgba(125,211,252,0.12)" },
-  { id: "square",      Icon: Square,       label: "CORE",     color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
-  { id: "layers",      Icon: Layers,       label: "MATRIX",   color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
-  { id: "refcw",       Icon: RefreshCw,    label: "CYCLE",    color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
+  { id: "rocket", Icon: Rocket, label: "ROCKET", color: "#22d3ee", bg: "rgba(34,211,238,0.12)" },
+  { id: "globe", Icon: Globe, label: "GLOBE", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  { id: "flame", Icon: Flame, label: "FLAME", color: "#f97316", bg: "rgba(249,115,22,0.12)" },
+  { id: "snowflake", Icon: Snowflake, label: "FROST", color: "#7dd3fc", bg: "rgba(125,211,252,0.12)" },
+  { id: "cpu", Icon: Cpu, label: "CPU", color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  { id: "shield", Icon: Shield, label: "SHIELD", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
+  { id: "gem", Icon: Gem, label: "GEM", color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
+  { id: "radio", Icon: Radio, label: "SIGNAL", color: "#34d399", bg: "rgba(52,211,153,0.12)" },
+  { id: "database", Icon: Database, label: "DATA", color: "#60a5fa", bg: "rgba(96,165,250,0.12)" },
+  { id: "lock", Icon: Lock, label: "LOCK", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
+  { id: "eye", Icon: Eye, label: "EYE", color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
+  { id: "crosshair", Icon: Crosshair, label: "TARGET", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
+  { id: "atom", Icon: Atom, label: "ATOM", color: "#22d3ee", bg: "rgba(34,211,238,0.12)" },
+  { id: "hexagon", Icon: Hexagon, label: "HEX", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+  { id: "sparkles", Icon: Sparkles, label: "SPARK", color: "#fde047", bg: "rgba(253,224,71,0.12)" },
+  { id: "radar", Icon: Radar, label: "RADAR", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  { id: "brain", Icon: BrainCircuit, label: "NEURAL", color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  { id: "circuit", Icon: CircuitBoard, label: "CIRCUIT", color: "#22d3ee", bg: "rgba(34,211,238,0.12)" },
+  { id: "fingerprint", Icon: Fingerprint, label: "ID", color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
+  { id: "scan", Icon: ScanLine, label: "SCAN", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
+  { id: "flask", Icon: FlaskConical, label: "LAB", color: "#34d399", bg: "rgba(52,211,153,0.12)" },
+  { id: "microscope", Icon: Microscope, label: "SCOPE", color: "#60a5fa", bg: "rgba(96,165,250,0.12)" },
+  { id: "star", Icon: Star, label: "STAR", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
+  { id: "zap", Icon: Zap, label: "BOLT", color: "#f97316", bg: "rgba(249,115,22,0.12)" },
+  { id: "trophy", Icon: Trophy, label: "TROPHY", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+  { id: "wifi", Icon: Wifi, label: "LINK", color: "#22d3ee", bg: "rgba(34,211,238,0.12)" },
+  { id: "diamond", Icon: Diamond, label: "DIAMOND", color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
+  { id: "triangle", Icon: Triangle, label: "DELTA", color: "#fde047", bg: "rgba(253,224,71,0.12)" },
+  { id: "circle", Icon: Circle, label: "ORION", color: "#7dd3fc", bg: "rgba(125,211,252,0.12)" },
+  { id: "square", Icon: Square, label: "CORE", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  { id: "layers", Icon: Layers, label: "MATRIX", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
+  { id: "refcw", Icon: RefreshCw, label: "CYCLE", color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
 ];
 // Stable sym key = id string
 const SYMBOLS = SYMBOL_DEFS.map(d => ({ sym: d.id, label: d.label, color: d.color }));
@@ -89,7 +89,7 @@ const SYMBOLS = SYMBOL_DEFS.map(d => ({ sym: d.id, label: d.label, color: d.colo
 async function deriveXorByte(sessionId: string): Promise<number> {
   const encoded = new TextEncoder().encode(sessionId);
   const hashBuf = await crypto.subtle.digest("SHA-256", encoded);
-  const byte    = new Uint8Array(hashBuf)[0];
+  const byte = new Uint8Array(hashBuf)[0];
   return (byte % 31) + 1; // 1-31, never 0
 }
 
@@ -116,7 +116,7 @@ function rankIcon(i: number) {
   if (i === 0) return <Crown style={{ width: 13, height: 13, color: "#f59e0b" }} />;
   if (i === 1) return <Medal style={{ width: 13, height: 13, color: "#94a3b8" }} />;
   if (i === 2) return <Medal style={{ width: 13, height: 13, color: "#b45309" }} />;
-  return <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#475569" }}>{String(i + 1).padStart(2, "0")}</span>;
+  return <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#94a3b8" }}>{String(i + 1).padStart(2, "0")}</span>;
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
@@ -127,12 +127,12 @@ function MemCard({
   color: string; shake: boolean; size: number;
 }) {
   const visible = card.flipped || card.matched;
-  const symDef  = SYMBOL_DEFS.find(s => s.id === card.sym);
-  const symColor = symDef?.color  ?? "#22d3ee";
-  const symBg    = symDef?.bg     ?? "rgba(34,211,238,0.10)";
-  const IconComp = symDef?.Icon   ?? Circle;
+  const symDef = SYMBOL_DEFS.find(s => s.id === card.sym);
+  const symColor = symDef?.color ?? "#22d3ee";
+  const symBg = symDef?.bg ?? "rgba(34,211,238,0.10)";
+  const IconComp = symDef?.Icon ?? Circle;
   const containerSz = Math.max(Math.floor(size * 0.52), 20);
-  const iconSz      = Math.max(Math.floor(containerSz * 0.62), 12);
+  const iconSz = Math.max(Math.floor(containerSz * 0.62), 12);
 
   return (
     <div
@@ -209,16 +209,16 @@ function MemCard({
             }} />
           </div>
           {/* corner brackets */}
-          {(["tl","tr","bl","br"] as const).map(c => (
+          {(["tl", "tr", "bl", "br"] as const).map(c => (
             <div key={c} style={{
               position: "absolute",
-              top:    c[0]==="t" ? 4 : "auto", bottom: c[0]==="b" ? 4 : "auto",
-              left:   c[1]==="l" ? 4 : "auto", right:  c[1]==="r" ? 4 : "auto",
+              top: c[0] === "t" ? 4 : "auto", bottom: c[0] === "b" ? 4 : "auto",
+              left: c[1] === "l" ? 4 : "auto", right: c[1] === "r" ? 4 : "auto",
               width: 7, height: 7,
-              borderTop:    c[0]==="t" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
-              borderBottom: c[0]==="b" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
-              borderLeft:   c[1]==="l" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
-              borderRight:  c[1]==="r" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
+              borderTop: c[0] === "t" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
+              borderBottom: c[0] === "b" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
+              borderLeft: c[1] === "l" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
+              borderRight: c[1] === "r" ? "1.5px solid rgba(34,211,238,0.35)" : undefined,
             }} />
           ))}
         </div>
@@ -312,29 +312,29 @@ function MemCard({
 export default function MemoryPage() {
   const { user } = useAuthStore();
 
-  const [diff,       setDiff]       = useState<Difficulty>("EASY");
-  const [status,     setStatus]     = useState<GameStatus>("idle");
-  const [cards,      setCards]      = useState<CardState[]>([]);
-  const [flipped,    setFlipped]    = useState<number[]>([]);
-  const [moves,      setMoves]      = useState(0);
-  const [matched,    setMatched]    = useState(0);
-  const [time,       setTime]       = useState(0);
-  const [lock,       setLock]       = useState(false);
-  const [shakeIds,   setShakeIds]   = useState<number[]>([]);
-  const [score,      setScore]      = useState(0);
-  const [xp,         setXp]         = useState(0);
-  const [sessionXp,  setSessionXp]  = useState(0);
-  const [won,        setWon]        = useState(false);
-  const [lb,         setLb]         = useState<LBEntry[]>([]);
-  const [lbLoad,     setLbLoad]     = useState(true);
-  const [hist,       setHist]       = useState<HistRecord[]>([]);
-  const [cardSize,   setCardSize]   = useState(80);
+  const [diff, setDiff] = useState<Difficulty>("EASY");
+  const [status, setStatus] = useState<GameStatus>("idle");
+  const [cards, setCards] = useState<CardState[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [matched, setMatched] = useState(0);
+  const [time, setTime] = useState(0);
+  const [lock, setLock] = useState(false);
+  const [shakeIds, setShakeIds] = useState<number[]>([]);
+  const [score, setScore] = useState(0);
+  const [xp, setXp] = useState(0);
+  const [sessionXp, setSessionXp] = useState(0);
+  const [won, setWon] = useState(false);
+  const [lb, setLb] = useState<LBEntry[]>([]);
+  const [lbLoad, setLbLoad] = useState(true);
+  const [hist, setHist] = useState<HistRecord[]>([]);
+  const [cardSize, setCardSize] = useState(80);
 
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startRef    = useRef(0);
-  const savedRef    = useRef(false);
-  const boardRef    = useRef<HTMLDivElement>(null);
-  const sessionRef  = useRef<string | null>(null);   // server session ID
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef(0);
+  const savedRef = useRef(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const sessionRef = useRef<string | null>(null);   // server session ID
   const flippingRef = useRef(false);                 // flip request in flight
 
   const cfg = DIFF_CONFIG[diff];
@@ -407,7 +407,7 @@ export default function MemoryPage() {
 
   const startGame = async () => {
     if (status === "loading") return;
-    savedRef.current  = false;
+    savedRef.current = false;
     sessionRef.current = null;
     setStatus("loading");
     setCards([]); setFlipped([]); setMoves(0); setMatched(0);
@@ -427,7 +427,7 @@ export default function MemoryPage() {
     }
 
     try {
-      const res  = await fetch("/api/games/memory/start", {
+      const res = await fetch("/api/games/memory/start", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ difficulty: diff }),
       });
@@ -443,11 +443,11 @@ export default function MemoryPage() {
       const xorByte = await deriveXorByte(json.sessionId);
       const serverCards: CardState[] = json.cards.map((c: { id: number; dIdx: number }) => {
         const symIndex = c.dIdx ^ xorByte;
-        const sym      = SYMBOL_DEFS[symIndex]?.id ?? "";
+        const sym = SYMBOL_DEFS[symIndex]?.id ?? "";
         return {
-          id:      c.id,
+          id: c.id,
           sym,
-          label:   SYMBOL_DEFS[symIndex]?.label ?? "",
+          label: SYMBOL_DEFS[symIndex]?.label ?? "",
           flipped: false,
           matched: false,
         };
@@ -485,7 +485,7 @@ export default function MemoryPage() {
     if (sessionRef.current && user) {
       flippingRef.current = true;
       try {
-        const res  = await fetch("/api/games/memory/flip", {
+        const res = await fetch("/api/games/memory/flip", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: sessionRef.current, cardA: idA, cardB: idB }),
         });
@@ -496,7 +496,7 @@ export default function MemoryPage() {
         const revealB = { sym: json.symB, label: SYMBOL_DEFS.find(s => s.id === json.symB)?.label ?? json.symB };
         setCards(prev => prev.map(c =>
           c.id === idA ? { ...c, ...revealA } :
-          c.id === idB ? { ...c, ...revealB } : c
+            c.id === idB ? { ...c, ...revealB } : c
         ));
 
         if (json.match) {
@@ -550,7 +550,7 @@ export default function MemoryPage() {
   }, [cards, flipped, lock, status, user]);
 
   const reset = () => {
-    savedRef.current   = false;
+    savedRef.current = false;
     sessionRef.current = null;
     flippingRef.current = false;
     setCards([]); setFlipped([]); setMoves(0); setMatched(0);
@@ -592,7 +592,7 @@ export default function MemoryPage() {
             style={{
               position: "fixed", zIndex: 20, pointerEvents: "none",
               width: 7, height: 7, borderRadius: "50%",
-              background: ["#22d3ee","#6366f1","#f59e0b","#10b981","#ef4444","#a78bfa","#f472b6"][i % 7],
+              background: ["#22d3ee", "#6366f1", "#f59e0b", "#10b981", "#ef4444", "#a78bfa", "#f472b6"][i % 7],
               filter: "blur(0.5px)",
             }}
           />
@@ -612,16 +612,16 @@ export default function MemoryPage() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div>
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,46px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
-              COSMIC <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>MATCH</span>
+              MEMORY <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>GAME</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
-              MEMORY MATRIX · v4.2
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
+              VERIFIED PORTAL · v3.0
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP Earned This Session</div>
-            <motion.div key={sessionXp} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#a78bfa" }}
-              style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(167,139,250,0.4))" }}>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP EARNED THIS SESSION</div>
+            <motion.div key={sessionXp} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#22d3ee" }}
+              style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(34,211,238,0.4))" }}>
               {sessionXp.toLocaleString()}
             </motion.div>
           </div>
@@ -631,10 +631,10 @@ export default function MemoryPage() {
       {/* ── STATS ROW ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 14 }}>
         {[
-          { label: "PAIRS",  val: `${matched}/${cfg.pairs}`, col: "#22d3ee",  glow: "rgba(34,211,238,0.25)"   },
-          { label: "MOVES",  val: moves,                      col: "#a78bfa",  glow: "rgba(167,139,250,0.25)"  },
-          { label: "PAR",    val: cfg.par,                    col: "#10b981",  glow: "rgba(16,185,129,0.25)"   },
-          { label: "TIME",   val: status === "playing" || status === "won" ? fmt(time) : "--:--", col: "#f59e0b", glow: "rgba(245,158,11,0.25)" },
+          { label: "PAIRS", val: `${matched}/${cfg.pairs}`, col: "#22d3ee", glow: "rgba(34,211,238,0.25)" },
+          { label: "MOVES", val: moves, col: "#a78bfa", glow: "rgba(167,139,250,0.25)" },
+          { label: "PAR", val: cfg.par, col: "#10b981", glow: "rgba(16,185,129,0.25)" },
+          { label: "TIME", val: status === "playing" || status === "won" ? fmt(time) : "--:--", col: "#f59e0b", glow: "rgba(245,158,11,0.25)" },
         ].map(s => (
           <motion.div
             key={s.label}
@@ -642,7 +642,7 @@ export default function MemoryPage() {
             transition={{ duration: 0.4 }}
             style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
           >
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
             <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,3.5vw,22px)", fontWeight: 900, color: s.col, filter: `drop-shadow(0 0 6px ${s.col}80)`, lineHeight: 1 }}>{s.val}</span>
           </motion.div>
         ))}
@@ -677,7 +677,7 @@ export default function MemoryPage() {
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: won ? "#f59e0b" : status === "playing" ? "#22d3ee" : "#94a3b8" }}>
                 {won ? "MISSION COMPLETE!" : status === "playing" ? `FLIP & MATCH · ${cfg.pairs - matched} PAIRS LEFT` : "READY TO LAUNCH"}
               </div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
                 {won ? `Score: ${score.toLocaleString()} · +${xp} XP earned` : status === "playing" ? `${moves} moves · par is ${cfg.par}` : "Choose difficulty & press START"}
               </div>
             </div>
@@ -708,7 +708,7 @@ export default function MemoryPage() {
                   style={{ height: "100%", borderRadius: 4, background: won ? "linear-gradient(90deg,#10b981,#22d3ee)" : `linear-gradient(90deg,${cfg.color},${cfg.color}aa)`, position: "relative", overflow: "hidden" }}
                 >
                   {status === "playing" && (
-                    <motion.div animate={{ x: ["-100%","200%"] }} transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                    <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
                       style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)" }} />
                   )}
                 </motion.div>
@@ -723,7 +723,7 @@ export default function MemoryPage() {
                 />
               ))}
               {cfg.pairs > 18 && (
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", alignSelf: "center" }}>+{cfg.pairs - 18}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", alignSelf: "center" }}>+{cfg.pairs - 18}</span>
               )}
             </div>
           </motion.div>
@@ -750,7 +750,7 @@ export default function MemoryPage() {
               </motion.div>
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.15em" }}>GENERATING DECK…</span>
               <div style={{ width: 140, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                <motion.div animate={{ x: ["-100%","100%"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
                   style={{ height: "100%", width: "50%", background: "linear-gradient(90deg,transparent,#22d3ee,transparent)", borderRadius: 2 }} />
               </div>
             </div>
@@ -767,7 +767,7 @@ export default function MemoryPage() {
                 🌌
               </motion.div>
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,3vw,18px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.1em" }}>NEURAL SYNC READY</div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#475569" }}>{cfg.pairs * 2} cards · {cfg.pairs} pairs · par {cfg.par} moves</div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#94a3b8" }}>{cfg.pairs * 2} cards · {cfg.pairs} pairs · par {cfg.par} moves</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                 {SYMBOL_DEFS.slice(0, 8).map((s, i) => (
                   <motion.div key={i}
@@ -819,7 +819,7 @@ export default function MemoryPage() {
                 position: "relative", overflow: "hidden",
               }}
             >
-              <motion.div animate={{ x: ["-100%","200%"] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1, ease: "linear" }}
+              <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1, ease: "linear" }}
                 style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(99,102,241,0.08),transparent)", pointerEvents: "none" }} />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -834,7 +834,7 @@ export default function MemoryPage() {
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 2 }}>XP EARNED</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>XP EARNED</div>
                   <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 9, delay: 0.2 }}
                     style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(28px,6vw,44px)", fontWeight: 900, color: "#a78bfa", filter: "drop-shadow(0 0 18px rgba(167,139,250,0.65))", lineHeight: 1 }}>
                     +{xp}
@@ -844,13 +844,13 @@ export default function MemoryPage() {
               {/* stat chips */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(80px,1fr))", gap: 8, marginTop: 16 }}>
                 {[
-                  { label: "SCORE",  value: score.toLocaleString(), color: "#22d3ee"  },
-                  { label: "MOVES",  value: moves,                   color: underPar ? "#10b981" : "#a78bfa" },
-                  { label: "PAR",    value: cfg.par,                 color: "#10b981"  },
-                  { label: "TIME",   value: fmt(time),               color: "#f59e0b"  },
+                  { label: "SCORE", value: score.toLocaleString(), color: "#22d3ee" },
+                  { label: "MOVES", value: moves, color: underPar ? "#10b981" : "#a78bfa" },
+                  { label: "PAR", value: cfg.par, color: "#10b981" },
+                  { label: "TIME", value: fmt(time), color: "#f59e0b" },
                 ].map(item => (
                   <div key={item.label} style={{ padding: "8px 10px", borderRadius: 10, background: `${item.color}11`, border: `1px solid ${item.color}33`, textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#475569", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 3 }}>{item.label}</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 3 }}>{item.label}</div>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: item.color }}>{item.value}</div>
                   </div>
                 ))}
@@ -867,11 +867,11 @@ export default function MemoryPage() {
 
         {/* ── DIFFICULTY SELECTOR — exact same as word-search / tic-tac-toe ── */}
         <div>
-          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>
             SELECT DIFFICULTY
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-            {(["EASY","MEDIUM","HARD"] as Difficulty[]).map(d => {
+            {(["EASY", "MEDIUM", "HARD"] as Difficulty[]).map(d => {
               const dc = DIFF_CONFIG[d];
               const active = diff === d;
               const disabled = status === "playing";
@@ -892,9 +892,9 @@ export default function MemoryPage() {
                     position: "relative", overflow: "hidden",
                   }}
                 >
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#334155", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#1e293b", fontWeight: 600, marginBottom: 3 }}>{dc.gridDesc}</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? "#a78bfa" : "#334155" }}>+{dc.xp} XP</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: active ? dc.color + "aa" : "#94a3b8", fontWeight: 600, marginBottom: 3 }}>{dc.gridDesc}</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? "#a78bfa" : "#94a3b8" }}>+{dc.xp} XP</div>
                   {active && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: dc.color, boxShadow: `0 0 8px ${dc.color}` }} />}
                 </motion.button>
               );
@@ -906,7 +906,7 @@ export default function MemoryPage() {
         {(status === "idle" || status === "loading") && (
           <motion.button onClick={startGame} disabled={status === "loading"} whileHover={status !== "loading" ? { scale: 1.03, y: -2 } : {}} whileTap={{ scale: 0.97 }}
             style={{ width: "100%", padding: "clamp(13px,3vw,17px)", borderRadius: 15, background: "linear-gradient(135deg,#22d3ee,#6366f1)", border: "none", cursor: status === "loading" ? "not-allowed" : "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(12px,3vw,15px)", fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: "#020617", boxShadow: "0 0 30px rgba(34,211,238,0.4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, position: "relative", overflow: "hidden", opacity: status === "loading" ? 0.7 : 1 }}>
-            <motion.div animate={{ x: ["-100%","200%"] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.8, ease: "linear" }} style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)", pointerEvents: "none" }} />
+            <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.8, ease: "linear" }} style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)", pointerEvents: "none" }} />
             <Zap style={{ width: 18, height: 18 }} /> {status === "loading" ? "GENERATING…" : "START GAME"}
           </motion.button>
         )}
@@ -923,7 +923,7 @@ export default function MemoryPage() {
               <RefreshCw style={{ width: 14, height: 14 }} /> PLAY AGAIN
             </motion.button>
             <motion.button onClick={reset} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              style={{ padding: 14, borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               MENU
             </motion.button>
           </div>
@@ -940,8 +940,8 @@ export default function MemoryPage() {
         <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
           {/* header */}
           <div className="mem-lb-head" style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-            {["RANK","PLAYER","TOTAL XP","MATCHES"].map(h => (
-              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+            {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map(h => (
+              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
             ))}
           </div>
           {lbLoad ? (
@@ -950,26 +950,26 @@ export default function MemoryPage() {
             </div>
           ) : lb.length === 0 ? (
             <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
-              <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
+              <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 8px" }} />
+              <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
             </div>
           ) : lb.map((e, i) => {
             const top3 = i < 3;
-            const rankColor = i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#475569";
+            const rankColor = i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#94a3b8";
             return (
               <motion.div key={i}
                 initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
                 className="mem-lb-head"
-                style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "11px 18px", borderBottom: i < lb.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: top3 ? `rgba(${i===0?"245,158,11":i===1?"148,163,184":"180,83,9"},0.04)` : "transparent" }}>
+                style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "11px 18px", borderBottom: i < lb.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: top3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {rankIcon(i)}
                 </div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#475569", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#a78bfa" }}>{e.totalXp.toLocaleString()}</span>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
                 </div>
-                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{e.matches}</span>
+                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{e.matches}</span>
               </motion.div>
             );
           })}
@@ -986,9 +986,9 @@ export default function MemoryPage() {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                 <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{sessionXp > 0 ? sessionXp.toLocaleString() : "—"}</span>
-                {sessionXp > 0 && <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>}
+                {sessionXp > 0 && <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>}
               </div>
-              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569" }}>—</span>
+              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8" }}>—</span>
             </div>
           )}
         </div>
@@ -1004,8 +1004,8 @@ export default function MemoryPage() {
             </div>
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div className="mem-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                {["RESULT","DIFFICULTY","SCORE","TIME","PLAYED"].map(h => (
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+                {["RESULT", "DIFFICULTY", "SCORE", "TIME", "PLAYED"].map(h => (
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
                 ))}
               </div>
               {hist.map((r, i) => {
@@ -1018,8 +1018,8 @@ export default function MemoryPage() {
                       <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#10b981", letterSpacing: "0.1em" }}>CLEARED</span>
                     </div>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: dc.color, letterSpacing: "0.1em", fontWeight: 700 }}>{r.difficulty}</span>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: r.score > 0 ? "#f59e0b" : "#475569" }}>{r.score > 0 ? r.score.toLocaleString() : "—"}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(r.duration)}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: r.score > 0 ? "#f59e0b" : "#94a3b8" }}>{r.score > 0 ? r.score.toLocaleString() : "—"}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(r.duration)}</span>
                     <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{r.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </motion.div>
                 );

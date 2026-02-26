@@ -3,42 +3,48 @@
 import { useState, useEffect } from "react";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { LeaderboardEntry } from "@/types";
-import { Trophy, Crown, Zap, Ghost, Swords, Rocket, Layers } from "lucide-react";
+import { Trophy, Hash, Search, LayoutGrid, Ghost, Activity, Rocket, Boxes, Waypoints } from "lucide-react";
 import { motion } from "framer-motion";
 
 const C = { cyan: "#22d3ee", indigo: "#6366f1", text: "#f8fafc", muted: "#64748b" };
 const card = { background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(34,211,238,0.12)", borderRadius: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.4)" };
 
 const GAME_TABS = [
-  { id: "TIC_TAC_TOE",  label: "Tic-Tac-Toe",      icon: Crown  },
-  { id: "WORD_SEARCH",  label: "Word Search",       icon: Zap    },
-  { id: "MEMORY",       label: "Memory",            icon: Trophy },
-  { id: "PACMAN",       label: "Pac-Man",           icon: Ghost  },
-  { id: "SNAKE",        label: "Snake",             icon: Swords },
-  { id: "SPACE_SHOOTER",label: "Star Siege",        icon: Rocket },
-  { id: "CONNECT_DOTS", label: "Connect The Dots",  icon: Layers },
+  { id: "TIC_TAC_TOE",   label: "Tic-Tac-Toe",      icon: Hash },
+  { id: "WORD_SEARCH",   label: "Word Search",       icon: Search },
+  { id: "MEMORY",        label: "Memory",            icon: LayoutGrid },
+  { id: "PACMAN",        label: "Pac-Man",           icon: Ghost },
+  { id: "SNAKE",         label: "Snake",             icon: Activity },
+  { id: "SPACE_SHOOTER", label: "Star Siege",        icon: Rocket },
+  { id: "CONNECT_DOTS",  label: "Connect The Dots",  icon: Waypoints },
+  { id: "BLOCK_BREAKER", label: "Block Breaker",     icon: Boxes },
 ];
 
 export default function LeaderboardPage() {
   const [activeGame, setActiveGame] = useState("TIC_TAC_TOE");
-  const [data,       setData]       = useState<LeaderboardEntry[]>([]);
-  const [isLoading,  setIsLoading]  = useState(true);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
     (async () => {
       try {
-        const res  = await fetch(`/api/leaderboard?gameType=${activeGame}`);
+        const res = await fetch(`/api/leaderboard?gameType=${activeGame}`);
         const json = await res.json();
         if (json.success) {
-          // PACMAN and SPACE_SHOOTER return highScore — normalise to totalXp/matches
-            const isScoreBased = activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER";
+          const isScoreBased = activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER";
+          const isBlockBreaker = activeGame === "BLOCK_BREAKER";
           const normalised = (json.data as any[]).map((r: any) => ({
-            user:    r.user,
+            user: r.user,
             totalXp: isScoreBased ? (r.highScore ?? 0) : (r.totalXp ?? 0),
             matches: r.matches ?? 0,
-          })) as LeaderboardEntry[];
-          setData(normalised);
+            highScore: r.highScore ?? 0,
+            level: r.level ?? 1,
+            wave: r.wave ?? r.waves ?? r.bestWave ?? null,
+            kills: r.kills ?? null,
+            blocksDestroyed: r.blocksDestroyed ?? null,
+          }));
+          setData(normalised as LeaderboardEntry[]);
         }
       } catch (e) { console.error(e); }
       finally { setIsLoading(false); }
@@ -84,7 +90,7 @@ export default function LeaderboardPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.cyan, boxShadow: `0 0 8px ${C.cyan}` }} />
             <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 9, fontWeight: 700, color: C.muted, letterSpacing: "0.25em", textTransform: "uppercase" }}>
-              {GAME_TABS.find(t => t.id === activeGame)?.label} {(activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER") ? "· High Score" : "· Total XP"}
+              {GAME_TABS.find(t => t.id === activeGame)?.label} {activeGame === "BLOCK_BREAKER" ? "· Total Score" : (activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER") ? "· High Score" : "· Total XP"}
             </span>
           </div>
           <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 8, color: "#64748b", letterSpacing: "0.18em" }}>
@@ -100,7 +106,15 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div style={{ padding: 8 }}>
-            <LeaderboardTable entries={data} matchesLabel={(activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER") ? "Matches" : "Matches"} />
+            <LeaderboardTable
+              entries={data}
+              scoreMode={activeGame === "BLOCK_BREAKER" || activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER"}
+              scoreModeLabel={activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER" ? "High Score" : "Total Score"}
+              hideLevel={activeGame === "PACMAN" || activeGame === "SPACE_SHOOTER"}
+              showWaves={activeGame === "SPACE_SHOOTER"}
+              showBlocks={activeGame === "BLOCK_BREAKER"}
+              matchesLabel="Matches"
+            />
           </div>
         )}
       </div>

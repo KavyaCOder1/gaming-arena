@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, User, Lock, Gamepad2, Grid3X3, Brain, Circle,
     Loader2, AlertCircle, Eye, EyeOff, Shield, Zap,
+    Search, Grid, LayoutGrid, Ghost, Swords, Rocket, Layers, Target,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -33,10 +34,14 @@ const C = {
 };
 
 const GAMES = [
-    { icon: Grid3X3, label: "Word Search", desc: "Neural pattern recognition modules." },
-    { icon: X, label: "Tic Tac Toe", desc: "Strategic logic optimization sequences." },
-    { icon: Brain, label: "Memory", desc: "Cognitive retention stress tests." },
-    { icon: Circle, label: "Pacman", desc: "Classic velocity navigation simulator." },
+    { icon: Search,     label: "Word Search",     color: "#22d3ee" },
+    { icon: Grid,       label: "Tic Tac Toe",     color: "#a78bfa" },
+    { icon: LayoutGrid, label: "Memory",          color: "#7c3aed" },
+    { icon: Ghost,      label: "Pacman",          color: "#f59e0b" },
+    { icon: Swords,     label: "Snake Arena",     color: "#34d399" },
+    { icon: Rocket,     label: "Star Siege",      color: "#f97316" },
+    { icon: Layers,     label: "Connect Dots",    color: "#a3e635" },
+    { icon: Target,     label: "Block Breaker",   color: "#ef4444" },
 ];
 
 /* ─── component ─────────────────────────────────────────────────────── */
@@ -215,22 +220,21 @@ export function AuthModal() {
                                     </p>
                                 </div>
 
-                                {/* game list */}
-                                <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                                {/* game list — 2-col compact grid */}
+                                <div style={{ position: "relative", zIndex: 1, flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                                     {GAMES.map((g, i) => (
                                         <motion.div
                                             key={i}
-                                            initial={{ x: -18, opacity: 0 }}
+                                            initial={{ x: -14, opacity: 0 }}
                                             animate={{ x: 0, opacity: 1 }}
-                                            transition={{ delay: i * 0.07 + 0.15 }}
-                                            whileHover={{ borderColor: "rgba(34,211,238,0.4)", background: "rgba(15,23,42,0.9)" }}
-                                            style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", borderRadius: 12, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(30,41,59,0.8)", cursor: "default", transition: "all 0.2s" }}
+                                            transition={{ delay: i * 0.05 + 0.1 }}
+                                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 10, background: "rgba(15,23,42,0.6)", border: `1px solid ${g.color}22`, cursor: "default", transition: "all 0.2s" }}
+                                            whileHover={{ borderColor: `${g.color}55`, background: "rgba(15,23,42,0.9)" }}
                                         >
-                                            <g.icon style={{ color: C.indigo, width: 17, height: 17, flexShrink: 0 }} />
-                                            <div>
-                                                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.1em" }}>{g.label}</div>
-                                                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: C.slate, marginTop: 2 }}>{g.desc}</div>
+                                            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${g.color}15`, border: `1px solid ${g.color}35`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                <g.icon style={{ color: g.color, width: 13, height: 13, filter: `drop-shadow(0 0 4px ${g.color}80)` }} />
                                             </div>
+                                            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1.2 }}>{g.label}</div>
                                         </motion.div>
                                     ))}
                                 </div>

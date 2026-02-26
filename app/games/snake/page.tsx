@@ -20,8 +20,8 @@ const GRID = 20;
 
 const DIFF_CONFIG = {
   EASY: { label: "EASY", desc: "Relaxed · +5 XP/chip", speed: 180, color: "#10b981", hex: 0x10b981, bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.45)", glow: "rgba(16,185,129,0.3)", xpMult: 1 },
-  MEDIUM: { label: "MEDIUM", desc: "Balanced · +8 XP/chip", speed: 130, color: "#f59e0b", hex: 0xf59e0b, bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.45)", glow: "rgba(245,158,11,0.3)", xpMult: 1.5 },
-  HARD: { label: "HARD", desc: "Ruthless · +12 XP/chip", speed: 75, color: "#ef4444", hex: 0xef4444, bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.45)", glow: "rgba(239,68,68,0.3)", xpMult: 2 },
+  MEDIUM: { label: "MEDIUM", desc: "Balanced · +8 XP/chip", speed: 130, color: "#f59e0b", hex: 0xf59e0b, bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.45)", glow: "rgba(245,158,11,0.3)", xpMult: 1.6 },
+  HARD: { label: "HARD", desc: "Ruthless · +15 XP/chip", speed: 90, color: "#ef4444", hex: 0xef4444, bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.45)", glow: "rgba(239,68,68,0.3)", xpMult: 3 },
 } as const;
 
 const fmt = (s: number) =>
@@ -206,7 +206,7 @@ function buildScene(cb: {
       const tnow_ = Date.now() / 1000;
       const mk = cs * 1.2;
       const cornerAlpha = 0.7 + 0.2 * Math.sin(tnow_ * 1.8);
-      const corners = [[0,0],[W,0],[0,H],[W,H]] as [number,number][];
+      const corners = [[0, 0], [W, 0], [0, H], [W, H]] as [number, number][];
       if (cb.getIsFullscreen()) {
         // Full glowing border
         const borderAlpha = 0.55 + 0.2 * Math.sin(tnow_ * 1.8);
@@ -527,13 +527,13 @@ export default function SnakePage() {
             if (!gameRef.current) return;
             const iw = window.innerWidth, ih = window.innerHeight;
             const sq = Math.min(iw, ih);
-            try { gameRef.current.scale.resize(sq, sq); } catch {}
+            try { gameRef.current.scale.resize(sq, sq); } catch { }
           }, delay));
         }, 0);
       } else if (!fs && gameRef.current && containerRef.current) {
         // Restore normal size
         const w = containerRef.current.getBoundingClientRect().width;
-        if (w > 0) try { gameRef.current.scale.resize(w, w); } catch {}
+        if (w > 0) try { gameRef.current.scale.resize(w, w); } catch { }
       }
     };
     document.addEventListener("fullscreenchange", onChange);
@@ -581,7 +581,7 @@ export default function SnakePage() {
     if (!mutedRef.current) playDie(audioRef.current);
     // Auto-exit fullscreen when game ends
     if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
+      document.exitFullscreen?.().catch(() => { });
     } else if ((document as any).webkitFullscreenElement) {
       (document as any).webkitExitFullscreen?.();
     }
@@ -655,7 +655,7 @@ export default function SnakePage() {
           requestAnimationFrame(() => {
             if (containerRef.current && gameRef.current) {
               const w = containerRef.current.getBoundingClientRect().width;
-              if (w > 0) { try { gameRef.current.scale.resize(w, w); } catch {} }
+              if (w > 0) { try { gameRef.current.scale.resize(w, w); } catch { } }
             }
           });
         });
@@ -808,7 +808,7 @@ export default function SnakePage() {
             }}>
               SNAKE <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>ARENA</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>
               COLLECT XP CHIPS · AVOID WALLS
             </p>
           </div>
@@ -820,7 +820,7 @@ export default function SnakePage() {
               {muted ? "🔇" : "🔊"}
             </button>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP EARNED THIS SESSION</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP EARNED THIS SESSION</div>
               <motion.div key={sessionScore} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#22d3ee" }}
                 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(34,211,238,0.4))" }}>
                 {sessionScore.toLocaleString()}
@@ -842,9 +842,9 @@ export default function SnakePage() {
             animate={s.label === "CHIPS" && cores > 0 ? { scale: [1, 1.06, 1], boxShadow: [`0 0 0px ${s.glow}`, `0 0 16px ${s.glow}`, `0 0 0px ${s.glow}`] } : {}}
             transition={{ duration: 0.35 }}
             style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
             <motion.span key={String(s.val)} initial={{ scale: 1.25, y: -4 }} animate={{ scale: 1, y: 0 }}
-              style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,3.5vw,22px)", fontWeight: 900, color: s.col, filter: `drop-shadow(0 0 6px ${s.col}80)`, lineHeight: 1 }}>
+              style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,28px)", fontWeight: 900, color: s.col, filter: `drop-shadow(0 0 8px ${s.col}90)`, lineHeight: 1 }}>
               {s.val}
             </motion.span>
           </motion.div>
@@ -978,7 +978,7 @@ export default function SnakePage() {
                       ))}
                     </div>
                   )}
-                  {isMobile && <p style={{ margin: 0, fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#334155", letterSpacing: "0.15em" }}>SWIPE TO CONTROL</p>}
+                  {isMobile && <p style={{ margin: 0, fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8", letterSpacing: "0.15em" }}>SWIPE TO CONTROL</p>}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1040,7 +1040,7 @@ export default function SnakePage() {
         {/* ── CONTROLS — outside the border box ── */}
         {isMobile ? (
           <div style={{ marginTop: 8 }}>
-            <p style={{ textAlign: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.12em", marginBottom: 10 }}>SWIPE ON GAME OR USE D-PAD</p>
+            <p style={{ textAlign: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.12em", marginBottom: 10 }}>SWIPE ON GAME OR USE D-PAD</p>
             <div style={{ display: "grid", gridTemplateColumns: "64px 64px 64px", gridTemplateRows: "64px 64px 64px", gap: 8, width: 208, margin: "0 auto" }}>
               <div />
               <button onClick={() => mobileDir(0, -1)} style={{ borderRadius: 14, background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", boxShadow: `0 0 12px ${cfg.glow}` }}>
@@ -1075,7 +1075,7 @@ export default function SnakePage() {
               <div style={{ width: 1, height: 32, background: "rgba(255,255,255,0.06)", margin: "0 4px" }} />
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                 <div style={{ width: 50, height: 26, borderRadius: 5, background: "rgba(15,23,42,0.8)", border: "1px solid rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: "#f59e0b" }}>SPACE</div>
-                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>PAUSE</div>
+                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>PAUSE</div>
               </div>
             </div>
           </div>
@@ -1098,7 +1098,7 @@ export default function SnakePage() {
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 2 }}>XP EARNED</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>XP EARNED</div>
                   <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 9, delay: 0.2 }}
                     style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,7vw,42px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 16px rgba(245,158,11,0.65))", lineHeight: 1 }}>
                     +{finalXP}
@@ -1119,7 +1119,7 @@ export default function SnakePage() {
 
         {/* ── DIFFICULTY SELECTOR ── */}
         <div>
-          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>SELECT DIFFICULTY</div>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>SELECT DIFFICULTY</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
             {(["EASY", "MEDIUM", "HARD"] as Difficulty[]).map(d => {
               const dc = DIFF_CONFIG[d], active = diff === d, disabled = isPlaying || isPaused;
@@ -1127,9 +1127,9 @@ export default function SnakePage() {
                 <motion.button key={d} onClick={() => { if (!disabled) setDiff(d); }} disabled={disabled}
                   whileHover={!disabled ? { y: -2 } : {}} whileTap={!disabled ? { scale: 0.95 } : {}}
                   style={{ padding: "11px 6px", borderRadius: 13, background: active ? dc.bg : "rgba(15,23,42,0.6)", border: `2px solid ${active ? dc.border : "rgba(255,255,255,0.05)"}`, cursor: disabled ? "not-allowed" : "pointer", transition: "all 0.2s", textAlign: "center", boxShadow: active ? `0 0 18px ${dc.glow}` : "none", opacity: disabled && !active ? 0.25 : 1, position: "relative", overflow: "hidden" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#334155", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#1e293b", fontWeight: 600, marginBottom: 3 }}>{dc.desc}</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: active ? "#a78bfa" : "#334155" }}>{dc.speed}ms</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#64748b", fontWeight: 600, marginBottom: 3 }}>{dc.desc}</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: active ? "#a78bfa" : "#94a3b8" }}>{dc.speed}ms</div>
                   {active && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: dc.color, boxShadow: `0 0 8px ${dc.color}` }} />}
                 </motion.button>
               );
@@ -1176,8 +1176,8 @@ export default function SnakePage() {
         <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
           {/* header */}
           <div className="snk-lb-head" style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-            {["RANK", "PLAYER", "TOTAL XP", "RUNS"].map(h => (
-              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+            {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map(h => (
+              <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
             ))}
           </div>
           {lbLoad ? (
@@ -1186,7 +1186,7 @@ export default function SnakePage() {
             </div>
           ) : lb.length === 0 ? (
             <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
+              <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 8px" }} />
               <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO PLAYERS YET — BE FIRST!</p>
             </div>
           ) : lb.map((e, i) => {
@@ -1197,12 +1197,12 @@ export default function SnakePage() {
                 className="snk-lb-head"
                 style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "11px 18px", borderBottom: i < lb.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: top3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{rankIcon(i)}</div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#475569", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#22d3ee" }}>{(e.totalXp ?? e.highScore ?? 0).toLocaleString()}</span>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
                 </div>
-                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{e.matches ?? "—"}</span>
+                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{e.matches ?? "—"}</span>
               </motion.div>
             );
           })}
@@ -1220,7 +1220,7 @@ export default function SnakePage() {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                 <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{sessionScore > 0 ? sessionScore.toLocaleString() : "—"}</span>
-                {sessionScore > 0 && <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>}
+                {sessionScore > 0 && <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>}
               </div>
               <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569" }}>—</span>
             </div>
@@ -1239,7 +1239,7 @@ export default function SnakePage() {
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div className="snk-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 {["DIFFICULTY", "CHIPS", "SCORE", "TIME", "PLAYED"].map(h => (
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
                 ))}
               </div>
               {hist.map((r, i) => {
@@ -1248,11 +1248,11 @@ export default function SnakePage() {
                   <motion.div key={r.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                     className="snk-hist-head snk-hist-row"
                     style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "11px 18px", borderBottom: i < hist.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: dc.color, letterSpacing: "0.1em", fontWeight: 700 }}>{r.difficulty}</span>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#22d3ee" }}>{r.cores}</span>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f59e0b" }}>{r.score.toLocaleString()}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(r.duration)}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{r.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, color: dc.color, letterSpacing: "0.1em", fontWeight: 800, filter: `drop-shadow(0 0 4px ${dc.color}70)` }}>{r.difficulty}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 14, fontWeight: 900, color: "#22d3ee", filter: "drop-shadow(0 0 4px rgba(34,211,238,0.5))" }}>{r.cores}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 14, fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 4px rgba(245,158,11,0.5))" }}>{r.score.toLocaleString()}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, fontWeight: 700, color: "#cbd5e1" }}>{fmt(r.duration)}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{r.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </motion.div>
                 );
               })}

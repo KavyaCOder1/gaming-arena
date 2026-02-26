@@ -30,9 +30,9 @@ interface GameRecord {
 interface LBEntry { user: { username: string }; totalXp: number; matches: number; }
 
 const DIFF_CONFIG = {
-  EASY: { label: "EASY", desc: "AI plays randomly · WIN=50XP", color: "#10b981", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.4)", glow: "rgba(16,185,129,0.25)" },
-  MEDIUM: { label: "MEDIUM", desc: "AI plays smart 60% · WIN=120XP", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.4)", glow: "rgba(245,158,11,0.25)" },
-  HARD: { label: "HARD", desc: "Unbeatable AI · WIN=250XP", color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.4)", glow: "rgba(239,68,68,0.25)" },
+  EASY: { label: "EASY", gridDesc: "", color: "#10b981", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.4)", glow: "rgba(16,185,129,0.25)", winXp: 20 },
+  MEDIUM: { label: "MEDIUM", gridDesc: "", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", border: "rgba(245,158,11,0.4)", glow: "rgba(245,158,11,0.25)", winXp: 50 },
+  HARD: { label: "HARD", gridDesc: "", color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.4)", glow: "rgba(239,68,68,0.25)", winXp: 100 },
 };
 
 const AI_THINK_DELAY = { EASY: 600, MEDIUM: 1000, HARD: 1400 };
@@ -221,7 +221,7 @@ export default function TicTacToePage() {
         {/* Header row */}
         <div className="ttt-lb-head" style={{ display: "grid", gridTemplateColumns: "44px 1fr 88px 68px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
           {["RANK", "PLAYER", "TOTAL XP", "MATCHES"].map(h =>
-            <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+            <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
           )}
         </div>
         {/* Body */}
@@ -231,8 +231,8 @@ export default function TicTacToePage() {
           </div>
         ) : leaderboard.length === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
-            <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
+            <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 8px" }} />
+            <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.15em" }}>NO RECORDS YET</p>
           </div>
         ) : (
           leaderboard.map((entry, i) => {
@@ -247,18 +247,18 @@ export default function TicTacToePage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {RI
                     ? <RI style={{ width: 14, height: 14, color }} />
-                    : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#334155" }}>{String(i + 1).padStart(2, "0")}</span>
+                    : <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#94a3b8" }}>{String(i + 1).padStart(2, "0")}</span>
                   }
                 </div>
                 {/* player */}
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#475569", textTransform: "uppercase", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: isTop3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.user.username}</span>
                 {/* xp */}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: isTop3 ? color : "#a78bfa" }}>{entry.totalXp.toLocaleString()}</span>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
                 </div>
                 {/* matches */}
-                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{entry.matches}</span>
+                <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{entry.matches}</span>
               </motion.div>
             );
           })
@@ -277,9 +277,9 @@ export default function TicTacToePage() {
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{totalScore.toLocaleString()}</span>
-              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#334155", fontWeight: 600 }}>XP</span>
+              <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
             </div>
-            <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569" }}>—</span>
+            <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8" }}>—</span>
           </div>
         )}
       </div>
@@ -307,11 +307,11 @@ export default function TicTacToePage() {
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,50px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
               TIC-TAC <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>TOE</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 5 }}>SERVER-VERIFIED AI · v3.0</p>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 5 }}>SERVER-VERIFIED AI · v3.0</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP Earned This Session</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>XP EARNED THIS SESSION</div>
               <motion.div key={sessionScore} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#f59e0b" }} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(245,158,11,0.4))" }}>
                 {sessionScore.toLocaleString()}
               </motion.div>
@@ -333,13 +333,13 @@ export default function TicTacToePage() {
               ? { scale: [1, 1.06, 1], boxShadow: [`0 0 0px ${s.glow}`, `0 0 20px ${s.glow}`, `0 0 8px ${s.glow}`] } : {}}
             transition={{ duration: 0.5 }}
             style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
             <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(16px,3.5vw,24px)", fontWeight: 900, color: s.color, filter: `drop-shadow(0 0 6px ${s.color}80)`, lineHeight: 1 }}>{s.value}</span>
           </motion.div>
         ))}
         {/* TIME card */}
         <div style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</span>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</span>
           <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(13px,2.8vw,20px)", fontWeight: 900, color: "#22d3ee", filter: "drop-shadow(0 0 6px rgba(34,211,238,0.5))", lineHeight: 1 }}>
             {status === "playing" ? fmt(gameTime) : "--:--"}
           </span>
@@ -363,7 +363,7 @@ export default function TicTacToePage() {
                 style={{ width: 8, height: 8, borderRadius: "50%", background: msg.color, boxShadow: `0 0 10px ${msg.color}`, flexShrink: 0, animation: status === "playing" ? "statusPulse 1.5s infinite" : "none" }} />
               <div>
                 <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: msg.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>{msg.title}</div>
-                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600 }}>{msg.sub}</div>
+                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>{msg.sub}</div>
               </div>
             </div>
             {status === "playing" && (
@@ -424,7 +424,7 @@ export default function TicTacToePage() {
                 <p.Icon style={{ width: 14, height: 14, color: p.color, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: p.color, letterSpacing: "0.2em", textTransform: "uppercase" }}>{p.label}</div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.sublabel}</div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#94a3b8", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.sublabel}</div>
                 </div>
                 {p.active && <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} style={{ width: 6, height: 6, borderRadius: "50%", background: p.color, boxShadow: `0 0 8px ${p.color}`, flexShrink: 0 }} />}
               </div>
@@ -433,15 +433,19 @@ export default function TicTacToePage() {
 
           {/* Difficulty selector */}
           <div style={{ width: "100%", maxWidth: 460 }}>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>SELECT AI INTENSITY</div>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 8, textAlign: "center" }}>SELECT DIFFICULTY</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
               {(["EASY", "MEDIUM", "HARD"] as Difficulty[]).map(d => {
                 const dc = DIFF_CONFIG[d], active = difficulty === d;
+                const disabled = status === "playing";
                 return (
-                  <motion.button key={d} onClick={() => { if (status !== "playing") setDifficulty(d); }} disabled={status === "playing"}
-                    whileHover={status !== "playing" ? { y: -2 } : {}} whileTap={status !== "playing" ? { scale: 0.96 } : {}}
-                    style={{ padding: "12px 6px", borderRadius: 12, background: active ? dc.bg : "rgba(15,23,42,0.6)", border: `2px solid ${active ? dc.border : "rgba(255,255,255,0.05)"}`, cursor: status === "playing" ? "not-allowed" : "pointer", transition: "all 0.2s", textAlign: "center", boxShadow: active ? `0 0 16px ${dc.glow}` : "none", opacity: status === "playing" && !active ? 0.3 : 1, position: "relative", overflow: "hidden" }}>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? dc.color : "#334155", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 3 }}>{dc.label}</div>
+                  <motion.button key={d} onClick={() => { if (!disabled) setDifficulty(d); }}
+                    disabled={disabled}
+                    whileHover={!disabled ? { y: -2 } : {}} whileTap={!disabled ? { scale: 0.96 } : {}}
+                    style={{ padding: "11px 6px", borderRadius: 13, background: active ? dc.bg : "rgba(15,23,42,0.6)", border: `2px solid ${active ? dc.border : "rgba(255,255,255,0.05)"}`, cursor: disabled ? "not-allowed" : "pointer", transition: "all 0.2s", textAlign: "center", boxShadow: active ? `0 0 18px ${dc.glow}` : "none", opacity: disabled && !active ? 0.28 : 1, position: "relative", overflow: "hidden" }}>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(8px,2.5vw,11px)", fontWeight: 900, color: active ? dc.color : "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>{dc.label}</div>
+                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: active ? dc.color + "aa" : "#94a3b8", fontWeight: 600, marginBottom: 3 }}>{dc.gridDesc}</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 900, color: active ? "#a78bfa" : "#94a3b8" }}>+{dc.winXp} XP</div>
                     {active && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: dc.color, boxShadow: `0 0 8px ${dc.color}` }} />}
                   </motion.button>
                 );
@@ -453,7 +457,7 @@ export default function TicTacToePage() {
           <div className="mobile-timer" style={{ display: "none", width: "100%", maxWidth: 460, background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(34,211,238,0.1)", borderRadius: 12, padding: "10px 16px", alignItems: "center", gap: 10 }}>
             <Clock style={{ width: 14, height: 14, color: "#22d3ee", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>TIME</div>
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 15, fontWeight: 900, color: "#f8fafc" }}>{fmt(gameTime)}</div>
             </div>
             <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 8, padding: "4px 10px" }}>
@@ -481,7 +485,7 @@ export default function TicTacToePage() {
                   <RefreshCw style={{ width: 14, height: 14 }} /> PLAY AGAIN
                 </motion.button>
                 <motion.button onClick={resetGame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  style={{ padding: "14px", borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  style={{ padding: "14px", borderRadius: 15, background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                   MENU
                 </motion.button>
               </div>
@@ -508,7 +512,7 @@ export default function TicTacToePage() {
               {/* header */}
               <div className="ttt-history-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 {["RESULT", "DIFFICULTY", "SCORE", "TIME", "PLAYED"].map(h =>
-                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
+                  <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>
                 )}
               </div>
               {/* rows */}
@@ -522,8 +526,8 @@ export default function TicTacToePage() {
                       <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: rc.color, letterSpacing: "0.1em" }}>{rc.label}</span>
                     </div>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: DIFF_CONFIG[rec.difficulty].color, letterSpacing: "0.1em", fontWeight: 700 }}>{rec.difficulty}</span>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: rec.score > 0 ? "#f59e0b" : "#475569" }}>{rec.score > 0 ? `+${rec.score}` : "—"}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(rec.duration)}</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: rec.score > 0 ? "#f59e0b" : "#94a3b8" }}>{rec.score > 0 ? `+${rec.score}` : "—"}</span>
+                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(rec.duration)}</span>
                     <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{rec.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </motion.div>
                 );

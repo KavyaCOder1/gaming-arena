@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/auth-store";
 
 type GameStatus = "idle" | "playing" | "paused" | "over";
 interface LBEntry { user: { username: string }; highScore: number; totalXp: number }
-interface HistRecord { id: string; score: number; wave: number; kills: number; survivalTime: number; date: Date }
+interface HistRecord { id: string; score: number; wave: number; kills: number; survivalTime: number; xpEarned: number; date: Date }
 
 const fmt = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
@@ -119,7 +119,8 @@ function buildScene(cb: {
     playerX = 0; playerY = 0;
     playerHP = 100; playerShield = 0;
     shipLevel = 0; kills = 0;
-    KILLS_FOR_LEVEL = [10, 30, 70];
+    KILLS_FOR_LEVEL = [8, 20, 45];
+    bossKills = 0;
 
     wave = 1; score = 0; elapsed = 0; timerTick = 0; waveTimer = 0;
     dead = false; _nextSpawn: number | undefined;
@@ -220,9 +221,9 @@ function buildScene(cb: {
       this.game.canvas.addEventListener("touchmove", (e: TouchEvent) => {
         if (cb.getStatus() !== "playing") return;
         const touch = e.touches[0];
-        const rect  = this.game.canvas.getBoundingClientRect();
+        const rect = this.game.canvas.getBoundingClientRect();
         // Scale raw pixel delta to Phaser world units
-        const scaleX = this.scale.width  / rect.width;
+        const scaleX = this.scale.width / rect.width;
         const scaleY = this.scale.height / rect.height;
         const dx = (touch.clientX - this.touchStartX) * scaleX;
         const dy = (touch.clientY - this.touchStartY) * scaleY;
@@ -233,7 +234,7 @@ function buildScene(cb: {
         const maxStep = Math.min(this.scale.width, this.scale.height) * 0.25; // 25% of screen max per move
         const clampedDx = Math.max(-maxStep, Math.min(maxStep, dx));
         const clampedDy = Math.max(-maxStep, Math.min(maxStep, dy));
-        this.playerX = Math.max(20, Math.min(this.scale.width  - 20, this.playerX + clampedDx));
+        this.playerX = Math.max(20, Math.min(this.scale.width - 20, this.playerX + clampedDx));
         this.playerY = Math.max(20, Math.min(this.scale.height - 20, this.playerY + clampedDy));
         this.pointerX = this.playerX;
         this.pointerY = this.playerY;
@@ -320,10 +321,13 @@ function buildScene(cb: {
       }
 
       const prevLevel = this.shipLevel;
+      let killLevel = 0;
       for (let i = 0; i < this.KILLS_FOR_LEVEL.length; i++) {
-        if (this.kills >= this.KILLS_FOR_LEVEL[i]) this.shipLevel = i + 1;
+        if (this.kills >= this.KILLS_FOR_LEVEL[i]) killLevel = i + 1;
       }
-      this.shipLevel = Math.min(this.shipLevel, 3);
+      // Boss kills also upgrade the gun: 1 boss = lvl1, 3 bosses = lvl2, 6 = lvl3
+      let bossLevel = this.bossKills >= 6 ? 3 : this.bossKills >= 3 ? 2 : this.bossKills >= 1 ? 1 : 0;
+      this.shipLevel = Math.min(Math.max(killLevel, bossLevel), 3);
       if (this.shipLevel !== prevLevel) cb.onSizeChange(this.shipLevel);
 
       const dx = this.pointerX - this.playerX;
@@ -337,15 +341,18 @@ function buildScene(cb: {
       if (this.fireCd <= 0) { this.fireCd = this.FIRE_RATE; this.shootBullets(); cb.playBullet(); }
 
       this.waveTimer += delta;
-      const waveMs = Math.max(7000, 28000 - this.wave * 800);
+      // Waves shorten from 20s down to 5s as wave increases
+      const waveMs = Math.max(5000, 20000 - this.wave * 900);
       if (this.waveTimer >= waveMs) {
         this.waveTimer = 0; this.wave++;
         cb.onWave(this.wave);
-        if (this.wave % 5 === 0) cb.onBossWave(this.wave);
+        // Boss every 2 waves starting wave 2
+        if (this.wave >= 2 && this.wave % 2 === 0) cb.onBossWave(this.wave);
         this.spawnWave(W, H);
       }
 
-      const spawnRate = Math.max(350, 2200 - this.wave * 140);
+      // Spawn rate ramps quickly — dense from the start
+      const spawnRate = Math.max(250, 2000 - this.wave * 200);
       if (this._nextSpawn === undefined) this._nextSpawn = spawnRate;
       this._nextSpawn -= delta;
       if (this._nextSpawn <= 0) {
@@ -376,44 +383,122 @@ function buildScene(cb: {
       });
 
       const t = Date.now() / 1000;
+
+      // ── Targeting strength: 0 at wave 1, ramps to 1.0 at wave 10+ ──
+      // Wave 1-2: pure scripted movement (trackStrength=0)
+      // Wave 3+: enemies gradually steer toward the player
+      const trackStrength = Math.min(1.0, Math.max(0, (this.wave - 2) / 8));
+
       (this.enemies as any[]).forEach(e => {
         e.t += delta * 0.001;
+        const dt = delta / 16;
+
+        // Helper: blend scripted X-drift toward player X using trackStrength
+        // Returns the X delta to apply this frame
+        const trackX = (scriptedDx: number, trackPull: number = 1.2) => {
+          const toPlayerX = (this.playerX - e.x);
+          const steerX = Math.sign(toPlayerX) * Math.min(Math.abs(toPlayerX) * 0.04, trackPull);
+          return scriptedDx * (1 - trackStrength) + steerX * trackStrength;
+        };
+
+        // Helper: blend scripted Y-speed toward player Y
+        // As waves increase, enemies angle toward player instead of straight down
+        const trackY = (baseSpeed: number, trackPull: number = 1.0) => {
+          const toPlayerY = (this.playerY - e.y);
+          const steerY = Math.sign(toPlayerY) * Math.min(Math.abs(toPlayerY) * 0.04, trackPull);
+          const scriptedVy = baseSpeed;
+          return scriptedVy * (1 - trackStrength * 0.5) + steerY * trackStrength * 0.5;
+        };
+
         switch (e.type) {
-          case "basic": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 1.8 + e.phase) * 1.3; break;
-          case "fast": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 5.5 + e.phase) * 3.2; break;
-          case "tank": e.y += e.speed * (delta / 16); break;
+          case "basic":
+            e.y += trackY(e.speed) * dt;
+            e.x += trackX(Math.sin(e.t * 1.8 + e.phase) * 1.3) * dt;
+            break;
+
+          case "fast":
+            // Fast enemies: at high waves they dart directly at the player
+            e.y += trackY(e.speed, 1.8) * dt;
+            e.x += trackX(Math.sin(e.t * 5.5 + e.phase) * 3.2, 2.5) * dt;
+            break;
+
+          case "tank":
+            // Tank: slow straight-down early, bulldozes toward player later
+            e.y += trackY(e.speed, 0.7) * dt;
+            e.x += trackX(0, 0.8) * dt;
+            break;
+
           case "stealth":
-            e.y += e.speed * (delta / 16); e.x += Math.cos(e.t * 1.2 + e.phase) * 2.0;
-            e.alpha = 0.3 + 0.7 * Math.abs(Math.sin(e.t * 1.5)); break;
-          case "splitter": e.y += e.speed * (delta / 16); e.x += Math.sin(e.t * 2.5 + e.phase) * 1.8; break;
-          case "zigzag":
-            e.y += e.speed * (delta / 16);
+            e.y += trackY(e.speed) * dt;
+            e.x += trackX(Math.cos(e.t * 1.2 + e.phase) * 2.0) * dt;
+            e.alpha = 0.3 + 0.7 * Math.abs(Math.sin(e.t * 1.5));
+            break;
+
+          case "splitter":
+            e.y += trackY(e.speed) * dt;
+            e.x += trackX(Math.sin(e.t * 2.5 + e.phase) * 1.8) * dt;
+            break;
+
+          case "zigzag": {
             e.zigTimer = (e.zigTimer ?? 0) + delta;
-            if (e.zigTimer > 400 + Math.random() * 300) { e.zigTimer = 0; e.zigDir = -(e.zigDir ?? 1); }
-            e.x += (e.zigDir ?? 1) * e.speed * 1.6 * (delta / 16); break;
+            // At higher waves, shorten the zig interval so it flips more often
+            const zigInterval = Math.max(200, 400 - this.wave * 15) + Math.random() * 200;
+            if (e.zigTimer > zigInterval) { e.zigTimer = 0; e.zigDir = -(e.zigDir ?? 1); }
+            // Zigzag still zigzags but also curves toward player X at high waves
+            const zigDx = (e.zigDir ?? 1) * e.speed * 1.6;
+            e.y += trackY(e.speed) * dt;
+            e.x += trackX(zigDx, 2.0) * dt;
+            break;
+          }
+
           case "bomber":
-            e.y += e.speed * (delta / 16);
+            e.y += trackY(e.speed, 0.6) * dt;
+            e.x += trackX(0, 0.7) * dt;
             e.mineTimer = (e.mineTimer ?? 0) + delta;
             if (e.mineTimer > 1800) {
               e.mineTimer = 0;
               this.enemies.push({ x: e.x, y: e.y + 10, type: "mine", hp: 1, maxHp: 1, t: 0, phase: 0, speed: 0.4, alpha: 1 });
             }
             break;
-          case "mine": e.y += e.speed * (delta / 16); break;
+
+          case "mine": {
+            // Mines: early waves fall straight down; higher waves home toward player
+            const minePullY = trackY(e.speed, 0.5) * dt;
+            const minePullX = trackX(0, 0.5) * dt;
+            e.y += minePullY;
+            e.x += minePullX;
+            break;
+          }
+
           case "boss":
-            e.y = Math.min(e.y + e.speed * (delta / 16), H * 0.2);
-            e.x += Math.sin(e.t * 1.1) * 2.5;
+            e.y = Math.min(e.y + e.speed * dt, H * 0.2);
+            // Boss patrols side to side AND tracks player X more aggressively at higher waves
+            {
+              const bossPatrol = Math.sin(e.t * 1.1) * 2.5;
+              const bossTrackX = (this.playerX - e.x) * 0.012 * trackStrength;
+              e.x += bossPatrol * (1 - trackStrength * 0.4) + bossTrackX;
+            }
             e.shotTimer = (e.shotTimer ?? 0) + delta;
-            const bsr = Math.max(500, 2200 - this.wave * 90);
-            if (e.shotTimer >= bsr) {
-              e.shotTimer = 0;
-              for (let k = -1; k <= 1; k++) {
-                const ang = Math.atan2(this.playerY - e.y, this.playerX - e.x) + k * 0.3;
-                this.enemies.push({ x: e.x, y: e.y + 24, type: "enemyBullet", vx: Math.cos(ang) * 5.5, vy: Math.sin(ang) * 5.5, hp: 1, maxHp: 1, t: 0, phase: 0, speed: 0, alpha: 1 });
+            {
+              const bsr = Math.max(400, 2200 - this.wave * 90);
+              if (e.shotTimer >= bsr) {
+                e.shotTimer = 0;
+                // More spread angles and faster bullets at higher waves
+                const shots = this.wave >= 10 ? [-0.65, -0.38, -0.18, 0, 0.18, 0.38, 0.65]
+                  : this.wave >= 6 ? [-0.50, -0.25, 0, 0.25, 0.50]
+                  : [-0.3, 0, 0.3];
+                // Bullet speed and damage scale with wave
+                const bSpd = 5.5 + this.wave * 0.25;
+                const bDmg = 11 + this.wave * 2; // 11 at wave 1, 31 at wave 10, 51 at wave 20
+                shots.forEach(k => {
+                  const ang = Math.atan2(this.playerY - e.y, this.playerX - e.x) + k;
+                  this.enemies.push({ x: e.x, y: e.y + 24, type: "enemyBullet", vx: Math.cos(ang) * bSpd, vy: Math.sin(ang) * bSpd, dmg: bDmg, hp: 1, maxHp: 1, t: 0, phase: 0, speed: 0, alpha: 1 });
+                });
               }
             }
             break;
-          case "enemyBullet": e.x += e.vx * (delta / 16); e.y += e.vy * (delta / 16); break;
+
+          case "enemyBullet": e.x += e.vx * dt; e.y += e.vy * dt; break;
         }
         e.x = Math.max(-70, Math.min(W + 70, e.x));
       });
@@ -459,7 +544,8 @@ function buildScene(cb: {
         const hitR = e.type === "boss" ? 46 : e.type === "enemyBullet" ? 5 : e.type === "mine" ? 22 : 22;
         const shipR = 12 + this.shipLevel * 4;
         if (Math.hypot(e.x - this.playerX, e.y - this.playerY) < hitR + shipR) {
-          const dmg = e.type === "boss" ? 28 : e.type === "tank" ? 22 : e.type === "enemyBullet" ? 11 : e.type === "mine" ? 25 : e.type === "bomber" ? 18 : 14;
+          // enemyBullet uses its own dmg field (scaled by wave at spawn time)
+          const dmg = e.type === "enemyBullet" ? (e.dmg ?? 11) : e.type === "boss" ? 28 + this.wave * 2 : e.type === "tank" ? 22 : e.type === "mine" ? 25 : e.type === "bomber" ? 18 : 14;
           this.takeDamage(dmg);
           if (e.type === "enemyBullet") return false;
           if (e.type === "mine") { this.spawnExplosion(e.x, e.y, 50); this.shakeMag = 12; cb.playExplosion(); return false; }
@@ -574,15 +660,24 @@ function buildScene(cb: {
     }
 
     shootBullets(this: any) {
-      const spd = 16;
+      // Wave bonus: every 3 waves, effective gun level goes up (beyond ship level)
+      const waveBonus = Math.floor(this.wave / 4);
+      const effectiveLevel = Math.min(this.shipLevel + waveBonus, 4);
+      const spd = 16 + this.shipLevel * 1.5;
       const patterns: { angle: number; col: number }[][] = [
+        // Level 0: single
         [{ angle: -Math.PI / 2, col: 0x22d3ee }],
-        [{ angle: -Math.PI / 2 - 0.2, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.2, col: 0x22d3ee }],
-        [{ angle: -Math.PI / 2 - 0.28, col: 0x22d3ee }, { angle: -Math.PI / 2, col: 0xffffff }, { angle: -Math.PI / 2 + 0.28, col: 0x22d3ee }],
-        [{ angle: -Math.PI / 2 - 0.45, col: 0xa78bfa }, { angle: -Math.PI / 2 - 0.22, col: 0x22d3ee }, { angle: -Math.PI / 2, col: 0xffffff }, { angle: -Math.PI / 2 + 0.22, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.45, col: 0xa78bfa }],
+        // Level 1: dual
+        [{ angle: -Math.PI / 2 - 0.18, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.18, col: 0x22d3ee }],
+        // Level 2: triple
+        [{ angle: -Math.PI / 2 - 0.26, col: 0x22d3ee }, { angle: -Math.PI / 2, col: 0xffffff }, { angle: -Math.PI / 2 + 0.26, col: 0x22d3ee }],
+        // Level 3: 5-way
+        [{ angle: -Math.PI / 2 - 0.42, col: 0xa78bfa }, { angle: -Math.PI / 2 - 0.2, col: 0x22d3ee }, { angle: -Math.PI / 2, col: 0xffffff }, { angle: -Math.PI / 2 + 0.2, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.42, col: 0xa78bfa }],
+        // Level 4: 7-way (wave-scaled unlock)
+        [{ angle: -Math.PI / 2 - 0.60, col: 0xf97316 }, { angle: -Math.PI / 2 - 0.38, col: 0xa78bfa }, { angle: -Math.PI / 2 - 0.18, col: 0x22d3ee }, { angle: -Math.PI / 2, col: 0xffffff }, { angle: -Math.PI / 2 + 0.18, col: 0x22d3ee }, { angle: -Math.PI / 2 + 0.38, col: 0xa78bfa }, { angle: -Math.PI / 2 + 0.60, col: 0xf97316 }],
       ];
-      const pat = patterns[Math.min(this.shipLevel, 3)];
-      const dmg = 10 + this.shipLevel * 3;
+      const pat = patterns[Math.min(effectiveLevel, 4)];
+      const dmg = 10 + this.shipLevel * 4 + waveBonus * 2;
       pat.forEach(({ angle, col }) => {
         this.bullets.push({ x: this.playerX, y: this.playerY - 14, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, dmg, col });
       });
@@ -598,27 +693,27 @@ function buildScene(cb: {
     spawnEnemy(this: any, W: number, H: number) {
       const wave = this.wave;
       let pool: string[];
-      if (wave >= 12) pool = ["basic", "basic", "fast", "fast", "tank", "tank", "stealth", "splitter", "zigzag", "bomber", "boss"];
-      else if (wave >= 8) pool = ["basic", "basic", "fast", "fast", "tank", "stealth", "splitter", "zigzag", "bomber"];
-      else if (wave >= 5) pool = ["basic", "basic", "basic", "fast", "fast", "tank", "zigzag", "splitter"];
-      else if (wave >= 3) pool = ["basic", "basic", "basic", "fast", "fast", "zigzag"];
-      else pool = ["basic", "basic", "basic", "fast"];
+      if (wave >= 14) pool = ["basic", "fast", "fast", "tank", "tank", "stealth", "splitter", "zigzag", "bomber", "boss"];
+      else if (wave >= 10) pool = ["basic", "basic", "fast", "fast", "tank", "stealth", "splitter", "zigzag", "bomber"];
+      else if (wave >= 6) pool = ["basic", "basic", "basic", "fast", "fast", "tank", "zigzag", "splitter"];
+      else if (wave >= 3) pool = ["basic", "basic", "fast", "fast", "zigzag"];
+      else pool = ["basic", "basic", "fast", "fast"]; // fast enemies from wave 1
 
-      // Force boss wave on multiples of 5
-      if (wave % 5 === 0) pool = ["boss", "boss", "tank", "tank", "fast"];
+      // Boss every 2 waves from wave 2
+      if (wave >= 2 && wave % 2 === 0) pool = ["boss", "boss", "tank", "fast", "fast"];
 
       let type = pool[Math.floor(Math.random() * pool.length)];
       if (type === "boss" && (this.enemies as any[]).filter(e => e.type === "boss").length >= 2) type = "tank";
 
       const hpMap: Record<string, number> = {
-        basic: 25 + wave * 6, fast: 18 + wave * 4, tank: 80 + wave * 18,
-        stealth: 22 + wave * 5, splitter: 35 + wave * 7, zigzag: 20 + wave * 5,
-        bomber: 45 + wave * 10, boss: 280 + wave * 55,
+        basic: 30 + wave * 10, fast: 20 + wave * 7, tank: 100 + wave * 28,
+        stealth: 28 + wave * 8, splitter: 40 + wave * 11, zigzag: 25 + wave * 9,
+        bomber: 55 + wave * 15, boss: 400 + wave * 120,
       };
       const spdMap: Record<string, number> = {
-        basic: 1.5 + wave * 0.13, fast: 3.2 + wave * 0.22, tank: 0.85 + wave * 0.07,
-        stealth: 1.8 + wave * 0.14, splitter: 1.9 + wave * 0.15, zigzag: 2.1 + wave * 0.17,
-        bomber: 1.0 + wave * 0.08, boss: 0.55,
+        basic: 2.2 + wave * 0.22, fast: 4.0 + wave * 0.35, tank: 1.0 + wave * 0.12,
+        stealth: 2.5 + wave * 0.22, splitter: 2.4 + wave * 0.22, zigzag: 2.8 + wave * 0.28,
+        bomber: 1.4 + wave * 0.13, boss: 0.7 + wave * 0.04,
       };
       const hp = hpMap[type] ?? 25;
       this.enemies.push({
@@ -630,8 +725,9 @@ function buildScene(cb: {
     }
 
     spawnWave(this: any, W: number, H: number) {
-      const count = 4 + Math.min(this.wave * 2, 14);
-      for (let i = 0; i < count; i++) setTimeout(() => this.spawnEnemy(W, H), i * 180);
+      // More enemies per wave, start heavy, scale harder
+      const count = 7 + Math.min(this.wave * 3, 22);
+      for (let i = 0; i < count; i++) setTimeout(() => this.spawnEnemy(W, H), i * 120);
       const puType = Math.random() < 0.45 ? "hp" : Math.random() < 0.5 ? "shield" : "rapid";
       this.powerups.push({ x: 50 + Math.random() * (W - 100), y: -24, type: puType, rot: 0 });
     }
@@ -639,6 +735,7 @@ function buildScene(cb: {
     killEnemy(this: any, e: any, W: number, H: number) {
       const pts = e.type === "boss" ? 600 : e.type === "tank" ? 180 : e.type === "bomber" ? 140 : e.type === "splitter" ? 120 : e.type === "stealth" ? 100 : e.type === "zigzag" ? 80 : e.type === "fast" ? 60 : 40;
       this.score += pts; this.kills++;
+      if (e.type === "boss") this.bossKills++;
       cb.onScore(pts); cb.onKill();
       this.spawnExplosion(e.x, e.y, e.type === "boss" ? 90 : e.type === "tank" ? 55 : 32);
       if (e.type === "boss") this.shakeMag = 30;
@@ -835,7 +932,7 @@ function buildScene(cb: {
     resetGame(this: any) {
       const W = this.scale.width as number;
       const H = this.scale.height as number;
-      this.playerHP = 100; this.playerShield = 0; this.shipLevel = 0; this.kills = 0;
+      this.playerHP = 100; this.playerShield = 0; this.shipLevel = 0; this.kills = 0; this.bossKills = 0;
       this.wave = 1; this.score = 0; this.elapsed = 0; this.timerTick = 0; this.waveTimer = 0;
       this.fireCd = 0; this.FIRE_RATE = 175;
       this.missileCd = false; this.missileCdTimer = 0;
@@ -913,7 +1010,7 @@ export default function SpaceShooterPage() {
     ]).then(([lbR, hR]) => {
       if (lbR?.success) setLb(lbR.data.slice(0, 8));
       if (hR?.success && hR.data?.length) {
-        setHist(hR.data.map((g: any) => ({ id: g.id, score: g.score, wave: g.wave, kills: g.kills, survivalTime: g.survivalTime, date: new Date(g.createdAt) })));
+        setHist(hR.data.map((g: any) => ({ id: g.id, score: g.score, wave: g.wave, kills: g.kills, survivalTime: g.survivalTime, xpEarned: g.xpEarned ?? 0, date: new Date(g.createdAt) })));
       }
     }).catch(console.error).finally(() => setLbLoad(false));
   }, [user]);
@@ -951,23 +1048,22 @@ export default function SpaceShooterPage() {
         const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
         let w: number, h: number;
         if (isFull) {
-          const vw = window.innerWidth  || window.screen.width  || 400;
+          const vw = window.innerWidth || window.screen.width || 400;
           const vh = window.innerHeight || window.screen.height || 600;
-          const isPortrait = vh > vw;
+          const isPortrait = vh > vw && vw <= 680;
           if (isPortrait) {
-            // Portrait mobile fullscreen: canvas is CSS-constrained to 9:16 centred in viewport
-            // Calculate the actual rendered canvas size to match
+            // Portrait mobile: pillarboxed 9:16
             h = vh;
             w = Math.round(h * 9 / 16);
             if (w > vw) { w = vw; h = Math.round(w * 16 / 9); }
           } else {
-            // Landscape / desktop: fill full screen
+            // Desktop / landscape: fill entire screen
             w = vw;
             h = vh;
           }
         } else {
           const rect = container.getBoundingClientRect();
-          w = Math.round(rect.width)  || container.offsetWidth  || 400;
+          w = Math.round(rect.width) || container.offsetWidth || 400;
           h = Math.round(rect.height) || container.offsetHeight || w;
         }
         if (w < 10 || h < 10) return;
@@ -1006,7 +1102,8 @@ export default function SpaceShooterPage() {
   const endGame = useCallback(async () => {
     if (!mutedRef.current) playDieSfx(audioRef.current);
     const sc = scoreRef.current, kl = killsRef.current, wv = waveRef.current, el = elapsedRef.current;
-    const xp = Math.min(Math.floor(el / 3) + kl * 2, 2000);
+    const bossesSpawned = Math.floor(Math.max(0, wv - 2) / 2); // boss every 2 waves
+    const xp = Math.min(Math.floor(kl * 2 + wv * 20 + el * 0.5 + bossesSpawned * 50), 5000);
     setStatus("over"); statusRef.current = "over";
     // Auto-exit fullscreen on game over
     if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { } }
@@ -1021,12 +1118,13 @@ export default function SpaceShooterPage() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: currentSessionId, score: sc, wave: wv, kills: kl, survivalTime: el }),
         });
+        let finalXpEarned = xp;
         if (res.ok) {
           const data = await res.json();
-          if (data.xpEarned !== undefined) { setFinalXP(data.xpEarned); setSessionScore(s => s - xp + data.xpEarned); }
+          if (data.xpEarned !== undefined) { finalXpEarned = data.xpEarned; setFinalXP(data.xpEarned); setSessionScore(s => s - xp + data.xpEarned); }
           fetchLbAndHist();
         }
-        setHist(prev => [{ id: crypto.randomUUID(), score: sc, wave: wv, kills: kl, survivalTime: el, date: new Date() }, ...prev].slice(0, 20));
+        setHist(prev => [{ id: crypto.randomUUID(), score: sc, wave: wv, kills: kl, survivalTime: el, xpEarned: finalXpEarned, date: new Date() }, ...prev].slice(0, 20));
       } catch (e) { console.error("[space-shooter] endGame failed:", e); }
       finally { setSaving(false); }
     }
@@ -1051,10 +1149,7 @@ export default function SpaceShooterPage() {
       onHpChange: h => setHp(h),
       onShieldChange: s => setShield(s),
       onSizeChange: l => setShipLevel(l),
-      onBossWave: w => {
-        setBossWave(w);
-        setTimeout(() => setBossWave(null), 4000);
-      },
+      onBossWave: (_w) => { /* silent — boss popup removed */ },
       getStatus: () => statusRef.current,
       triggerDie: () => endGameRef.current?.(),
       playBullet: () => { if (!mutedRef.current) playBulletSfx(audioRef.current); },
@@ -1065,7 +1160,7 @@ export default function SpaceShooterPage() {
     import("phaser").then(({ default: Phaser }) => {
       if (gameRef.current) { gameRef.current.destroy(true); gameRef.current = null; }
       const rect = el.getBoundingClientRect();
-      const initW = Math.round(rect.width)  || el.offsetWidth  || 400;
+      const initW = Math.round(rect.width) || el.offsetWidth || 400;
       const initH = Math.round(rect.height) || el.offsetHeight || initW;
       const game = new Phaser.Game({
         type: Phaser.AUTO,
@@ -1139,7 +1234,7 @@ export default function SpaceShooterPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
-        if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+        if (document.fullscreenElement) { document.exitFullscreen().catch(() => { }); return; }
       }
       if (e.code === "KeyP" || e.code === "Pause") {
         if (statusRef.current === "playing" || statusRef.current === "paused") { e.preventDefault(); togglePause(); }
@@ -1212,7 +1307,7 @@ export default function SpaceShooterPage() {
 
         {/* Wave announce */}
         <AnimatePresence>
-          {waveAnnounce && !bossWave && (
+          {waveAnnounce && (
             <motion.div key={`wm${waveAnnounce}`} initial={{ opacity: 0, y: -40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ type: "spring", damping: 14 }}
               style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 40, pointerEvents: "none", padding: "8px 24px", borderRadius: 10, background: "rgba(4,8,24,0.92)", border: "1px solid rgba(34,211,238,0.5)" }}>
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 900, color: "#22d3ee", letterSpacing: "0.2em" }}>WAVE {waveAnnounce}</span>
@@ -1228,7 +1323,7 @@ export default function SpaceShooterPage() {
             {/* Left: HP bar */}
             <div style={{ flex: 1, background: "rgba(2,8,23,0.7)", border: `1px solid ${hcM}40`, borderRadius: 8, padding: "4px 8px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.1em" }}>HULL</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.1em" }}>HULL</span>
                 <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: hcM }}>{hp}%</span>
               </div>
               <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
@@ -1237,9 +1332,9 @@ export default function SpaceShooterPage() {
             </div>
             {/* Center: score/wave/kills */}
             <div style={{ display: "flex", gap: 6 }}>
-              {[{l:"SCR",v:score.toLocaleString(),c:"#22d3ee"},{l:"W",v:wave,c:"#a78bfa"},{l:"K",v:kills,c:"#f97316"}].map(s=>(
+              {[{ l: "SCR", v: score.toLocaleString(), c: "#22d3ee" }, { l: "W", v: wave, c: "#a78bfa" }, { l: "K", v: kills, c: "#f97316" }].map(s => (
                 <div key={s.l} style={{ textAlign: "center", minWidth: 36 }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155", letterSpacing: "0.1em" }}>{s.l}</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#94a3b8", letterSpacing: "0.1em" }}>{s.l}</div>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
                 </div>
               ))}
@@ -1247,7 +1342,7 @@ export default function SpaceShooterPage() {
             {/* Right: time + mute */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155" }}>TIME</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#94a3b8" }}>TIME</div>
                 <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f59e0b" }}>{fmt(elapsed)}</div>
               </div>
               <button onClick={() => setMuted(m => !m)} style={{ background: "rgba(15,23,42,0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 6px", color: muted ? "#475569" : "#22d3ee", fontSize: 14, cursor: "pointer", pointerEvents: "auto" }}>
@@ -1268,7 +1363,7 @@ export default function SpaceShooterPage() {
                 <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#475569", letterSpacing: "0.2em", fontWeight: 600, marginTop: 4 }}>SURVIVE · GROW · DESTROY</div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 320 }}>
-                {[["SWIPE", "MOVE", "#22d3ee"],["DOUBLE TAP", "MISSILE", "#f97316"],["PAUSE BTN", "PAUSE", "#f59e0b"],["KILL ENEMIES", "LEVEL UP", "#a78bfa"]].map(([k,v,c])=>(
+                {[["SWIPE", "MOVE", "#22d3ee"], ["DOUBLE TAP", "MISSILE", "#f97316"], ["PAUSE BTN", "PAUSE", "#f59e0b"], ["KILL ENEMIES", "LEVEL UP", "#a78bfa"]].map(([k, v, c]) => (
                   <div key={k} style={{ padding: "8px 10px", borderRadius: 8, background: `${c}12`, border: `1px solid ${c}35` }}>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: c, letterSpacing: "0.1em", marginBottom: 2 }}>{k}</div>
                     <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, color: "#64748b" }}>{v}</div>
@@ -1302,7 +1397,7 @@ export default function SpaceShooterPage() {
               <motion.div initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 8 }} style={{ fontSize: 52, filter: "drop-shadow(0 0 20px rgba(239,68,68,0.8))" }}>💥</motion.div>
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 22, fontWeight: 900, color: "#ef4444" }}>SHIP DESTROYED</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, width: "100%", maxWidth: 320 }}>
-                {[["SCORE",finalScore.toLocaleString(),"#22d3ee"],["KILLS",finalKills,"#f97316"],["XP",`+${finalXP}`,"#f59e0b"]].map(([l,v,c])=>(
+                {[["SCORE", finalScore.toLocaleString(), "#22d3ee"], ["KILLS", finalKills, "#f97316"], ["XP", `+${finalXP}`, "#f59e0b"]].map(([l, v, c]) => (
                   <div key={String(l)} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 10, background: `${c}11`, border: `1px solid ${c}33` }}>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#475569", marginBottom: 4 }}>{l}</div>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 18, fontWeight: 900, color: String(c) }}>{v}</div>
@@ -1328,7 +1423,7 @@ export default function SpaceShooterPage() {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 20, padding: "8px 12px 14px", background: "linear-gradient(to top,rgba(2,8,23,0.92) 0%,transparent 100%)", display: "flex", gap: 10, alignItems: "center" }}>
             {/* Shield indicator */}
             <div style={{ flex: "0 0 56px", background: "rgba(2,8,23,0.8)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 10, padding: "6px 0", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#334155", marginBottom: 2 }}>SHIELD</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#94a3b8", marginBottom: 2 }}>SHIELD</div>
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 14, fontWeight: 900, color: "#22d3ee" }}>{shield}</div>
             </div>
             {/* Missile button */}
@@ -1339,7 +1434,7 @@ export default function SpaceShooterPage() {
                 <div style={{ position: "absolute", bottom: 0, left: 0, width: `${missilePct * 100}%`, height: 3, background: "#f97316", boxShadow: "0 0 8px #f97316", transition: "width 0.1s linear" }} />
               )}
               <span style={{ fontSize: 24 }}>🚀</span>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: missileReady && isPlaying ? "#f97316" : "#334155" }}>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: missileReady && isPlaying ? "#f97316" : "#94a3b8" }}>
                 {missileReady ? "MISSILE" : "RELOADING"}
               </span>
               <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569" }}>DOUBLE-TAP</span>
@@ -1348,7 +1443,7 @@ export default function SpaceShooterPage() {
             <motion.button onClick={togglePause} whileTap={{ scale: 0.93 }}
               style={{ flex: "0 0 64px", padding: "14px 0", borderRadius: 14, background: isPaused ? "rgba(245,158,11,0.2)" : "rgba(15,23,42,0.7)", border: `2px solid ${isPaused ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.1)"}`, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 22 }}>{isPaused ? "▶️" : "⏸️"}</span>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#334155" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#94a3b8" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
             </motion.button>
           </div>
         )}
@@ -1378,22 +1473,6 @@ export default function SpaceShooterPage() {
         )}
       </AnimatePresence>
 
-      {/* Boss wave overlay */}
-      <AnimatePresence>
-        {bossWave && (
-          <motion.div key="boss" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2, y: -30 }} transition={{ type: "spring", damping: 10, stiffness: 200 }}
-            style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ textAlign: "center", padding: "24px 40px", borderRadius: 20, background: "rgba(4,4,20,0.92)", border: "2px solid rgba(249,115,22,0.8)", boxShadow: "0 0 60px rgba(249,115,22,0.4), inset 0 0 30px rgba(249,115,22,0.08)" }}>
-              <motion.div animate={{ scale: [1, 1.12, 1], filter: ["drop-shadow(0 0 10px #f97316)", "drop-shadow(0 0 30px #f97316)", "drop-shadow(0 0 10px #f97316)"] }} transition={{ duration: 0.8, repeat: Infinity }}
-                style={{ fontSize: 52, lineHeight: 1, marginBottom: 8 }}>👹</motion.div>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,5vw,30px)", fontWeight: 900, color: "#f97316", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(249,115,22,0.8)" }}>BOSS WAVE</div>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(24px,6vw,40px)", fontWeight: 900, color: "#fff", marginTop: 4 }}>WAVE {bossWave}</div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, color: "#f59e0b", marginTop: 8, fontWeight: 600, letterSpacing: "0.2em" }}>⚠ BOSS INCOMING — BRACE YOURSELF ⚠</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Wave announce banner */}
       <AnimatePresence>
         {waveAnnounce && !bossWave && (
@@ -1416,7 +1495,7 @@ export default function SpaceShooterPage() {
             <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,5vw,46px)", fontWeight: 900, color: "#f8fafc", textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", lineHeight: 1, margin: 0 }}>
               STAR <span style={{ color: "#22d3ee", textShadow: "0 0 20px rgba(34,211,238,0.5)" }}>SIEGE</span>
             </h1>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>SURVIVE · GROW · DESTROY</p>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 4 }}>SURVIVE · GROW · DESTROY</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setMuted(m => !m)}
@@ -1424,7 +1503,7 @@ export default function SpaceShooterPage() {
               {muted ? "🔇" : "🔊"}
             </button>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#334155", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>SESSION XP</div>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 3 }}>SESSION XP</div>
               <motion.div key={sessionScore} initial={{ scale: 1.3, color: "#fff" }} animate={{ scale: 1, color: "#22d3ee" }}
                 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(20px,4vw,26px)", fontWeight: 900, filter: "drop-shadow(0 0 10px rgba(34,211,238,0.4))" }}>
                 {sessionScore.toLocaleString()}
@@ -1443,7 +1522,7 @@ export default function SpaceShooterPage() {
           { label: "TIME", val: (isPlaying || isPaused || isOver) ? fmt(elapsed) : "--:--", col: "#f59e0b" },
         ].map(s => (
           <div key={s.label} style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "10px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, fontWeight: 700, color: "#334155", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em", textTransform: "uppercase" }}>{s.label}</span>
             <motion.span key={String(s.val)} initial={{ scale: 1.2, y: -3 }} animate={{ scale: 1, y: 0 }}
               style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(12px,3.2vw,20px)", fontWeight: 900, color: s.col, filter: `drop-shadow(0 0 5px ${s.col}80)`, lineHeight: 1 }}>
               {s.val}
@@ -1462,7 +1541,7 @@ export default function SpaceShooterPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <Rocket style={{ width: 10, height: 10, color: hpColor }} />
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>HULL</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>HULL</span>
                   </div>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: hpColor }}>{hp}%</span>
                 </div>
@@ -1475,7 +1554,7 @@ export default function SpaceShooterPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <Shield style={{ width: 10, height: 10, color: "#22d3ee" }} />
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>SHIELD</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>SHIELD</span>
                   </div>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: "#22d3ee" }}>{shield}</span>
                 </div>
@@ -1489,7 +1568,7 @@ export default function SpaceShooterPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 12 }}>🚀</span>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>SHIP CLASS</span>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.2em" }}>SHIP CLASS</span>
                 </div>
                 <motion.span key={shipLevelLabel} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
                   style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 900, color: shipLevelColor, textShadow: `0 0 8px ${shipLevelColor}` }}>
@@ -1580,9 +1659,9 @@ export default function SpaceShooterPage() {
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 15 }}>
               <div style={{ position: "absolute", inset: 0, border: "2px solid rgba(34,211,238,0.45)", borderRadius: 0 }} />
               {[["top:12px;left:12px;border-top:3px solid #22d3ee;border-left:3px solid #22d3ee", "0s"],
-                ["top:12px;right:12px;border-top:3px solid #22d3ee;border-right:3px solid #22d3ee", "0.5s"],
-                ["bottom:12px;left:12px;border-bottom:3px solid #22d3ee;border-left:3px solid #22d3ee", "1s"],
-                ["bottom:12px;right:12px;border-bottom:3px solid #22d3ee;border-right:3px solid #22d3ee", "1.5s"]].map(([s, delay], i) => (
+              ["top:12px;right:12px;border-top:3px solid #22d3ee;border-right:3px solid #22d3ee", "0.5s"],
+              ["bottom:12px;left:12px;border-bottom:3px solid #22d3ee;border-left:3px solid #22d3ee", "1s"],
+              ["bottom:12px;right:12px;border-bottom:3px solid #22d3ee;border-right:3px solid #22d3ee", "1.5s"]].map(([s, delay], i) => (
                 <div key={i} style={{ position: "absolute", width: 30, height: 30, ...Object.fromEntries(s.split(";").map(p => { const [k, v] = p.split(":"); return [k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v.trim()]; })), animation: `ssCornerPulse 2s infinite ${delay}` } as any} />
               ))}
               <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "rgba(34,211,238,0.7)", letterSpacing: "0.3em", background: "rgba(2,8,23,0.7)", padding: "3px 12px", borderRadius: 4, border: "1px solid rgba(34,211,238,0.2)" }}>STAR SIEGE</div>
@@ -1617,7 +1696,7 @@ export default function SpaceShooterPage() {
 
           {/* Sci-fi border frame */}
           {(() => {
-            const fc = isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#334155";
+            const fc = isOver ? "#ef4444" : isPaused ? "#f59e0b" : isPlaying ? "#22d3ee" : "#94a3b8";
             const fa = isOver ? 0.9 : isPlaying || isPaused ? 1 : 0.5;
             const cL = 38, cT = 3, edgeO = 0.22;
             const hex = (n: number) => Math.round(n * 255).toString(16).padStart(2, "0");
@@ -1670,7 +1749,7 @@ export default function SpaceShooterPage() {
                   <p style={{ margin: 0, fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(14px,4vw,20px)", fontWeight: 900, color: "#f8fafc", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(34,211,238,0.6)" }}>STAR SIEGE</p>
                   <p style={{ margin: "4px 0 0", fontFamily: "'Rajdhani',sans-serif", fontSize: "clamp(9px,2.5vw,11px)", color: "#475569", letterSpacing: "0.2em", fontWeight: 600 }}>SURVIVE · GROW YOUR SHIP · DESTROY THE SWARM</p>
                 </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                   {[["MOUSE / SWIPE", "MOVE SHIP", "#22d3ee"], ["RIGHT-CLICK / SPACE", "MISSILE STRIKE", "#f97316"], ["DOUBLE TAP", "MISSILE (MOBILE)", "#f97316"], ["P KEY", "PAUSE / RESUME", "#f59e0b"], ["F KEY", "FULLSCREEN", "#a78bfa"]].map(([k, v, c]) => (
                     <div key={k} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <div style={{ padding: "1px 6px", borderRadius: 4, background: `${c}12`, border: `1px solid ${c}35`, fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: c }}>{k}</div>
@@ -1724,7 +1803,7 @@ export default function SpaceShooterPage() {
                 style={{ position: "absolute", bottom: 10, left: 10, right: 10, zIndex: 10, pointerEvents: "none", display: "flex", gap: 6 }}>
                 <div style={{ flex: 1, background: "rgba(2,8,23,0.82)", border: `1px solid ${hp > 60 ? "rgba(34,211,238,0.45)" : hp > 30 ? "rgba(245,158,11,0.45)" : "rgba(239,68,68,0.6)"}`, borderRadius: 8, padding: "5px 8px", backdropFilter: "blur(8px)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(5px,1.8vw,8px)", fontWeight: 700, color: "#334155", letterSpacing: "0.12em" }}>HULL</span>
+                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(5px,1.8vw,8px)", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.12em" }}>HULL</span>
                     <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(6px,2vw,9px)", fontWeight: 900, color: hp > 60 ? "#22d3ee" : hp > 30 ? "#f59e0b" : "#ef4444" }}>{hp}%</span>
                   </div>
                   <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
@@ -1732,11 +1811,11 @@ export default function SpaceShooterPage() {
                   </div>
                 </div>
                 <div style={{ width: 54, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(34,211,238,0.3)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>SHIELD</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#94a3b8", letterSpacing: "0.08em", marginBottom: 2 }}>SHIELD</div>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#22d3ee" }}>{shield}</div>
                 </div>
                 <div style={{ width: 52, background: "rgba(2,8,23,0.82)", border: "1px solid rgba(249,115,22,0.35)", borderRadius: 8, padding: "5px 7px", backdropFilter: "blur(8px)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#334155", letterSpacing: "0.08em", marginBottom: 2 }}>KILLS</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(4px,1.4vw,7px)", color: "#94a3b8", letterSpacing: "0.08em", marginBottom: 2 }}>KILLS</div>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(7px,2.2vw,11px)", fontWeight: 900, color: "#f97316" }}>{kills}</div>
                 </div>
               </motion.div>
@@ -1753,7 +1832,7 @@ export default function SpaceShooterPage() {
               <motion.div animate={{ width: `${missilePct * 100}%` }} style={{ position: "absolute", bottom: 0, left: 0, height: 3, background: "#f97316", boxShadow: "0 0 8px #f97316", transition: "width 0.1s linear" }} />
             )}
             <span style={{ fontSize: 22 }}>🚀</span>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: missileReady && isPlaying ? "#f97316" : "#334155", letterSpacing: "0.15em" }}>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 900, color: missileReady && isPlaying ? "#f97316" : "#94a3b8", letterSpacing: "0.15em" }}>
               {missileReady ? "MISSILE" : "RELOADING"}
             </span>
             <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#475569" }}>RIGHT-CLICK · SPACE · DOUBLE-TAP</span>
@@ -1764,13 +1843,13 @@ export default function SpaceShooterPage() {
             disabled={!isPlaying && !isPaused}
             style={{ width: 72, padding: "14px 0", borderRadius: 14, background: isPaused ? "rgba(245,158,11,0.18)" : "rgba(15,23,42,0.5)", border: `2px solid ${isPaused ? "rgba(245,158,11,0.7)" : "rgba(255,255,255,0.08)"}`, cursor: isPlaying || isPaused ? "pointer" : "not-allowed", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, transition: "all 0.3s" }}>
             <span style={{ fontSize: 20 }}>{isPaused ? "▶️" : "⏸️"}</span>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#334155", letterSpacing: "0.1em" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: isPaused ? "#f59e0b" : "#94a3b8", letterSpacing: "0.1em" }}>{isPaused ? "RESUME" : "PAUSE"}</span>
           </motion.button>
 
           <div className="ss-auto-ind" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <Target style={{ width: 14, height: 14, color: "#334155" }} />
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#1e293b", letterSpacing: "0.1em" }}>AUTO</span>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isPlaying ? "#22d3ee" : "#1e293b", boxShadow: isPlaying ? "0 0 8px #22d3ee" : "none", animation: isPlaying ? "ssPulse 0.8s infinite" : "none" }} />
+            <Target style={{ width: 14, height: 14, color: "#94a3b8" }} />
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#64748b", letterSpacing: "0.1em" }}>AUTO</span>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isPlaying ? "#22d3ee" : "#64748b", boxShadow: isPlaying ? "0 0 8px #22d3ee" : "none", animation: isPlaying ? "ssPulse 0.8s infinite" : "none" }} />
           </div>
         </div>
 
@@ -1787,11 +1866,11 @@ export default function SpaceShooterPage() {
                   <div>
                     <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(11px,3vw,15px)", fontWeight: 900, color: "#f97316" }}>MISSION COMPLETE</div>
                     <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, color: "#22d3ee", fontWeight: 600, marginTop: 1 }}>WAVE {wave} · {finalKills} KILLS · {fmt(elapsed)} SURVIVED</div>
-                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: "#475569", marginTop: 2 }}>XP = {Math.floor(elapsed / 3)} survival + {finalKills * 2} kill bonus</div>
+                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 9, color: "#475569", marginTop: 2 }}>XP = {Math.floor(finalKills * 5)} kills + {wave * 20} wave + {Math.floor(elapsed * 0.5)} survival + {Math.floor(Math.max(0, wave - 2) / 3) * 50} boss</div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#334155", letterSpacing: "0.2em", marginBottom: 2 }}>TOTAL XP</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: "#94a3b8", letterSpacing: "0.2em", marginBottom: 2 }}>TOTAL XP</div>
                   <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", damping: 9, delay: 0.2 }}
                     style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,7vw,42px)", fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 16px rgba(245,158,11,0.65))", lineHeight: 1 }}>
                     +{finalXP}
@@ -1834,14 +1913,14 @@ export default function SpaceShooterPage() {
       </div>
 
       {/* LEADERBOARD */}
-      <div className="ss-section" style={{ marginTop: 28, maxWidth: 680, margin: "28px auto 0" }}>
+      <div className="ss-section" style={{ marginTop: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#f59e0b,#ef4444)", borderRadius: 1 }} />
           <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.3em", textTransform: "uppercase" }}>TOP PILOTS</span>
         </div>
         <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
           <div className="ss-lb-head" style={{ display: "grid", gridTemplateColumns: "44px 1fr 100px 68px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-            {["RANK", "PILOT", "HIGH SCORE", "XP"].map(h => <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>)}
+            {["RANK", "PILOT", "HIGH SCORE", "XP"].map(h => <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>)}
           </div>
           {lbLoad ? (
             <div style={{ padding: "12px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1849,7 +1928,7 @@ export default function SpaceShooterPage() {
             </div>
           ) : lb.length === 0 ? (
             <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <Grid3X3 style={{ width: 22, height: 22, color: "#334155", margin: "0 auto 8px" }} />
+              <Grid3X3 style={{ width: 22, height: 22, color: "#94a3b8", margin: "0 auto 8px" }} />
               <p style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569", letterSpacing: "0.15em" }}>NO PILOTS YET — BE FIRST!</p>
             </div>
           ) : lb.map((e, i) => {
@@ -1859,9 +1938,14 @@ export default function SpaceShooterPage() {
                 className="ss-lb-head"
                 style={{ display: "grid", gridTemplateColumns: "44px 1fr 100px 68px", gap: 10, padding: "11px 18px", borderBottom: i < lb.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center", background: top3 ? `rgba(${i === 0 ? "245,158,11" : i === 1 ? "148,163,184" : "180,83,9"},0.04)` : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{rankIcon(i)}</div>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#475569", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#f97316" }}>{(e.highScore ?? 0).toLocaleString()}</span>
-                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: "#22d3ee" }}>{(e.totalXp ?? 0).toLocaleString()}</span>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: top3 ? "#f8fafc" : "#94a3b8", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.user.username}</span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#a78bfa" }}>{(e.highScore ?? 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: top3 ? rankColor : "#a78bfa" }}>{(e.totalXp ?? 0).toLocaleString()}</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>
+                </div>
               </motion.div>
             );
           })}
@@ -1876,8 +1960,13 @@ export default function SpaceShooterPage() {
                 <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 6, color: "#6366f1", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 1 }}>YOU</div>
                 <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#f8fafc" }}>{user.username}</div>
               </div>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: "#f97316" }}>{finalScore > 0 ? finalScore.toLocaleString() : "—"}</span>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: "#22d3ee" }}>{sessionScore > 0 ? sessionScore.toLocaleString() : "—"}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{finalScore > 0 ? finalScore.toLocaleString() : "—"}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f59e0b" }}>{sessionScore > 0 ? sessionScore.toLocaleString() : "—"}</span>
+                {sessionScore > 0 && <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 8, color: "#94a3b8", fontWeight: 600 }}>XP</span>}
+              </div>
             </div>
           )}
         </div>
@@ -1886,23 +1975,24 @@ export default function SpaceShooterPage() {
       {/* MISSION LOG */}
       <AnimatePresence>
         {hist.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="ss-section" style={{ marginTop: 28, maxWidth: 680, margin: "28px auto 0" }}>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="ss-section" style={{ marginTop: 28 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{ width: 22, height: 2, background: "linear-gradient(90deg,#22d3ee,#6366f1)", borderRadius: 1 }} />
               <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700, color: "#22d3ee", letterSpacing: "0.3em", textTransform: "uppercase" }}>MISSION LOG</span>
             </div>
             <div style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
-              <div className="ss-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 70px 70px 70px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                {["SCORE", "KILLS", "WAVE", "TIME", "WHEN"].map(h => <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#475569", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>)}
+              <div className="ss-hist-head" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 60px 60px", gap: 10, padding: "9px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                {["SCORE", "KILLS", "WAVE", "XP", "TIME", "WHEN"].map(h => <span key={h} style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.25em", textTransform: "uppercase" }}>{h}</span>)}
               </div>
               {hist.map((r, i) => (
                 <motion.div key={r.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                   className="ss-hist-head ss-hist-row"
-                  style={{ display: "grid", gridTemplateColumns: "1fr 1fr 70px 70px 70px", gap: 10, padding: "11px 18px", borderBottom: i < hist.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
+                  style={{ display: "grid", gridTemplateColumns: "1fr 1fr 60px 60px 60px 60px", gap: 10, padding: "11px 18px", borderBottom: i < hist.length - 1 ? "1px solid rgba(255,255,255,0.03)" : "none", alignItems: "center" }}>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#22d3ee" }}>{r.score.toLocaleString()}</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f97316" }}>{r.kills}</span>
                   <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#a78bfa" }}>{r.wave}</span>
-                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b" }}>{fmt(r.survivalTime)}</span>
+                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#f59e0b", filter: "drop-shadow(0 0 4px rgba(245,158,11,0.5))" }}>+{r.xpEarned}</span>
+                  <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{fmt(r.survivalTime)}</span>
                   <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{r.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </motion.div>
               ))}
@@ -1954,26 +2044,27 @@ export default function SpaceShooterPage() {
           align-items: center !important;
           justify-content: center !important;
         }
-        /* Canvas: portrait on mobile (fills height), landscape on desktop (fills width) */
+        /* Canvas in fullscreen: always fill the entire screen (desktop + landscape) */
         .ss-game-wrapper:fullscreen .ss-canvas-container,
         .ss-game-wrapper:-webkit-full-screen .ss-canvas-container,
         .ss-game-wrapper:-moz-full-screen .ss-canvas-container {
-          position: relative !important;
-          inset: unset !important;
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
           min-height: unset !important;
-          /* Portrait phones: fill height, maintain 9:16 aspect */
-          height: 100vh !important;
-          width: auto !important;
-          aspect-ratio: 9 / 16 !important;
-          max-width: 100vw !important;
+          aspect-ratio: unset !important;
+          max-width: unset !important;
         }
-        /* Landscape / desktop: fill width instead */
-        @media (orientation: landscape) {
+        /* Portrait phones in fullscreen: pillarbox to 9:16 */
+        @media (orientation: portrait) and (max-width: 680px) {
           .ss-game-wrapper:fullscreen .ss-canvas-container,
           .ss-game-wrapper:-webkit-full-screen .ss-canvas-container {
+            position: relative !important;
+            inset: unset !important;
             height: 100vh !important;
             width: auto !important;
-            aspect-ratio: unset !important;
+            aspect-ratio: 9 / 16 !important;
             max-width: 100vw !important;
           }
         }
@@ -1989,8 +2080,8 @@ export default function SpaceShooterPage() {
           .ss-lb-head { grid-template-columns: 36px 1fr 90px !important; gap: 6px !important; padding: 9px 12px !important; }
           .ss-lb-head > *:nth-child(4) { display: none !important; }
           /* History: score + kills + wave only */
-          .ss-hist-head { grid-template-columns: 1fr 60px 50px !important; gap: 6px !important; padding: 9px 12px !important; }
-          .ss-hist-row > *:nth-child(4), .ss-hist-row > *:nth-child(5) { display: none !important; }
+          .ss-hist-head { grid-template-columns: 1fr 50px 40px 50px !important; gap: 6px !important; padding: 9px 12px !important; }
+          .ss-hist-row > *:nth-child(5), .ss-hist-row > *:nth-child(6) { display: none !important; }
           /* In-canvas HUD bar */
           .ss-hud-bar { bottom: 6px !important; left: 6px !important; right: 6px !important; gap: 4px !important; }
           /* Auto-fire indicator: hide */

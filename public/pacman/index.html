@@ -96,6 +96,31 @@
 
       document.addEventListener('DOMContentLoaded', watchForLogo);
 
+      /* ─── Patch content.json nickname with real username ──────────────── */
+      var _origFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        return _origFetch.call(this, url, opts).then(function(res) {
+          var urlStr = (typeof url === 'string' ? url : (url.url || ''));
+          if (urlStr.indexOf('content.json') !== -1) {
+            return res.clone().json().then(function(data) {
+              // Try URL param first (set before game loads), then window var
+              var params = new URLSearchParams(window.location.search);
+              var name = (params.get('username') || window.__pacmanUsername || '').trim().toUpperCase();
+              if (name && data && data.content) {
+                data.content.nickname = name;
+              }
+              var patched = JSON.stringify(data);
+              return new Response(patched, {
+                status: res.status,
+                statusText: res.statusText,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            });
+          }
+          return res;
+        });
+      };
+
       /* ─── postMessage bridge (Quit & Save) ──────────────────────────── */
       var _gameOverFired = false;
 

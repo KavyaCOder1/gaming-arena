@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAuthStore } from "@/store/auth-store";
-import { Gamepad2, Timer, Star, User, Ghost, Brain, Search, Info, X, Zap, Layers } from "lucide-react";
+import { Gamepad2, Timer, Star, User, Ghost, Search, Hash, LayoutGrid, Activity, Rocket, Waypoints, Boxes, Info, X, Zap } from "lucide-react";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -22,7 +22,7 @@ const container: Variants = { hidden: { opacity: 0 }, show: { opacity: 1, transi
 
 const DIFF_COLOR: Record<string, string> = { EASY: "#10b981", MEDIUM: "#f59e0b", HARD: "#ef4444" };
 const RESULT_CONFIG: Record<string, { color: string; label: string }> = {
-  WIN:  { color: "#10b981", label: "WIN"  },
+  WIN: { color: "#10b981", label: "WIN" },
   LOSE: { color: "#ef4444", label: "LOSE" },
   DRAW: { color: "#f59e0b", label: "DRAW" },
 };
@@ -33,34 +33,35 @@ function fmt(s: number) {
 
 /** Skill level label based on % rating */
 function ratingMeta(r: number): { label: string; color: string } {
-  if (r >= 85) return { label: "PRO",      color: "#fbbf24" };
-  if (r >= 65) return { label: "GREAT",    color: "#a855f7" };
-  if (r >= 45) return { label: "GOOD",     color: "#22d3ee" };
-  if (r >= 25) return { label: "AVERAGE",  color: "#10b981" };
-  if (r >= 1)  return { label: "BEGINNER", color: "#94a3b8" };
-  return              { label: "UNRATED",  color: "#475569" };
+  if (r >= 85) return { label: "PRO", color: "#fbbf24" };
+  if (r >= 65) return { label: "GREAT", color: "#a855f7" };
+  if (r >= 45) return { label: "GOOD", color: "#22d3ee" };
+  if (r >= 25) return { label: "AVERAGE", color: "#10b981" };
+  if (r >= 1) return { label: "BEGINNER", color: "#94a3b8" };
+  return { label: "UNRATED", color: "#475569" };
 }
 
 interface Stats {
-  totalGames:    number;
-  totalSeconds:  number;
+  totalGames: number;
+  totalSeconds: number;
   playTimeLabel: string;
-  rating:        number;
-  totalXp:       number;
+  rating: number;
+  totalXp: number;
 }
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
 
-  const [stats,   setStats]   = useState<Stats>({ totalGames: 0, totalSeconds: 0, playTimeLabel: "0m", rating: 0, totalXp: 0 });
-  const [tttHist,   setTttHist]   = useState<any[]>([]);
-  const [wsHist,    setWsHist]    = useState<any[]>([]);
-  const [memHist,   setMemHist]   = useState<any[]>([]);
-  const [pacHist,   setPacHist]   = useState<any[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalGames: 0, totalSeconds: 0, playTimeLabel: "0m", rating: 0, totalXp: 0 });
+  const [tttHist, setTttHist] = useState<any[]>([]);
+  const [wsHist, setWsHist] = useState<any[]>([]);
+  const [memHist, setMemHist] = useState<any[]>([]);
+  const [pacHist, setPacHist] = useState<any[]>([]);
   const [snakeHist, setSnakeHist] = useState<any[]>([]);
-  const [ssHist,    setSsHist]    = useState<any[]>([]);
-  const [cdHist,    setCdHist]    = useState<any[]>([]);
-  const [level,   setLevel]   = useState<UserLevelData | null>(null);
+  const [ssHist, setSsHist] = useState<any[]>([]);
+  const [cdHist, setCdHist] = useState<any[]>([]);
+  const [bbHist, setBbHist] = useState<any[]>([]);
+  const [level, setLevel] = useState<UserLevelData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,13 +76,14 @@ export default function DashboardPage() {
         const levelJson = await levelRes.json();
         if (statsJson.success) {
           setStats(statsJson.stats);
-          setTttHist(  statsJson.recentGames?.ticTacToe  ?? []);
-          setWsHist(   statsJson.recentGames?.wordSearch  ?? []);
-          setMemHist(  statsJson.recentGames?.memory      ?? []);
-          setPacHist(  statsJson.recentGames?.pacman      ?? []);
-          setSnakeHist(statsJson.recentGames?.snake        ?? []);
-          setSsHist(   statsJson.recentGames?.spaceShooter  ?? []);
-          setCdHist(   statsJson.recentGames?.connectDots   ?? []);
+          setTttHist(statsJson.recentGames?.ticTacToe ?? []);
+          setWsHist(statsJson.recentGames?.wordSearch ?? []);
+          setMemHist(statsJson.recentGames?.memory ?? []);
+          setPacHist(statsJson.recentGames?.pacman ?? []);
+          setSnakeHist(statsJson.recentGames?.snake ?? []);
+          setSsHist(statsJson.recentGames?.spaceShooter ?? []);
+          setCdHist(statsJson.recentGames?.connectDots ?? []);
+          setBbHist(statsJson.recentGames?.blockBreaker ?? []);
         }
         if (levelJson.success) setLevel(levelJson.data);
       } catch (e) { console.error(e); }
@@ -90,10 +92,10 @@ export default function DashboardPage() {
   }, [user]);
 
   const rankColor = level ? ({
-    ROOKIE:  "#94a3b8",
+    ROOKIE: "#94a3b8",
     VETERAN: "#13b6ec",
-    ELITE:   "#ff00ff",
-    LEGEND:  "#fbbf24",
+    ELITE: "#ff00ff",
+    LEGEND: "#fbbf24",
   } as Record<string, string>)[level.rank] ?? C.cyan : C.cyan;
 
   const { label: ratingLabel, color: ratingColor } = ratingMeta(stats.rating);
@@ -108,76 +110,119 @@ export default function DashboardPage() {
           <h1 style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(18px,4vw,30px)", fontWeight: 900, color: C.text, textTransform: "uppercase", fontStyle: "italic", letterSpacing: "-0.02em", marginBottom: 6 }}>
             OPERATIONS HUB
           </h1>
-          <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: "0.3em", textTransform: "uppercase" }}>
-            Sector 7-G · User Performance Protocol
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: "0.3em", textTransform: "uppercase" }}>
+              Sector 7-G · User Performance Protocol
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 20, padding: "3px 10px" }}>
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", boxShadow: "0 0 6px rgba(99,102,241,0.9)", animation: "dashXpPulse 2s ease-in-out infinite" }} />
+              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, fontWeight: 800, color: "#818cf8", letterSpacing: "0.25em", textTransform: "uppercase" }}>XP → Crypto · Phase 2</span>
+            </div>
+          </div>
         </div>
-        <XpBadge variant="compact" />
+
       </motion.header>
 
       {/* ── RATING INFO MODAL ── */}
       {showRatingInfo && (
-        <div onClick={() => setShowRatingInfo(false)} style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid rgba(34,211,238,0.2)", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", position: "relative" }}>
-            {/* Close */}
-            <button onClick={() => setShowRatingInfo(false)} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}>
-              <X style={{ width: 14, height: 14 }} />
-            </button>
-
-            {/* Title */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <Star style={{ width: 16, height: 16, color: "#22d3ee" }} />
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f8fafc", letterSpacing: "0.05em" }}>HOW RATING WORKS</span>
+        <div
+          onClick={() => setShowRatingInfo(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+          className="rating-modal-backdrop"
+        >
+          {/* Sheet — slides up from bottom on mobile, centered card on desktop */}
+          <div
+            onClick={e => e.stopPropagation()}
+            className="rating-modal-sheet"
+            style={{ background: "linear-gradient(160deg,#0f1c35 0%,#0a1020 100%)", border: "1px solid rgba(34,211,238,0.18)", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 520, maxHeight: "92dvh", overflowY: "auto", boxShadow: "0 -8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(34,211,238,0.08)", position: "relative" }}
+          >
+            {/* Drag handle (mobile) */}
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, paddingBottom: 4 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)" }} />
             </div>
-            <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
-              Your rating (0–100%) measures <strong style={{ color: "#94a3b8" }}>skill</strong>, not time played. Each game you play contributes one pillar score. Only games you've actually played count.
-            </p>
 
-            {/* Pillars */}
-            {[
-              { game: "Tic-Tac-Toe", color: "#22d3ee", icon: "✕", desc: "Win quality matters. Hard wins score 3×, Medium 2×, Easy 1×. Draws give partial credit. Losses give 0." },
-              { game: "Word Search", color: "#a78bfa", icon: "⌕", desc: "Completion × difficulty. Hard complete = full credit. Medium = 60%, Easy = 30%. Partial words count half." },
-              { game: "Memory",      color: "#ec4899", icon: "◈", desc: "Flip efficiency. Perfect game = every pair found in exactly 2 flips. Every extra wasted flip reduces your score." },
-              { game: "Pac-Man",     color: "#f59e0b", icon: "◉", desc: "Average score vs benchmark. Consistently scoring 5,000+ = full credit for this pillar." },
-            ].map(p => (
-              <div key={p.game} style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, background: `${p.color}08`, border: `1px solid ${p.color}20` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                  <span style={{ color: p.color, fontSize: 13, fontWeight: 900 }}>{p.icon}</span>
-                  <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700, color: p.color, letterSpacing: "0.08em" }}>{p.game}</span>
-                  <span style={{ marginLeft: "auto", fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: "#475569" }}>0 – 25 PTS</span>
+            {/* Sticky header */}
+            <div style={{ position: "sticky", top: 0, zIndex: 2, background: "linear-gradient(160deg,#0f1c35 0%,#0a1020 100%)", padding: "14px 22px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Star style={{ width: 15, height: 15, color: "#22d3ee" }} />
                 </div>
-                <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 12, color: "#64748b", margin: 0, lineHeight: 1.5 }}>{p.desc}</p>
+                <div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 13, fontWeight: 900, color: "#f8fafc", letterSpacing: "0.06em" }}>HOW RATING WORKS</div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#64748b", fontWeight: 600, letterSpacing: "0.1em" }}>8 GAME PILLARS · AVG SCORE</div>
+                </div>
               </div>
-            ))}
+              <button
+                onClick={() => setShowRatingInfo(false)}
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", flexShrink: 0, transition: "all 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.14)"; (e.currentTarget as HTMLButtonElement).style.color = "#f8fafc"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
+              >
+                <X style={{ width: 15, height: 15 }} />
+              </button>
+            </div>
 
-            {/* Skill levels */}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 16, marginTop: 4 }}>
-              <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: "#334155", letterSpacing: "0.2em" }}>SKILL LEVELS</span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10 }}>
+            {/* Body */}
+            <div style={{ padding: "18px 22px 28px" }}>
+
+              {/* Intro */}
+              <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 20 }}>
+                Your rating measures <strong style={{ color: "#f8fafc" }}>skill</strong>, not time played. Each game you've played contributes one pillar score (0–100). Your final rating is the <strong style={{ color: "#f8fafc" }}>average</strong> of all active pillars — so only games you've actually played count.
+              </p>
+
+              {/* Pillars */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
                 {[
-                  { label: "BEGINNER", range: "1–24%",  color: "#94a3b8" },
-                  { label: "AVERAGE",  range: "25–44%", color: "#10b981" },
-                  { label: "GOOD",     range: "45–64%", color: "#22d3ee" },
-                  { label: "GREAT",    range: "65–84%", color: "#a855f7" },
-                  { label: "PRO",      range: "85–100%",color: "#fbbf24" },
-                  { label: "UNRATED",  range: "0%",     color: "#475569" },
-                ].map(l => (
-                  <div key={l.label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: l.color }}>{l.label}</span>
-                    <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 11, color: "#334155" }}>{l.range}</span>
+                  { game: "Tic-Tac-Toe", color: "#22d3ee", icon: "✕", desc: "Win quality matters. Hard wins score 3×, Medium 2×, Easy 1×. Draws give partial credit. Losses give 0." },
+                  { game: "Word Search", color: "#a78bfa", icon: "⌕", desc: "Completion × difficulty. Hard complete = full credit. Medium = 60%, Easy = 30%. Partial words count half." },
+                  { game: "Memory", color: "#ec4899", icon: "◈", desc: "Flip efficiency. Perfect = every pair in exactly 2 flips. Extra wasted flips reduce your score." },
+                  { game: "Pac-Man", color: "#f59e0b", icon: "◉", desc: "Average score vs 5,000 benchmark. Consistently hitting that = full credit." },
+                  { game: "Snake", color: "#10b981", icon: "◌", desc: "Score weighted by difficulty. Hard counts 2× vs Easy. Benchmarked against 3,000." },
+                  { game: "Star Siege", color: "#818cf8", icon: "★", desc: "Average score vs 8,000 benchmark. Higher waves and more kills push your score up." },
+                  { game: "Connect The Dots", color: "#34d399", icon: "⬡", desc: "Move efficiency × difficulty. Harder grids count more. Fewer moves = higher score." },
+                  { game: "Block Breaker", color: "#fb923c", icon: "▦", desc: "50% from level reached (max 10) + 50% from score vs 50,000 benchmark." },
+                ].map(p => (
+                  <div key={p.game} style={{ padding: "11px 14px", borderRadius: 12, background: `${p.color}12`, border: `1px solid ${p.color}35` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ color: p.color, fontSize: 14, fontWeight: 900, lineHeight: 1, filter: `drop-shadow(0 0 4px ${p.color}80)` }}>{p.icon}</span>
+                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 800, color: "#f8fafc", letterSpacing: "0.08em" }}>{p.game}</span>
+                      <span style={{ marginLeft: "auto", fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 700, color: p.color, letterSpacing: "0.12em", opacity: 0.85 }}>0–100</span>
+                    </div>
+                    <p style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.55 }}>{p.desc}</p>
                   </div>
                 ))}
               </div>
+
+              {/* Skill levels */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 18 }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 800, color: "#64748b", letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 12 }}>SKILL LEVELS</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  {[
+                    { label: "UNRATED", range: "0%", color: "#64748b", bg: "rgba(100,116,139,0.12)" },
+                    { label: "BEGINNER", range: "1–24%", color: "#94a3b8", bg: "rgba(148,163,184,0.12)" },
+                    { label: "AVERAGE", range: "25–44%", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+                    { label: "GOOD", range: "45–64%", color: "#22d3ee", bg: "rgba(34,211,238,0.12)" },
+                    { label: "GREAT", range: "65–84%", color: "#a855f7", bg: "rgba(168,85,247,0.12)" },
+                    { label: "PRO", range: "85–100%", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
+                  ].map(l => (
+                    <div key={l.label} style={{ padding: "10px 12px", borderRadius: 10, background: l.bg, border: `1px solid ${l.color}30`, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 800, color: l.color, letterSpacing: "0.06em", filter: `drop-shadow(0 0 4px ${l.color}60)` }}>{l.label}</span>
+                      <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{l.range}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       )}
 
       {/* ── STATS GRID ── */}
-      <motion.section variants={fadeUp} className="dash-stats" style={{ display: "grid", gap: 14, marginBottom: 20 }}>
+      <motion.section variants={fadeUp} className="dash-stats" style={{ display: "grid", gap: 12, marginBottom: 20 }}>
 
         {/* Profile card */}
-        <div className="profile-card" style={{ ...card, padding: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden", borderColor: `${rankColor}30`, minHeight: 160 }}>
+        <div className="profile-card" style={{ ...card, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden", borderColor: `${rankColor}30`, minHeight: 130 }}>
           <div style={{ position: "absolute", top: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: `radial-gradient(circle,${rankColor}15 0%,transparent 70%)`, pointerEvents: "none" }} />
           <div className="profile-avatar" style={{ position: "relative", marginBottom: 12 }}>
             <div style={{ width: 64, height: 64, borderRadius: "50%", border: `2px solid ${rankColor}60`, padding: 3, boxShadow: `0 0 20px ${rankColor}30` }}>
@@ -204,34 +249,34 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Total Games card ── */}
-        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 140 }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 110, height: 110, borderRadius: "50%", background: `radial-gradient(circle,${C.indigo}18 0%,transparent 70%)`, pointerEvents: "none" }} />
+        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 130 }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: "50%", background: `radial-gradient(circle,${C.indigo}18 0%,transparent 70%)`, pointerEvents: "none" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Total Games</span>
-            <Gamepad2 style={{ width: 18, height: 18, color: C.indigo, filter: `drop-shadow(0 0 6px ${C.indigo}90)`, flexShrink: 0 }} />
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Total Games</span>
+            <Gamepad2 style={{ width: 16, height: 16, color: C.indigo, filter: `drop-shadow(0 0 6px ${C.indigo}90)`, flexShrink: 0 }} />
           </div>
-          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,3vw,36px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 10 }}>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,3vw,40px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8 }}>
             {loading ? <span style={{ color: "#1e293b" }}>—</span> : stats.totalGames}
           </div>
         </motion.div>
 
         {/* ── Play Time card ── */}
-        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 140 }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle,#10b98118 0%,transparent 70%)", pointerEvents: "none" }} />
+        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 130 }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle,#10b98118 0%,transparent 70%)", pointerEvents: "none" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Play Time</span>
-            <Timer style={{ width: 18, height: 18, color: "#10b981", filter: "drop-shadow(0 0 6px #10b98190)", flexShrink: 0 }} />
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Play Time</span>
+            <Timer style={{ width: 16, height: 16, color: "#10b981", filter: "drop-shadow(0 0 6px #10b98190)", flexShrink: 0 }} />
           </div>
-          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,3vw,36px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 10 }}>
+          <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,3vw,40px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8 }}>
             {loading ? <span style={{ color: "#1e293b" }}>—</span> : stats.playTimeLabel}
           </div>
         </motion.div>
 
         {/* ── Player Rating card (custom — has ℹ button) ── */}
-        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 140 }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 110, height: 110, borderRadius: "50%", background: `radial-gradient(circle,${ratingColor}18 0%,transparent 70%)`, pointerEvents: "none" }} />
+        <motion.div whileHover={{ scale: 1.02 }} style={{ ...card, padding: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 130 }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: "50%", background: `radial-gradient(circle,${ratingColor}18 0%,transparent 70%)`, pointerEvents: "none" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Player Rating</span>
+            <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.12em", textTransform: "uppercase" }}>Player Rating</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {/* ℹ button */}
               <button
@@ -247,7 +292,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div>
-            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(22px,3vw,36px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 10 }}>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: "clamp(26px,3vw,40px)", fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8 }}>
               {loading ? <span style={{ color: "#1e293b" }}>—</span> : `${stats.rating}%`}
             </div>
             {!loading && stats.rating > 0 && (
@@ -260,6 +305,10 @@ export default function DashboardPage() {
             <motion.div initial={{ width: 0 }} animate={{ width: `${stats.rating}%` }} transition={{ duration: 1, delay: 0.3 }}
               style={{ height: "100%", background: `linear-gradient(90deg,${ratingColor},${C.indigo})`, borderRadius: 2 }} />
           </div>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#818cf8", boxShadow: "0 0 5px rgba(99,102,241,0.9)", flexShrink: 0 }} />
+            <span style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 10, fontWeight: 700, color: "#818cf8", letterSpacing: "0.08em", filter: "drop-shadow(0 0 4px rgba(99,102,241,0.5))" }}>Your rating shapes your future crypto rewards</span>
+          </div>
         </motion.div>
       </motion.section>
 
@@ -268,10 +317,10 @@ export default function DashboardPage() {
 
         {/* ── TIC-TAC-TOE ── */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <GameCardHeader title="TIC-TAC-TOE" icon={<span style={{ color: C.cyan, fontSize: 15 }}>✕</span>} href="/games/tic-tac-toe" />
+          <GameCardHeader title="TIC-TAC-TOE" icon={<Hash style={{ width: 15, height: 15, color: "#a78bfa" }} />} href="/games/tic-tac-toe" />
           {loading ? <SkeletonRows /> : tttHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="90px 1fr 70px 65px 65px" labels={["RESULT","DIFF","SCORE","XP","TIME"]} />
+              <GridHeader cols="90px 1fr 70px 65px 65px" labels={["RESULT", "DIFF", "SCORE", "XP", "TIME"]} />
               {tttHist.map((g, i) => {
                 const rc = RESULT_CONFIG[g.result] ?? RESULT_CONFIG.LOSE;
                 const last = i === tttHist.length - 1;
@@ -286,9 +335,9 @@ export default function DashboardPage() {
                     </GameRow>
                     <MobileGameRow last={last} cells={[
                       { label: "Result", value: <Badge color={rc.color} label={rc.label} /> },
-                      { label: "Diff",   value: <DiffTag diff={g.difficulty} /> },
-                      { label: "Score",  value: <ValueCell color={g.score > 0 ? "#f59e0b" : "#475569"}>{g.score > 0 ? `+${g.score}` : "—"}</ValueCell> },
-                      { label: "XP",     value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "Diff", value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Score", value: <ValueCell color={g.score > 0 ? "#f59e0b" : "#475569"}>{g.score > 0 ? `+${g.score}` : "—"}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -302,7 +351,7 @@ export default function DashboardPage() {
           <GameCardHeader title="WORD SEARCH" icon={<Search style={{ width: 15, height: 15, color: "#a78bfa" }} />} href="/games/word-search" />
           {loading ? <SkeletonRows /> : wsHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="90px 1fr 65px 70px 65px" labels={["STATUS","DIFF","XP","WORDS","TIME"]} />
+              <GridHeader cols="90px 1fr 65px 70px 65px" labels={["STATUS", "DIFF", "XP", "WORDS", "TIME"]} />
               {wsHist.map((g, i) => {
                 const last = i === wsHist.length - 1;
                 return (
@@ -316,9 +365,9 @@ export default function DashboardPage() {
                     </GameRow>
                     <MobileGameRow last={last} cells={[
                       { label: "Status", value: <Badge color={g.completed ? "#10b981" : "#f59e0b"} label={g.completed ? "CLEAR" : "PART"} /> },
-                      { label: "Diff",   value: <DiffTag diff={g.difficulty} /> },
-                      { label: "XP",     value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
-                      { label: "Words",  value: <ValueCell color={C.cyan}>{g.wordsFound}/{g.totalWords}</ValueCell> },
+                      { label: "Diff", value: <DiffTag diff={g.difficulty} /> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "Words", value: <ValueCell color={C.cyan}>{g.wordsFound}/{g.totalWords}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -329,10 +378,10 @@ export default function DashboardPage() {
 
         {/* ── MEMORY ── */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <GameCardHeader title="MEMORY" icon={<Brain style={{ width: 15, height: 15, color: "#a78bfa" }} />} href="/games/memory" />
+          <GameCardHeader title="MEMORY" icon={<LayoutGrid style={{ width: 15, height: 15, color: "#a78bfa" }} />} href="/games/memory" />
           {loading ? <SkeletonRows /> : memHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="1fr 70px 65px 60px 65px" labels={["DIFF","SCORE","XP","MOVES","TIME"]} />
+              <GridHeader cols="1fr 70px 65px 60px 65px" labels={["DIFF", "SCORE", "XP", "MOVES", "TIME"]} />
               {memHist.map((g, i) => {
                 const last = i === memHist.length - 1;
                 return (
@@ -345,9 +394,9 @@ export default function DashboardPage() {
                       <TimeCell>{fmt(g.duration)}</TimeCell>
                     </GameRow>
                     <MobileGameRow last={last} cells={[
-                      { label: "Diff",  value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Diff", value: <DiffTag diff={g.difficulty} /> },
                       { label: "Score", value: <ValueCell color={g.score > 0 ? "#f59e0b" : "#475569"}>{g.score > 0 ? g.score.toLocaleString() : "—"}</ValueCell> },
-                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                       { label: "Moves", value: <ValueCell color="#a78bfa">{g.moves}</ValueCell> },
                     ]} />
                   </React.Fragment>
@@ -362,7 +411,7 @@ export default function DashboardPage() {
           <GameCardHeader title="PAC-MAN" icon={<Ghost style={{ width: 15, height: 15, color: "#f59e0b" }} />} href="/games/pacman" />
           {loading ? <SkeletonRows /> : pacHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="1fr 75px 65px 65px" labels={["SCORE","XP","STAGE","TIME"]} />
+              <GridHeader cols="1fr 75px 65px 65px" labels={["SCORE", "XP", "STAGE", "TIME"]} />
               {pacHist.map((g, i) => {
                 const last = i === pacHist.length - 1;
                 return (
@@ -375,9 +424,9 @@ export default function DashboardPage() {
                     </GameRow>
                     <MobileGameRow last={last} cells={[
                       { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell> },
-                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                       { label: "Stage", value: <ValueCell color={C.cyan}>LV {g.stage}</ValueCell> },
-                      { label: "Time",  value: <TimeCell>{fmt(g.duration)}</TimeCell> },
+                      { label: "Time", value: <TimeCell>{fmt(g.duration)}</TimeCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -388,10 +437,10 @@ export default function DashboardPage() {
 
         {/* ── SPACE SHOOTER ── */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <GameCardHeader title="STAR SIEGE" icon={<span style={{ fontSize: 15 }}>🚀</span>} href="/games/space-shooter" />
+          <GameCardHeader title="STAR SIEGE" icon={<Rocket style={{ width: 15, height: 15, color: "#f97316" }} />} href="/games/space-shooter" />
           {loading ? <SkeletonRows /> : ssHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["SCORE","WAVE","KILLS","XP","TIME"]} />
+              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["SCORE", "WAVE", "KILLS", "XP", "TIME"]} />
               {ssHist.map((g, i) => {
                 const last = i === ssHist.length - 1;
                 return (
@@ -405,9 +454,9 @@ export default function DashboardPage() {
                     </GameRow>
                     <MobileGameRow last={last} cells={[
                       { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{(g.score ?? 0).toLocaleString()}</ValueCell> },
-                      { label: "Wave",  value: <ValueCell color="#22d3ee">{g.wave ?? 1}</ValueCell> },
+                      { label: "Wave", value: <ValueCell color="#22d3ee">{g.wave ?? 1}</ValueCell> },
                       { label: "Kills", value: <ValueCell color="#ef4444">{g.kills ?? 0}</ValueCell> },
-                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned ?? 0}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned ?? 0}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -418,10 +467,10 @@ export default function DashboardPage() {
 
         {/* ── CONNECT THE DOTS ── */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <GameCardHeader title="CONNECT THE DOTS" icon={<Layers style={{ width: 15, height: 15, color: "#22d3ee" }} />} href="/games/connect-dots" />
+          <GameCardHeader title="CONNECT THE DOTS" icon={<Waypoints style={{ width: 15, height: 15, color: "#84cc16" }} />} href="/games/connect-dots" />
           {loading ? <SkeletonRows /> : cdHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="1fr 65px 65px 65px 65px" labels={["DIFF","PAIRS","MOVES","XP","TIME"]} />
+              <GridHeader cols="1fr 65px 65px 65px 65px" labels={["DIFF", "PAIRS", "MOVES", "XP", "TIME"]} />
               {cdHist.map((g, i) => {
                 const last = i === cdHist.length - 1;
                 return (
@@ -434,10 +483,40 @@ export default function DashboardPage() {
                       <TimeCell>{fmt(g.duration)}</TimeCell>
                     </GameRow>
                     <MobileGameRow last={last} cells={[
-                      { label: "Diff",  value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Diff", value: <DiffTag diff={g.difficulty} /> },
                       { label: "Pairs", value: <ValueCell color="#22d3ee">{g.dotsCount ?? "—"}</ValueCell> },
                       { label: "Moves", value: <ValueCell color="#a78bfa">{g.moves}</ValueCell> },
-                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                    ]} />
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── BLOCK BREAKER ── */}
+        <div style={{ ...card, overflow: "hidden" }}>
+          <GameCardHeader title="BLOCK BREAKER" icon={<Boxes style={{ width: 15, height: 15, color: "#ef4444" }} />} href="/games/block-breaker" />
+          {loading ? <SkeletonRows /> : bbHist.length === 0 ? <EmptyState /> : (
+            <div>
+              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["LEVEL", "BLOCKS", "SCORE", "XP", "TIME"]} />
+              {bbHist.map((g, i) => {
+                const last = i === bbHist.length - 1;
+                return (
+                  <React.Fragment key={g.id}>
+                    <GameRow last={last} cols="1fr 60px 70px 65px 65px">
+                      <ValueCell color="#22d3ee">LV {g.level}/10</ValueCell>
+                      <ValueCell color="#a78bfa">{g.blocksDestroyed}</ValueCell>
+                      <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell>
+                      <ValueCell color="#10b981">+{g.xpEarned}</ValueCell>
+                      <TimeCell>{fmt(g.duration)}</TimeCell>
+                    </GameRow>
+                    <MobileGameRow last={last} cells={[
+                      { label: "Level", value: <ValueCell color="#22d3ee">LV {g.level}/10</ValueCell> },
+                      { label: "Blocks", value: <ValueCell color="#a78bfa">{g.blocksDestroyed}</ValueCell> },
+                      { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -448,10 +527,10 @@ export default function DashboardPage() {
 
         {/* ── SNAKE ── */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <GameCardHeader title="SNAKE" icon={<span style={{ fontSize: 15 }}>🐍</span>} href="/games/snake" />
+          <GameCardHeader title="SNAKE" icon={<Activity style={{ width: 15, height: 15, color: "#10b981" }} />} href="/games/snake" />
           {loading ? <SkeletonRows /> : snakeHist.length === 0 ? <EmptyState /> : (
             <div>
-              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["DIFF","CHIPS","SCORE","XP","TIME"]} />
+              <GridHeader cols="1fr 60px 70px 65px 65px" labels={["DIFF", "CHIPS", "SCORE", "XP", "TIME"]} />
               {snakeHist.map((g, i) => {
                 const last = i === snakeHist.length - 1;
                 return (
@@ -464,10 +543,10 @@ export default function DashboardPage() {
                       <TimeCell>{fmt(g.survivalTime ?? 0)}</TimeCell>
                     </GameRow>
                     <MobileGameRow last={last} cells={[
-                      { label: "Diff",  value: <DiffTag diff={g.difficulty} /> },
+                      { label: "Diff", value: <DiffTag diff={g.difficulty} /> },
                       { label: "Chips", value: <ValueCell color="#22d3ee">{g.coresCollected ?? 0}</ValueCell> },
                       { label: "Score", value: <ValueCell color="#f59e0b" size={13}>{g.score.toLocaleString()}</ValueCell> },
-                      { label: "XP",    value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
+                      { label: "XP", value: <ValueCell color="#10b981">+{g.xpEarned}</ValueCell> },
                     ]} />
                   </React.Fragment>
                 );
@@ -479,18 +558,33 @@ export default function DashboardPage() {
       </motion.div>
 
       <style>{`
-        .dash-stats { grid-template-columns: repeat(4,1fr); }
-        @media(max-width:1100px){ .dash-stats { grid-template-columns: repeat(3,1fr); } }
-        @media(max-width:700px) { .dash-stats { grid-template-columns: repeat(2,1fr); } }
-        @media(max-width:440px) {
-          .dash-stats { grid-template-columns: repeat(2,1fr); }
-          .profile-card { grid-column: 1 / -1; flex-direction: row !important; gap: 16px; padding: 16px 20px !important; min-height: unset !important; text-align: left !important; justify-content: flex-start !important; }
-          .profile-card .profile-avatar { margin-bottom: 0 !important; }
+        /* ── Rating modal responsive ── */
+        .rating-modal-backdrop { align-items: flex-end !important; }
+        .rating-modal-sheet    { border-radius: 24px 24px 0 0 !important; }
+        @media(min-width:600px){
+          .rating-modal-backdrop { align-items: center !important; padding: 20px !important; }
+          .rating-modal-sheet    { border-radius: 20px !important; max-height: 88vh !important; }
+        }
+        /* Scrollbar inside modal */
+        .rating-modal-sheet::-webkit-scrollbar { width: 4px; }
+        .rating-modal-sheet::-webkit-scrollbar-track { background: transparent; }
+        .rating-modal-sheet::-webkit-scrollbar-thumb { background: rgba(34,211,238,0.25); border-radius: 2px; }
+
+
+        /* ── Stats grid: 4 cols → 2 cols on mobile ── */
+        .dash-stats { grid-template-columns: repeat(4, 1fr); }
+        @media(max-width:900px){ .dash-stats { grid-template-columns: repeat(2,1fr); } }
+        @media(max-width:480px){
+          .dash-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+          .profile-card { grid-column: 1 / -1 !important; flex-direction: row !important; gap: 14px !important; padding: 14px 16px !important; min-height: unset !important; text-align: left !important; justify-content: flex-start !important; align-items: center !important; }
+          .profile-card .profile-avatar { margin-bottom: 0 !important; flex-shrink: 0; }
           .profile-card .profile-info { align-items: flex-start !important; }
         }
+        /* ── Recent games: 2 cols → 1 col on mobile ── */
         .dash-bottom { grid-template-columns: 1fr 1fr; }
-        @media(max-width:900px){ .dash-bottom { grid-template-columns: 1fr; } }
+        @media(max-width:860px){ .dash-bottom { grid-template-columns: 1fr; } }
         @keyframes dashPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        @keyframes dashXpPulse { 0%,100%{opacity:1;box-shadow:0 0 6px rgba(99,102,241,0.9)} 50%{opacity:0.5;box-shadow:0 0 12px rgba(99,102,241,1)} }
 
         /* ── Desktop: normal table rows ── */
         .game-row-desktop { display: grid; align-items: center; }
@@ -538,20 +632,20 @@ function MobileGameRow({ last, cells }: {
 }) {
   return (
     <div className="game-row-mobile" style={{
-    gridTemplateColumns: "1fr 1fr",
-    gap: "8px 14px",
-    padding: "13px 16px",
-    borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.05)",
-    background: "transparent",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "8px 14px",
+      padding: "13px 16px",
+      borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.05)",
+      background: "transparent",
     }}>
-    {cells.map((c, i) => (
-    <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-    <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 800, color: "#475569", letterSpacing: "0.18em", textTransform: "uppercase" }}>
-    {c.label}
-    </span>
-    <div style={{ fontSize: 13 }}>{c.value}</div>
-    </div>
-    ))}
+      {cells.map((c, i) => (
+        <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, fontWeight: 800, color: "#475569", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            {c.label}
+          </span>
+          <div style={{ fontSize: 13 }}>{c.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
