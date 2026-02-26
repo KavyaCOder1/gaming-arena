@@ -15,6 +15,8 @@ interface AuthState {
     setUser: (user: AuthUser) => void;
     // Clear user on logout
     clearUser: () => void;
+    // Logout the current user and clear session
+    logout: () => Promise<void>;
     // Check session cookie on app boot — called ONCE
     init: () => Promise<void>;
     openAuthModal: (view?: "login" | "register") => void;
@@ -57,4 +59,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     openAuthModal: (view = "login") => set({ isAuthModalOpen: true, authModalView: view }),
     closeAuthModal: () => set({ isAuthModalOpen: false }),
+    logout: async () => {
+        try {
+            await fetch("/api/auth/logout");
+        } catch {
+            // best-effort logout
+        }
+        set({ user: null, isAuthenticated: false, isLoading: false });
+    },
 }));
